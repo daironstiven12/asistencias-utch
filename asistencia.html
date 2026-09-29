@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light">
+<title>Registro de Asistencia · UTCH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light;
+  --green:#00A651;
+  --green-dark:#008A43;
+  --green-darker:#006B33;
+  --green-soft:#E8F6EE;
+  --green-softer:#F2FBF6;
+  --green-line:#C8E6D4;
+  --bg:#FFFFFF;
+  --bg-soft:#F7FBF8;
+  --card:#FFFFFF;
+  --ink:#0F2A1B;
+  --ink-2:#2C4536;
+  --mut:#6B8074;
+  --line:#E3EDE7;
+  --line-2:#F0F6F2;
+  --bad:#C0392B;
+  --bad-soft:#FDECEA;
+  --warn:#946A00;
+  --warn-soft:#FCF6E4;
+  --radius:14px;
+  --radius-sm:10px;
+  --shadow-xs:0 1px 2px rgba(15,42,27,.04);
+  --shadow-sm:0 2px 6px rgba(15,42,27,.05);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:linear-gradient(180deg,#FFFFFF 0%,#F7FBF8 260px,#F7FBF8 100%);
+  background-attachment:fixed;
+  color:var(--ink);
+  font:15px/1.55 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+main{max-width:1040px;margin:0 auto;padding:28px 20px 72px}
+h1,h2,h3{margin:0;line-height:1.2;letter-spacing:-.015em}
+h1{font-size:1.55rem;font-weight:800;color:var(--ink)}
+h2{font-size:1.05rem;font-weight:700;color:var(--ink)}
+h3{font-size:.98rem;font-weight:700;color:var(--ink)}
+p{margin:0 0 12px}
+p:last-child{margin-bottom:0}
+a{color:var(--green-dark);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.app-header{
+  display:flex;align-items:center;gap:22px;
+  padding:0 0 28px;margin-bottom:28px;
+  border-bottom:1px solid var(--line);
+}
+.app-header .logo{
+  height:82px;width:auto;flex-shrink:0;display:block;
+  object-fit:contain;
+}
+.app-header .titulos{flex:1;min-width:0}
+.app-header h1{
+  font-size:1.5rem;font-weight:800;color:var(--ink);
+  letter-spacing:-.02em;line-height:1.15;
+}
+.app-header p{
+  margin:4px 0 0;color:var(--mut);font-size:.88rem;
+  font-weight:500;line-height:1.35;
+}
+@media (max-width:640px){
+  main{padding:20px 16px 56px}
+  .app-header{gap:14px;padding-bottom:20px;margin-bottom:20px}
+  .app-header .logo{height:58px}
+  .app-header h1{font-size:1.15rem}
+  .app-header p{font-size:.76rem}
+}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:24px;
+  margin-bottom:18px;
+  box-shadow:var(--shadow-xs);
+}
+.card>h2{
+  display:flex;align-items:center;gap:10px;
+  margin:0 0 16px;padding-bottom:12px;
+  font-size:1.02rem;font-weight:700;color:var(--ink);
+  border-bottom:1px solid var(--line-2);
+}
+.card>h2 svg{width:18px;height:18px;color:var(--green);flex-shrink:0}
+
+button{
+  font:inherit;cursor:pointer;
+  border:1.5px solid var(--green);
+  background:var(--green);color:#fff;
+  font-weight:600;font-size:.94rem;
+  padding:11px 20px;border-radius:var(--radius-sm);
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  transition:all .16s ease;
+  line-height:1.15;white-space:nowrap;
+  letter-spacing:-.005em;
+}
+button svg{width:17px;height:17px;flex-shrink:0}
+button:hover:not(:disabled){
+  background:var(--green-dark);border-color:var(--green-dark);
+  transform:translateY(-1px);
+  box-shadow:0 6px 16px rgba(0,166,81,.22);
+}
+button:active:not(:disabled){transform:translateY(0);box-shadow:none}
+button:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.s{background:#fff;color:var(--ink-2);border-color:var(--line)}
+button.s:hover:not(:disabled){
+  background:var(--green-softer);border-color:var(--green);
+  color:var(--green-dark);box-shadow:0 4px 12px rgba(0,166,81,.10);
+}
+button.d{background:#fff;color:var(--bad);border-color:var(--line)}
+button.d:hover:not(:disabled){background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+button.back-button{padding:10px 16px;font-weight:600}
+
+label{
+  display:block;font-size:.83rem;color:var(--mut);
+  margin:16px 0 6px;font-weight:600;letter-spacing:.01em;
+}
+label:first-child{margin-top:0}
+input,select,textarea{
+  width:100%;font:inherit;color:var(--ink);background:#fff;
+  border:1.5px solid var(--line);border-radius:var(--radius-sm);
+  padding:11px 14px;transition:border-color .15s, box-shadow .15s;
+}
+input::placeholder,textarea::placeholder{color:#A8B8AE}
+input:hover,select:hover,textarea:hover{border-color:#CFE0D5}
+input:focus,select:focus,textarea:focus{
+  outline:none;border-color:var(--green);
+  box-shadow:0 0 0 4px rgba(0,166,81,.12);
+}
+textarea{resize:vertical;min-height:70px;font-family:inherit}
+input[readonly]{background:var(--green-softer);color:var(--green-darker);font-weight:600;letter-spacing:.06em}
+
+.row{display:flex;gap:14px;flex-wrap:wrap;align-items:end}
+.row>*{flex:1 1 220px;min-width:0}
+.row>button{flex:0 0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 16px}
+.grid .w{grid-column:1/-1}
+
+.badge{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 16px;border-radius:99px;
+  font-size:.85rem;font-weight:700;line-height:1;
+  background:var(--line-2);color:var(--mut);
+}
+.badge svg{width:15px;height:15px}
+.badge.ok{background:var(--green-soft);color:var(--green-darker)}
+.badge.no{background:var(--bad-soft);color:var(--bad)}
+
+.aviso{
+  background:var(--green-softer);
+  border:1px solid var(--green-line);
+  border-left:4px solid var(--green);
+  border-radius:var(--radius-sm);
+  padding:14px 16px;font-size:.88rem;color:var(--ink-2);
+  margin:16px 0;display:flex;gap:12px;align-items:flex-start;
+  line-height:1.5;
+}
+.aviso svg{width:19px;height:19px;color:var(--green);flex-shrink:0;margin-top:1px}
+.aviso.ok{background:var(--green-soft);border-left-color:var(--green-dark)}
+.aviso.ok svg{color:var(--green-darker)}
+.aviso.warn{background:var(--warn-soft);border-color:#F0E4B8;border-left-color:var(--warn)}
+.aviso.warn svg{color:var(--warn)}
+.aviso.err{background:var(--bad-soft);border-color:#F2C6C0;border-left-color:var(--bad)}
+.aviso.err svg{color:var(--bad)}
+.aviso b{color:var(--ink)}
+.mut{color:var(--mut);font-size:.89rem}
+
+.portal-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px}
+@media (max-width:600px){.portal-grid{grid-template-columns:1fr}}
+.portal-card{
+  background:#fff;border:1.5px solid var(--line);
+  border-radius:var(--radius);padding:28px 24px;
+  text-align:left;display:flex;flex-direction:column;gap:14px;
+  cursor:pointer;transition:all .2s ease;color:var(--ink);
+  font-weight:400;box-shadow:var(--shadow-xs);font:inherit;
+  align-items:flex-start;
+}
+.portal-card:hover:not(:disabled){
+  border-color:var(--green);transform:translateY(-3px);
+  box-shadow:0 12px 32px rgba(0,166,81,.15);background:#fff;
+}
+.portal-icon{
+  width:56px;height:56px;border-radius:16px;
+  background:var(--green-soft);color:var(--green-dark);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:all .2s ease;
+}
+.portal-card:hover .portal-icon{background:var(--green);color:#fff;transform:scale(1.05)}
+.portal-icon svg{width:28px;height:28px}
+.portal-card h3{margin:0;font-size:1.1rem;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.portal-card p{margin:0;color:var(--mut);font-size:.88rem;line-height:1.45}
+
+.sig-tabs{
+  display:inline-flex;background:var(--bg-soft);
+  border:1px solid var(--line);border-radius:11px;
+  padding:3px;gap:2px;margin:4px 0 12px;flex-wrap:wrap;
+}
+.sig-tabs button{
+  background:transparent;border:0;color:var(--mut);
+  padding:8px 14px;font-size:.85rem;font-weight:600;
+  border-radius:8px;box-shadow:none;
+}
+.sig-tabs button svg{width:15px;height:15px}
+.sig-tabs button:hover:not(:disabled){background:transparent;color:var(--green-dark);transform:none;box-shadow:none}
+.sig-tabs button.active{background:#fff;color:var(--green-dark);box-shadow:0 1px 4px rgba(15,42,27,.10)}
+.sig canvas{
+  width:100%;max-width:440px;aspect-ratio:3/1;
+  background:#fff;border:1.5px dashed var(--green-line);
+  border-radius:12px;touch-action:none;display:block;cursor:crosshair;
+}
+.pane{margin:6px 0}
+
+.wrap{overflow-x:auto;padding:4px;-webkit-overflow-scrolling:touch}
+#hoja{
+  background:#fff;color:#000;width:816px;margin:0 auto;
+  padding:32px 36px;font:12px/1.3 Arial,Helvetica,sans-serif;
+  box-shadow:0 6px 28px rgba(15,42,27,.14);border-radius:8px;
+  border:1px solid #E3EDE7;
+}
+#hoja table{width:100%;border-collapse:collapse}
+#hoja td,#hoja th{border:1px solid #000;padding:4px 6px;vertical-align:middle}
+#hoja .top td{border:0;padding:0}
+#hoja .top .logo-cell{width:22%;text-align:left}
+#hoja .top .logo-cell img{height:80px;width:auto;max-width:100%;object-fit:contain}
+#hoja .tt{text-align:center;font-weight:700;font-size:14px;padding:0 8px}
+#hoja .l{font-weight:700;background:#EEF5F0;width:17%;font-size:11px}
+#hoja th{background:#EEF5F0;font-size:11px;text-align:center}
+#hoja td.n{text-align:center;width:6%}
+#hoja td.id{width:22%}
+#hoja td.f{width:26%;height:32px;padding:1px;text-align:center}
+#hoja td.f img{max-height:30px;max-width:100%}
+#hoja .temas{height:38px;white-space:pre-wrap}
+#hoja .pie{display:flex;justify-content:space-around;margin:36px 0 18px;text-align:center;font-weight:700;font-size:11px}
+#hoja .pie div{width:40%;border-top:1px solid #000;padding-top:5px;position:relative}
+#hoja .pie img{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);max-height:56px}
+#hoja .cc{font-weight:700;text-align:center;margin:16px 0 5px;font-size:12px}
+#hoja .ctl td{font-size:10px;vertical-align:top}
+#hoja .foot{font-size:8px;text-align:center;margin:14px 0 0;border-top:1px solid #000;padding-top:6px;line-height:1.45}
+#hoja .del{border:0;background:none;color:#b3261e;padding:0 4px;cursor:pointer;vertical-align:middle;display:inline-flex;align-items:center}
+#hoja .del svg{width:14px;height:14px}
+#hoja tr,#hoja .cc,#hoja .pie,#hoja .ctl{break-inside:avoid;page-break-inside:avoid}
+@media (max-width:900px){#hoja{zoom:.82}}
+@media (max-width:680px){#hoja{zoom:.55}}
+@media (max-width:420px){#hoja{zoom:.42}}
+
+@media print{
+  @page{size:letter;margin:10mm}
+  html,body{background:#fff!important}
+  main{padding:0;max-width:none}
+  .np{display:none!important}
+  .wrap{overflow:visible;padding:0}
+  #hoja{width:auto;box-shadow:none;padding:0;zoom:1;border-radius:0;border:0}
+  #hoja .del{display:none!important}
+  #hoja *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+"use strict";
+/* ============================================================
+   SISTEMA INSTITUCIONAL DE REGISTRO DE ASISTENCIA · UTCH
+   100% client-side · Datos cifrados en localStorage
+   Seguridad: AES-GCM 256 · PBKDF2-SHA256 (310k) · Bloqueo por intentos
+   ============================================================ */
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => (
+  { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
+));
+const clean = (s, max=160) => String(s ?? '')
+  .replace(/[<>]/g,'').replace(/[\u0000-\u001F\u007F]/g,' ')
+  .replace(/\s+/g,' ').trim().slice(0,max);
+const cleanMulti = (s, max=800) => String(s ?? '')
+  .replace(/[<>]/g,'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,'')
+  .slice(0,max);
+const firmaSegura = s =>
+  /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(String(s||'')) ? String(s) : '';
+const hoy = () => { const d=new Date(), z=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; };
+const fmtFecha = iso => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||''));
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : String(iso||'');
+};
+const rndBytes = n => {
+  if (!(globalThis.crypto && crypto.getRandomValues)) throw new Error('Web Crypto no está disponible.');
+  const b = new Uint8Array(n);
+  crypto.getRandomValues(b);
+  return b;
+};
+const b64FromBytes = b => {
+  let s=''; const CH=0x8000;
+  for (let i=0;i<b.length;i+=CH) s+=String.fromCharCode.apply(null,b.subarray(i,i+CH));
+  return btoa(s);
+};
+const bytesFromB64 = s => {
+  const bin=atob(s), o=new Uint8Array(bin.length);
+  for (let i=0;i<bin.length;i++) o[i]=bin.charCodeAt(i);
+  return o;
+};
+
+/* ---------------------- Iconos SVG ------------------------- */
+const I = {
+  student:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>',
+  teacher:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  arrowLeft:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
+  pencil:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>',
+  image:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+  type:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>',
+  eraser:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16a2 2 0 0 1 0-2.83l9.17-9.17a2 2 0 0 1 2.83 0l5.17 5.17a2 2 0 0 1 0 2.83L11 20"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  shieldCheck:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>',
+  copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
+  stop:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>',
+  refresh:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
+  print:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>',
+  download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+  key:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  database:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>'
+};
+
+/* ============================================================
+   LOGO INSTITUCIONAL FIJO
+   🔒 El logo es SIEMPRE logo.png (no configurable)
+   ============================================================ */
+const LOGO_SRC = 'logo.png';
+
+/* -------------------------- Cifrado -------------------------- */
+const DATA_STORE='utch.asistencia.v1', KEY_STORE='utch.asistencia.k',
+      SESSION_ADM='utch.sesion.adm',
+      SESSION_EST='utch.sesion.est',
+      LOCK_STORE='utch.asistencia.lock';
+
+/* ============================================================
+   🔒 PIN DE ADMINISTRADOR FIJO (incrustado en el código)
+   ------------------------------------------------------------
+   Este PIN se comparte entre TODOS los dispositivos y no puede
+   modificarse desde la interfaz. Para cambiarlo, sigue estos pasos:
+
+   1. Abre este archivo en el navegador y presiona F12 (consola).
+   2. Pega y ejecuta el siguiente bloque cambiando "TU_NUEVO_PIN"
+      por el PIN que quieras usar:
+
+      (async () => {
+        const enc = new TextEncoder();
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const saltB64 = btoa(String.fromCharCode(...salt));
+        const km = await crypto.subtle.importKey('raw', enc.encode('TU_NUEVO_PIN'), 'PBKDF2', false, ['deriveBits']);
+        const bits = await crypto.subtle.deriveBits(
+          { name:'PBKDF2', salt, iterations: 310000, hash:'SHA-256' }, km, 256);
+        const hashB64 = btoa(String.fromCharCode(...new Uint8Array(bits)));
+        console.log('SALT:', saltB64);
+        console.log('HASH:', hashB64);
+      })();
+
+   3. Copia los valores SALT y HASH que aparecen en consola.
+   4. Reemplaza PIN_FIJO.salt y PIN_FIJO.hash aquí abajo.
+   5. Vuelve a subir el archivo. Listo.
+   ============================================================ */
+const PIN_FIJO = {
+  salt: '2QghbIDaj64mRiN98wWMOg==',
+  hash: 'oFLzQYcEESsxblKSuOKHklKlsBJDbjEOeXgS/UXG82Y=',
+  iter: 310000
+};
+
+const _enc=new TextEncoder(), _dec=new TextDecoder();
+
+async function cryptoKey(){
+  if (!(globalThis.crypto && crypto.subtle)) return null;
+  try{
+    let raw=localStorage.getItem(KEY_STORE);
+    if(!raw){ raw=b64FromBytes(rndBytes(32)); localStorage.setItem(KEY_STORE,raw); }
+    return await crypto.subtle.importKey('raw',bytesFromB64(raw),{name:'AES-GCM'},false,['encrypt','decrypt']);
+  }catch(e){ return null; }
+}
+async function cifrar(obj){
+  const json=JSON.stringify(obj);
+  const k=await cryptoKey();
+  if(!k) throw new Error('El cifrado seguro no está disponible.');
+  const iv=rndBytes(12);
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,_enc.encode(json));
+  return 'aes:'+b64FromBytes(iv)+':'+b64FromBytes(new Uint8Array(ct));
+}
+async function descifrar(raw){
+  if(!raw) return null;
+  try{
+    if(raw.startsWith('aes:')){
+      const p=raw.split(':'); const k=await cryptoKey();
+      if(!k) return null;
+      const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:bytesFromB64(p[1])},k,bytesFromB64(p[2]));
+      return JSON.parse(_dec.decode(pt));
+    }
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+
+/* ============================================================
+   PIN — PBKDF2-SHA256 con 310.000 iteraciones
+   ============================================================ */
+const PBKDF2_ITER = 310000;
+
+async function derivarPin(pin, saltB64) {
+  if (!(globalThis.crypto && crypto.subtle)) return null;
+  try {
+    const km = await crypto.subtle.importKey(
+      'raw', _enc.encode(String(pin)), 'PBKDF2', false, ['deriveBits']
+    );
+    const bits = await crypto.subtle.deriveBits(
+      { name:'PBKDF2', salt: bytesFromB64(saltB64), iterations: PBKDF2_ITER, hash:'SHA-256' },
+      km, 256
+    );
+    return b64FromBytes(new Uint8Array(bits));
+  } catch(e) { return null; }
+}
+
+/* ---- Verificación contra el PIN fijo del código ---- */
+async function verificarPin(pin) {
+  if (!PIN_FIJO.hash || PIN_FIJO.hash === 'REEMPLAZA_ESTO_CON_TU_HASH') return false;
+  const h = await derivarPin(pin, PIN_FIJO.salt);
+  if (!h) return false;
+  if (h.length !== PIN_FIJO.hash.length) return false;
+  let dif = 0;
+  for (let i = 0; i < h.length; i++) dif |= h.charCodeAt(i) ^ PIN_FIJO.hash.charCodeAt(i);
+  return dif === 0;
+}
+
+/* ---- Validación de fortaleza (solo referencial) ---- */
+function validarFortalezaPin(pin) {
+  const s = String(pin);
+  const errores = [];
+  if (s.length < 10) errores.push('Debe tener al menos 10 caracteres.');
+  if (!/[A-Z]/.test(s)) errores.push('Debe incluir al menos una letra MAYÚSCULA.');
+  if (!/[a-z]/.test(s)) errores.push('Debe incluir al menos una letra minúscula.');
+  if (!/[0-9]/.test(s)) errores.push('Debe incluir al menos un número.');
+  if (!/[^A-Za-z0-9]/.test(s)) errores.push('Debe incluir al menos un símbolo (!@#$%...).');
+  const debiles = ['12345678','123456789','1234567890','password','admin123','utch1234','qwerty123','admin1234','contraseña','12345678a','admin12345','utch2024','utch2025'];
+  if (debiles.includes(s.toLowerCase())) errores.push('Esa contraseña es demasiado común.');
+  return errores;
+}
+
+/* ---- Bloqueo a los 5 intentos fallidos ---- */
+const MAX_INTENTOS = 5;
+const BLOQUEO_MS   = 5 * 60 * 1000;
+
+function getLock() {
+  try { return JSON.parse(localStorage.getItem(LOCK_STORE)||'{"n":0,"until":0}'); }
+  catch(e){ return {n:0, until:0}; }
+}
+function setLock(o) { try { localStorage.setItem(LOCK_STORE, JSON.stringify(o)); } catch(e){} }
+function registrarFallo() {
+  const o = getLock();
+  o.n = (o.n||0) + 1;
+  if (o.n >= MAX_INTENTOS) { o.until = Date.now() + BLOQUEO_MS; o.n = 0; }
+  setLock(o);
+  return o;
+}
+function limpiarFallos() { setLock({n:0, until:0}); }
+function estaBloqueado() {
+  const o = getLock();
+  if (o.until && o.until > Date.now()) return Math.ceil((o.until - Date.now())/1000);
+  if (o.until && o.until <= Date.now()) { setLock({n:0, until:0}); return 0; }
+  return 0;
+}
+
+/* -------------------------- Estado --------------------------- */
+const MATERIA_CAMPOS=['facultad','programa','nivel','asignatura','codigo','periodo','cds','docente','temas'];
+const MATERIAS_SEMESTRE=[
+  {id:'sem-2720208-comunicacion-analoga',datos:{asignatura:'COMUNICACIÓN ANÁLOGA',codigo:'2720208',docente:'JOHAN FERNEY PINO CUESTA'},correo:'',horas:4},
+  {id:'sem-2720308-microcontroladores',datos:{asignatura:'MICROCONTROLADORES',codigo:'2720308',docente:'JACKSON BERNEY RENTERIA MENA'},correo:'d-jackson.renteria@utch.edu.co',horas:3},
+  {id:'sem-2720408-administracion-sistemas-operativos',datos:{asignatura:'ADMINISTRACIÓN Y GESTIÓN DE SISTEMAS OPERATIVOS',codigo:'2720408',docente:'DEINER MENA WALDO'},correo:'deiner.mena@utch.edu.co',horas:4},
+  {id:'sem-2720608-metodologia-investigacion-ii',datos:{asignatura:'METODOLOGÍA DE LA INVESTIGACIÓN II',codigo:'2720608',docente:'HECTOR DAVID AGUDELO ARIAS'},correo:'d-hector.agudelo@utch.edu.co',horas:2},
+  {id:'sem-2720108-electiva-ii',datos:{asignatura:'ELECTIVA II',codigo:'2720108',docente:'HARLINTON PALACIOS MOSQUERA'},correo:'harlinton.palacios@utch.edu.co',horas:2},
+  {id:'sem-2720408-ingenieria-software-ii',datos:{asignatura:'INGENIERÍA DE SOFTWARE II',codigo:'2720408',docente:'ARISLEYDA RENTERIA CASTRO'},correo:'arisleyda.renteria@utch.edu.co',horas:3},
+  {id:'sem-2720708-analitica-datos',datos:{asignatura:'ANALÍTICA DE DATOS',codigo:'2720708',docente:'ERWIN ENRIQUE MOYA LOZANO'},correo:'d-erwin.moya@utch.edu.co',horas:4}
+];
+const DEFAULTS = () => ({
+  cfg:{ facultad:'',programa:'',nivel:'',asignatura:'',codigo:'',
+        periodo:'',cds:'',fecha:hoy(),hora:'',docente:'',temas:'' },
+  materias:MATERIAS_SEMESTRE.map(materia=>({...materia,datos:{...materia.datos}})), materiaActiva:'',
+  firmaDoc:'',firmaRep:'',logo:'',
+  sesion:{ abierta:false,inicio:0,minutos:15,clave:'' },
+  estudiantes:[]
+});
+let S=DEFAULTS(), adminMode=false, tic=null, saveTimer=null, pads={};
+
+function normalizar(o){
+  const d=DEFAULTS(), src=(o&&typeof o==='object')?o:{};
+  const materiasPorId=new Map();
+  [...MATERIAS_SEMESTRE,...(Array.isArray(src.materias)?src.materias:[])].forEach((materia,i)=>{
+    const datos={};
+    for(const k of MATERIA_CAMPOS){
+      const v=materia&&materia.datos?materia.datos[k]:'';
+      datos[k]=(k==='temas')?cleanMulti(v,800):clean(v,160);
+    }
+    const id=clean(materia&&materia.id,40)||('m'+i);
+    materiasPorId.set(id,{
+      id,datos,
+      correo:clean(materia&&materia.correo,160),
+      horas:Math.max(0,Number(materia&&materia.horas)||0)
+    });
+  });
+  const materias=Array.from(materiasPorId.values()).filter(materia=>materia.datos.asignatura);
+  const materiaActiva=clean(src.materiaActiva,40);
+  const cfg={};
+  for(const k in d.cfg){
+    const v=src.cfg?src.cfg[k]:'';
+    cfg[k]=(k==='temas')?cleanMulti(v,800):clean(v,160);
+  }
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(cfg.fecha)) cfg.fecha=hoy();
+  const ses=src.sesion||{};
+  return {
+    cfg,
+    materias,
+    materiaActiva:materias.some(materia=>materia.id===materiaActiva)?materiaActiva:'',
+    firmaDoc:firmaSegura(src.firmaDoc),
+    firmaRep:firmaSegura(src.firmaRep),
+    logo:'',
+    sesion:{
+      abierta:!!ses.abierta,
+      inicio:Number(ses.inicio)||0,
+      minutos:Math.max(0,Math.min(240,Number(ses.minutos)||0)),
+      clave:clean(ses.clave,8).toUpperCase()
+    },
+    estudiantes:(Array.isArray(src.estudiantes)?src.estudiantes:[])
+      .map((f,i)=>({
+        id:clean(f&&f.id,40)||('imp'+i),
+        nombre:clean(f&&f.nombre,80),
+        ident:clean(f&&f.ident,20),
+        firma:firmaSegura(f&&f.firma),
+        ts:Number(f&&f.ts)||Date.now()
+      }))
+      .filter(f=>f.nombre&&f.ident)
+      .slice(0,500)
+  };
+}
+async function guardar(){
+  clearTimeout(saveTimer);
+  try{ localStorage.setItem(DATA_STORE,await cifrar(S)); }
+  catch(e){ console.warn('No se pudo guardar.'); }
+}
+function guardarDiferido(){ clearTimeout(saveTimer); saveTimer=setTimeout(guardar,300); }
+async function cargar(){
+  const raw=localStorage.getItem(DATA_STORE);
+  if(raw){ const o=await descifrar(raw); if(o) S=normalizar(o); }
+  await guardar();
+}
+
+/* ------------------------- Sesión ---------------------------- */
+function estadoSesion(){
+  const s=S.sesion;
+  if(!s.abierta) return { abierto:false, texto:'El registro está cerrado.' };
+  const m=+s.minutos||0;
+  if(!m) return { abierto:true, texto:'Registro abierto · sin límite de tiempo.' };
+  const restante=s.inicio+m*60000-Date.now();
+  if(restante<=0) return { abierto:false, texto:'El tiempo de registro terminó.' };
+  const t=Math.ceil(restante/1000);
+  return { abierto:true, texto:`Registro abierto · quedan ${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}` };
+}
+const ALFABETO='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const nuevaClave = () => Array.from(rndBytes(6)).map(n=>ALFABETO[n%ALFABETO.length]).join('');
+
+/* --------------------------- Firma pad ----------------------- */
+function sigPad(el){
+  el.classList.add('sig');
+  el.innerHTML =
+    '<div class="sig-tabs">' +
+      '<button type="button" data-m="d" class="active">'+I.pencil+'Dibujar</button>' +
+      '<button type="button" data-m="u">'+I.image+'Subir imagen</button>' +
+      '<button type="button" data-m="t">'+I.type+'Escribir</button>' +
+    '</div>' +
+    '<div class="pane" data-p="u" hidden><input type="file" accept="image/png,image/jpeg"></div>' +
+    '<div class="pane" data-p="t" hidden><input type="text" maxlength="40" placeholder="Escriba su nombre como firma"></div>' +
+    '<canvas width="360" height="120" aria-label="Área de firma"></canvas>' +
+    '<button type="button" class="s" data-c style="margin-top:10px">'+I.eraser+'Borrar</button>';
+
+  const cv=el.querySelector('canvas');
+  const x=cv.getContext('2d');
+  let dirty=false, draw=false, mode='d';
+  const clear=()=>{ x.clearRect(0,0,360,120); dirty=false; };
+  const pt=e=>{ const r=cv.getBoundingClientRect();
+    return [(e.clientX-r.left)*360/r.width,(e.clientY-r.top)*120/r.height]; };
+  x.lineWidth=2.4; x.lineCap=x.lineJoin='round'; x.strokeStyle='#111';
+
+  cv.addEventListener('pointerdown',e=>{
+    if(mode!=='d') return;
+    draw=true;
+    try{ cv.setPointerCapture(e.pointerId); }catch(_){}
+    x.beginPath(); const [a,b]=pt(e);
+    x.moveTo(a,b); x.lineTo(a+.1,b); x.stroke(); dirty=true;
+  });
+  cv.addEventListener('pointermove',e=>{
+    if(!draw) return;
+    const [a,b]=pt(e); x.lineTo(a,b); x.stroke();
+  });
+  ['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,()=>{ draw=false; }));
+  el.querySelectorAll('[data-m]').forEach(b=>{
+    b.onclick=()=>{
+      mode=b.dataset.m; clear();
+      el.querySelectorAll('[data-m]').forEach(t=>t.classList.toggle('active',t===b));
+      el.querySelectorAll('.pane').forEach(p=>{ p.hidden=p.dataset.p!==mode; });
+    };
+  });
+  el.querySelector('[data-c]').onclick=clear;
+
+  el.querySelector('input[type=file]').onchange=e=>{
+    const f=e.target.files&&e.target.files[0];
+    if(!f) return;
+    if(!/^image\/(png|jpeg)$/.test(f.type)){ alert('Use una imagen PNG o JPG.'); return; }
+    const im=new Image();
+    im.onload=()=>{
+      clear();
+      const k=Math.min(360/im.width,120/im.height);
+      const w=im.width*k, h=im.height*k;
+      x.drawImage(im,(360-w)/2,(120-h)/2,w,h);
+      const img=x.getImageData(0,0,360,120), px=img.data;
+      for(let i=0;i<px.length;i+=4){
+        const lum=.2126*px[i]+.7152*px[i+1]+.0722*px[i+2];
+        px[i+3]=Math.round(px[i+3]*(255-lum)/255);
+        px[i]=px[i+1]=px[i+2]=0;
+      }
+      x.putImageData(img,0,0); dirty=true;
+      URL.revokeObjectURL(im.src);
+    };
+    im.src=URL.createObjectURL(f);
+    e.target.value='';
+  };
+  el.querySelector('input[type=text]').oninput=async e=>{
+    const t=clean(e.target.value,40);
+    try{ await document.fonts.load('40px Caveat'); }catch(_){}
+    clear();
+    if(!t) return;
+    x.fillStyle='#111';
+    let s=52; x.font=s+'px Caveat, cursive';
+    while(x.measureText(t).width>340 && s>14){ s-=2; x.font=s+'px Caveat, cursive'; }
+    x.textBaseline='middle'; x.fillText(t,10,62); dirty=true;
+  };
+  return {
+    get:()=>(dirty?cv.toDataURL('image/png'):''),
+    clear,
+    set(dataUrl){
+      clear();
+      const d=firmaSegura(dataUrl);
+      if(!d) return;
+      const im=new Image();
+      im.onload=()=>{
+        const k=Math.min(360/im.width,120/im.height);
+        const w=im.width*k, h=im.height*k;
+        x.drawImage(im,(360-w)/2,(120-h)/2,w,h); dirty=true;
+      };
+      im.src=d;
+    }
+  };
+}
+
+/* -------------------------- Descargas ------------------------ */
+function descargar(nombre, blob){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=nombre; a.rel='noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+
+/* --------------------------- Header -------------------------- */
+function cabecera(sub){
+  return '<header class="app-header np">' +
+    '<img class="logo" src="'+LOGO_SRC+'" alt="Universidad Tecnológica del Chocó">' +
+    '<div class="titulos">' +
+      '<h1>Registro de Asistencia</h1>' +
+    '</div>' +
+  '</header>';
+}
+
+const avisoLocal =
+  '<div class="card np">' +
+    '<h2>'+I.shield+'Cómo funciona y privacidad</h2>' +
+    '<p class="mut">La contraseña de administrador está predefinida en el sistema institucional. ' +
+    'Los registros se cifran con AES-256-GCM y no se envían a Internet.</p>' +
+    '<p class="mut">Esta página funciona solo en el navegador. Alguien con acceso al dispositivo o a las herramientas del navegador puede ' +
+    'inspeccionar o borrar el almacenamiento y reiniciar el bloqueo. Para impedirlo se necesita autenticación y almacenamiento en un servidor.</p>' +
+    '<p class="mut">Por lo mismo, los datos <b style="color:var(--ink)">no se sincronizan</b> entre dispositivos: la toma de ' +
+    'asistencia debe realizarse en un mismo equipo (modo quiosco: el estudiante firma y pasa el equipo al siguiente).</p>' +
+  '</div>';
+
+/* ---------------------------- Router ------------------------- */
+function render(){
+  const app=$('#app');
+  pararTic();
+  const ruta=location.hash.replace(/^#\/?/,'').split('?')[0];
+  if(ruta==='estudiante') return vistaEstudiante(app);
+  if(ruta==='admin')      return vistaAdmin(app);
+  return vistaPortal(app);
+}
+function pararTic(){ if(tic){ clearInterval(tic); tic=null; } }
+function arrancarTic(){
+  pararTic();
+  tic=setInterval(()=>{
+    const e=estadoSesion();
+    $$('[data-estado]').forEach(el=>{
+      el.innerHTML=(e.abierto?I.clock:I.lock)+esc(e.texto);
+      el.className='badge '+(e.abierto?'ok':'no');
+    });
+    const btn=$('#enviar');
+    if(btn && !adminMode){
+      btn.disabled=!e.abierto;
+      const msg=$('#msg');
+      if(!e.abierto && msg && !msg.textContent) msg.textContent=e.texto;
+    }
+    const adm=$('#abrir'), det=$('#detener'), re=$('#reiniciar');
+    if(adm){
+      adm.disabled=!!S.sesion.abierta;
+      det.disabled=!S.sesion.abierta;
+      re.disabled=!S.sesion.abierta;
+    }
+    const lockTxt=$('#lockMsg');
+    if(lockTxt){
+      const s=estaBloqueado();
+      if(s>0) lockTxt.textContent='Bloqueado por intentos fallidos. Espere '+s+' s.';
+      else lockTxt.textContent='';
+    }
+  },1000);
+}
+
+/* ---------------------------- PORTAL ------------------------- */
+function vistaPortal(app){
+  adminMode=false;
+  app.innerHTML =
+    cabecera() +
+    '<div class="card">' +
+      '<h2>'+I.users+'Seleccione su acceso</h2>' +
+      '<p class="mut" style="margin-bottom:18px">Sistema institucional de registro de asistencia a clases.</p>' +
+      '<div class="portal-grid">' +
+        '<button class="portal-card" id="irEst">' +
+          '<div class="portal-icon">'+I.student+'</div>' +
+          '<h3>Estudiante</h3>' +
+          '<p>Firmar la asistencia a la clase</p>' +
+        '</button>' +
+        '<button class="portal-card" id="irAdm">' +
+          '<div class="portal-icon">'+I.teacher+'</div>' +
+          '<h3>Docente / Administrador</h3>' +
+          '<p>Gestionar el registro y exportar el formato oficial</p>' +
+        '</button>' +
+      '</div>' +
+    '</div>' +
+    avisoLocal;
+  $('#irEst').onclick=()=>{ location.hash='estudiante'; };
+  $('#irAdm').onclick=()=>{ location.hash='admin'; };
+}
+
+/* -------------------------- ESTUDIANTE ----------------------- */
+function vistaEstudiante(app){
+  adminMode=false;
+  const c=S.cfg;
+  app.innerHTML =
+    cabecera('Vista del estudiante') +
+    '<p class="np" style="margin-bottom:16px"><button class="s back-button" id="volver">'+I.arrowLeft+'Inicio</button></p>' +
+    '<div class="card">' +
+      '<h2>'+I.file+(esc(c.asignatura)||'Registro de asistencia')+'</h2>' +
+      '<p class="mut">' +
+        (c.docente?esc(c.docente):'') +
+        (c.nivel?' · '+esc(c.nivel):'') +
+        (c.periodo?' · '+esc(c.periodo):'') +
+        (c.codigo?' · Cód. '+esc(c.codigo):'') +
+      '</p>' +
+      '<p><span class="badge" data-estado></span></p>' +
+      '<div id="zona"></div>' +
+    '</div>' +
+    avisoLocal;
+  $('#volver').onclick=()=>{ location.hash=''; };
+  pintarZonaEstudiante();
+  arrancarTic();
+}
+
+function pintarZonaEstudiante(){
+  const zona=$('#zona');
+  if(!zona) return;
+  const est=estadoSesion();
+  const claveOk = S.sesion.clave && sessionStorage.getItem(SESSION_EST)===S.sesion.clave;
+
+  if(!S.sesion.clave){
+    zona.innerHTML = '<div class="aviso">'+I.info+
+      '<span>El docente aún no ha habilitado el registro. Espere instrucciones.</span></div>';
+    return;
+  }
+  if(!claveOk){
+    zona.innerHTML =
+      '<label for="claveEst">Clave de acceso entregada por el docente</label>' +
+      '<div class="row">' +
+        '<input id="claveEst" autocapitalize="characters" autocomplete="off" maxlength="8" placeholder="Ej. 7KQ2MZ" style="letter-spacing:.15em;text-transform:uppercase;font-weight:600">' +
+        '<button id="validar">'+I.key+'Validar</button>' +
+      '</div>' +
+      '<p class="mut" id="msgClave" role="status" style="margin-top:10px"></p>';
+    const validar=()=>{
+      const v=clean($('#claveEst').value,8).toUpperCase();
+      if(v && v===S.sesion.clave){
+        sessionStorage.setItem(SESSION_EST,v);
+        pintarZonaEstudiante();
+      } else {
+        $('#msgClave').textContent='Clave incorrecta.';
+      }
+    };
+    $('#validar').onclick=validar;
+    $('#claveEst').onkeydown=e=>{ if(e.key==='Enter') validar(); };
+    return;
+  }
+  if(!est.abierto){
+    zona.innerHTML =
+      '<div class="aviso warn">'+I.alert+
+        '<span>'+esc(est.texto)+' Si ya firmó, su registro quedó guardado.</span></div>' +
+      '<p class="mut">Puede cerrar esta página.</p>';
+    return;
+  }
+  zona.innerHTML =
+    '<div class="grid">' +
+      '<div><label for="nombres">Nombres y apellidos completos *</label>' +
+        '<input id="nombres" maxlength="80" autocomplete="name" placeholder="Ej. Ana María Rentería Palacios"></div>' +
+      '<div><label for="ident">Número de identificación *</label>' +
+        '<input id="ident" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Ej. 1076123456"></div>' +
+    '</div>' +
+    '<label>Firma *</label><div id="pad"></div>' +
+    '<div class="aviso">'+I.shield+
+      '<span><b>Tratamiento de datos personales:</b> Los datos ingresados son procesados localmente en su ' +
+      'sesión activa exclusivamente para la toma de asistencia institucional del curso. No se transmiten ni venden ' +
+      'a servidores de terceros.</span>' +
+    '</div>' +
+    '<p><button id="enviar">'+I.check+'Enviar asistencia</button> ' +
+    '<span id="msg" class="mut" role="status"></span></p>';
+
+  pads.est=sigPad($('#pad'));
+
+  $('#enviar').onclick=async()=>{
+    const msg=$('#msg');
+    const estado=estadoSesion();
+    if(!estado.abierto){ msg.textContent=estado.texto; return; }
+
+    const nombre=clean($('#nombres').value,80);
+    const ident=clean($('#ident').value,20);
+    const firma=pads.est.get();
+
+    if(nombre.length<5){ msg.textContent='Escriba sus nombres y apellidos completos.'; return; }
+    if(!/^[A-Za-z0-9-]{5,20}$/.test(ident)){ msg.textContent='Número de identificación no válido (5 a 20 caracteres).'; return; }
+    if(!firma){ msg.textContent='La firma es obligatoria.'; return; }
+    if(S.estudiantes.some(e=>e.ident===ident)){ msg.textContent='Ya existe un registro con esa identificación.'; return; }
+
+    $('#enviar').disabled=true;
+    S.estudiantes.push({
+      id:'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+      nombre, ident, firma, ts:Date.now()
+    });
+    await guardar();
+
+    zona.innerHTML =
+      '<div class="aviso ok">'+I.shieldCheck+
+        '<span><b>Asistencia registrada correctamente.</b><br>' +
+        '<span class="mut">'+esc(nombre)+' · '+esc(ident)+'</span></span>' +
+      '</div>' +
+      '<p class="mut">Por privacidad no se muestra la lista de los demás estudiantes.</p>' +
+      '<p><button class="s" id="otro">'+I.users+'Registrar al siguiente estudiante</button></p>';
+    $('#otro').onclick=()=>pintarZonaEstudiante();
+    $('#otro').focus();
+  };
+}
+
+function actualizarSelectorMaterias(){
+  const select=$('#materiaSelect');
+  if(!select) return;
+  select.innerHTML='<option value="">Seleccione una materia</option>'+S.materias.map(materia=>
+    '<option value="'+esc(materia.id)+'">'+esc(materia.datos.asignatura)+
+    (materia.datos.codigo?' · '+esc(materia.datos.codigo):'')+
+    (materia.horas?' · '+esc(materia.horas)+' h/sem':'')+'</option>'
+  ).join('');
+  select.value=S.materiaActiva;
+  const boton=$('#guardarMateria');
+  if(boton) boton.textContent=S.materiaActiva?'Actualizar materia':'Guardar materia';
+}
+
+function confirmarCambioAsistencia(){
+  if(S.sesion.abierta){
+    alert('Cierre el registro de asistencia antes de cambiar la materia o la fecha.');
+    return false;
+  }
+  if(S.estudiantes.length && !confirm(
+    'La lista actual contiene '+S.estudiantes.length+' asistencias. Exporte el reporte antes de cambiar la materia o la fecha. ¿Desea borrarla y continuar?'
+  )) return false;
+  S.estudiantes=[];
+  S.sesion.clave='';
+  S.sesion.inicio=0;
+  return true;
+}
+
+/* ---------------------------- ADMIN -------------------------- */
+function vistaAdmin(app){
+  if(sessionStorage.getItem(SESSION_ADM)!=='1') return loginAdmin(app);
+  adminMode=true;
+  const c=S.cfg;
+  const campo=(k,t,ty='text')=>
+    '<div><label for="f_'+k+'">'+esc(t)+'</label>' +
+    '<input id="f_'+k+'" type="'+ty+'" data-k="'+k+'" value="'+esc(c[k]||'')+'" maxlength="160"></div>';
+
+  app.innerHTML =
+    cabecera('Panel del docente') +
+    '<p class="np" style="margin-bottom:16px">' +
+      '<button class="s back-button" id="salir">'+I.lock+'Cerrar sesión</button>' +
+    '</p>' +
+
+    '<div class="card np">' +
+      '<h2>'+I.clock+'Ventana de asistencia</h2>' +
+      '<p class="mut">Abra la ventana solo durante la clase. Los estudiantes necesitan la clave para poder firmar.</p>' +
+      '<div class="row" style="margin-top:14px">' +
+        '<div><label for="min">Duración</label><select id="min">' +
+          '<option value="0">Sin límite (hasta detener)</option>' +
+          '<option value="5">5 minutos</option>' +
+          '<option value="10">10 minutos</option>' +
+          '<option value="15">15 minutos</option>' +
+          '<option value="20">20 minutos</option>' +
+          '<option value="30">30 minutos</option>' +
+          '<option value="45">45 minutos</option>' +
+        '</select></div>' +
+        '<button id="abrir">'+I.play+'Abrir registro</button>' +
+        '<button class="s" id="reiniciar">'+I.refresh+'Reiniciar</button>' +
+        '<button class="d" id="detener">'+I.stop+'Cerrar</button>' +
+      '</div>' +
+      '<p style="margin:16px 0 8px"><span class="badge" data-estado></span></p>' +
+      '<div class="row">' +
+        '<div><label for="clave">Clave de acceso para estudiantes</label>' +
+          '<input id="clave" readonly aria-label="Clave de acceso"></div>' +
+        '<button class="s" id="copiar">'+I.copy+'Copiar clave</button>' +
+        '<button class="s" id="nuevaClave">'+I.key+'Generar nueva</button>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="card np">' +
+      '<h2>'+I.file+'Materia</h2>' +
+      '<label for="materiaSelect">Seleccionar materia guardada</label>' +
+      '<div class="row">' +
+        '<select id="materiaSelect"><option value="">Seleccione una materia</option></select>' +
+        '<button class="s" id="nuevaMateria">Nueva materia</button>' +
+        '<button id="guardarMateria">Guardar materia</button>' +
+      '</div>' +
+      '<p class="mut" id="materiaMsg" role="status" style="margin-top:10px">Seleccione una materia para cargar sus datos, o cree una nueva.</p>' +
+      '<div class="grid">' +
+        campo('facultad','Facultad') +
+        campo('programa','Programa') +
+        campo('nivel','Nivel') +
+        campo('asignatura','Asignatura') +
+        campo('codigo','Código de asignatura') +
+        campo('periodo','Periodo académico') +
+        campo('cds','CDS') +
+        campo('docente','Nombre y apellidos del docente') +
+        '<div class="w"><label for="f_temas">Temas tratados</label>' +
+          '<textarea id="f_temas" data-k="temas" maxlength="800" rows="2">'+esc(c.temas||'')+'</textarea></div>' +
+      '</div>' +
+      '<p class="mut" style="margin-top:14px">El logo institucional es fijo: <b>logo.png</b></p>' +
+    '</div>' +
+
+    '<div class="card np">' +
+      '<h2>'+I.clock+'Datos de esta asistencia</h2>' +
+      '<div class="grid">' +
+        campo('fecha','Fecha','date') +
+        campo('hora','Hora de inicio','time') +
+      '</div>' +
+    '</div>' +
+
+    '<div class="card np">' +
+      '<h2>'+I.pencil+'Firmas del docente y del representante</h2>' +
+      '<div class="row" style="align-items:start">' +
+        '<div><label>Firma del docente</label><div id="padDoc"></div>' +
+          '<p style="margin-top:12px"><button id="saveDoc">'+I.check+'Guardar firma</button> ' +
+          '<button class="d" id="delDoc">'+I.trash+'Quitar</button></p></div>' +
+        '<div><label>Firma del representante de clase</label><div id="padRep"></div>' +
+          '<p style="margin-top:12px"><button id="saveRep">'+I.check+'Guardar firma</button> ' +
+          '<button class="d" id="delRep">'+I.trash+'Quitar</button></p></div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="card np">' +
+      '<h2>'+I.database+'Exportar y respaldar</h2>' +
+      '<div class="row">' +
+        '<button id="pdf">'+I.print+'Exportar a PDF / Imprimir</button>' +
+        '<button class="s" id="json">'+I.download+'Respaldo JSON</button>' +
+        '<button class="s" id="csv">'+I.download+'Exportar CSV</button>' +
+      '</div>' +
+      '<label for="importFile">Importar respaldo JSON</label>' +
+      '<input type="file" id="importFile" accept="application/json,.json">' +
+      '<hr style="border:0;border-top:1px solid var(--line);margin:22px 0 18px">' +
+      '<h2 style="color:var(--bad);border-color:transparent">'+I.trash+'Zona de riesgo</h2>' +
+      '<p class="mut">Una vez exportado el reporte, puede borrar las materias, firmas y asistencias de este dispositivo. La contraseña de administrador se conserva.</p>' +
+      '<div class="row" style="margin-top:12px">' +
+        '<button class="d" id="wipe">'+I.trash+'Borrar registros locales</button>' +
+      '</div>' +
+    '</div>' +
+
+    '<h2 class="np" style="margin:26px 0 12px;font-size:1.05rem">Vista previa del formato oficial</h2>' +
+    '<div class="wrap"><div id="hoja"></div></div>';
+
+  $('#salir').onclick=()=>{
+    sessionStorage.removeItem(SESSION_ADM);
+    adminMode=false; location.hash='';
+  };
+
+  actualizarSelectorMaterias();
+  $('#materiaSelect').onchange=async e=>{
+    const id=e.target.value;
+    const materia=S.materias.find(item=>item.id===id);
+    if(!materia || id===S.materiaActiva){ e.target.value=S.materiaActiva; return; }
+    if(!confirmarCambioAsistencia()){ e.target.value=S.materiaActiva; return; }
+    S.materiaActiva=id;
+    for(const k of MATERIA_CAMPOS){
+      S.cfg[k]=materia.datos[k];
+      const input=$('#f_'+k);
+      if(input) input.value=materia.datos[k];
+    }
+    const detalleDocente=[materia.correo,materia.horas?materia.horas+' horas semanales':''].filter(Boolean).join(' · ');
+    $('#materiaMsg').textContent='Materia cargada. Para esta asistencia, indique la fecha y la hora de inicio.'+
+      (detalleDocente?' '+detalleDocente+'.':'');
+    await guardar();
+    pintarHoja();
+  };
+  $('#nuevaMateria').onclick=async()=>{
+    if(!confirmarCambioAsistencia()) return;
+    S.materiaActiva='';
+    for(const k of MATERIA_CAMPOS){
+      S.cfg[k]='';
+      const input=$('#f_'+k);
+      if(input) input.value='';
+    }
+    actualizarSelectorMaterias();
+    $('#materiaMsg').textContent='Complete los datos y pulse Guardar materia.';
+    await guardar();
+    pintarHoja();
+  };
+  $('#guardarMateria').onclick=async()=>{
+    const datos={};
+    for(const k of MATERIA_CAMPOS){
+      const valor=$('#f_'+k).value;
+      datos[k]=k==='temas'?cleanMulti(valor,800):clean(valor,160);
+    }
+    if(!datos.asignatura){
+      $('#materiaMsg').textContent='Escriba el nombre de la asignatura antes de guardar.';
+      $('#f_asignatura').focus();
+      return;
+    }
+    let materia=S.materias.find(item=>item.id===S.materiaActiva);
+    if(materia){
+      materia.datos=datos;
+    } else {
+      const id='m'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+      materia={id,datos};
+      S.materias.push(materia);
+      S.materiaActiva=id;
+    }
+    for(const k of MATERIA_CAMPOS) S.cfg[k]=datos[k];
+    actualizarSelectorMaterias();
+    $('#materiaMsg').textContent='Materia guardada. En adelante puede seleccionarla y completar solo la fecha y la hora.';
+    await guardar();
+    pintarHoja();
+  };
+
+  $$('[data-k]').forEach(inp=>{
+    inp.addEventListener('input',()=>{
+      const k=inp.dataset.k;
+      if(k==='fecha') return;
+      if(k==='temas') S.cfg[k]=cleanMulti(inp.value,800);
+      else S.cfg[k]=clean(inp.value,160);
+      pintarHoja(); guardarDiferido();
+    });
+  });
+
+  $('#f_fecha').addEventListener('change',async e=>{
+    const fecha=e.target.value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha) || fecha===S.cfg.fecha) return;
+    if(!confirmarCambioAsistencia()){ e.target.value=S.cfg.fecha; return; }
+    S.cfg.fecha=fecha;
+    await guardar();
+    pintarHoja();
+  });
+
+  $('#min').value=String(S.sesion.minutos||0);
+  $('#min').onchange=e=>{ S.sesion.minutos=+e.target.value||0; guardarDiferido(); };
+  $('#abrir').onclick=async()=>{
+    S.sesion.abierta=true; S.sesion.inicio=Date.now();
+    S.sesion.clave=nuevaClave();
+    await guardar(); refrescarPanel();
+  };
+  $('#reiniciar').onclick=async()=>{
+    if(!S.sesion.abierta) return;
+    S.sesion.inicio=Date.now(); await guardar(); refrescarPanel();
+  };
+  $('#detener').onclick=async()=>{
+    S.sesion.abierta=false; await guardar(); refrescarPanel();
+  };
+  $('#nuevaClave').onclick=async()=>{
+    S.sesion.clave=nuevaClave(); await guardar(); refrescarPanel();
+  };
+  $('#copiar').onclick=async()=>{
+    const b=$('#copiar');
+    try{ await navigator.clipboard.writeText(S.sesion.clave||''); b.innerHTML=I.check+'Copiada'; }
+    catch(e){ b.innerHTML=I.copy+'Seleccione y copie'; }
+    setTimeout(()=>{ b.innerHTML=I.copy+'Copiar clave'; },1800);
+  };
+
+  pads.doc=sigPad($('#padDoc'));
+  pads.rep=sigPad($('#padRep'));
+  if(S.firmaDoc) pads.doc.set(S.firmaDoc);
+  if(S.firmaRep) pads.rep.set(S.firmaRep);
+  $('#saveDoc').onclick=async()=>{ const g=pads.doc.get(); if(g){ S.firmaDoc=g; await guardar(); pintarHoja(); } };
+  $('#delDoc').onclick=async()=>{ S.firmaDoc=''; pads.doc.clear(); await guardar(); pintarHoja(); };
+  $('#saveRep').onclick=async()=>{ const g=pads.rep.get(); if(g){ S.firmaRep=g; await guardar(); pintarHoja(); } };
+  $('#delRep').onclick=async()=>{ S.firmaRep=''; pads.rep.clear(); await guardar(); pintarHoja(); };
+
+  $('#pdf').onclick=()=>{ pintarHoja(); setTimeout(()=>window.print(),60); };
+  $('#json').onclick=()=>{
+    const data=JSON.stringify({
+      app:'UTCH Registro de Asistencia', version:2,
+      exportado:new Date().toISOString(), ...S
+    },null,2);
+    descargar('respaldo_asistencia_'+(S.cfg.codigo||'clase')+'_'+(S.cfg.fecha||hoy())+'.json',
+      new Blob([data],{type:'application/json'}));
+  };
+  $('#csv').onclick=()=>{
+    const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+    const lineas=['No.,Nombre,Identificación,Hora de registro'];
+    S.estudiantes.forEach((f,i)=>lineas.push(
+      [i+1,q(f.nombre),q(f.ident),q(new Date(f.ts).toLocaleTimeString())].join(',')
+    ));
+    descargar('asistencia_'+(S.cfg.codigo||'clase')+'_'+(S.cfg.fecha||hoy())+'.csv',
+      new Blob(['\ufeff'+lineas.join('\n')],{type:'text/csv;charset=utf-8'}));
+  };
+  $('#importFile').onchange=e=>{
+    const f=e.target.files&&e.target.files[0];
+    if(!f) return;
+    const r=new FileReader();
+    r.onload=async()=>{
+      try{
+        const o=JSON.parse(r.result);
+        if(!o||typeof o!=='object'||!Array.isArray(o.estudiantes)) throw new Error('formato');
+        if(!confirm('¿Reemplazar los datos actuales por el contenido del respaldo?')) return;
+        S=normalizar(o); await guardar(); render();
+        alert('Respaldo importado correctamente.');
+      }catch(err){ alert('El archivo no es un respaldo válido.'); }
+    };
+    r.readAsText(f); e.target.value='';
+  };
+
+  $('#wipe').onclick=async()=>{
+    if(!confirm('Esto borrará DEFINITIVAMENTE todas las materias, firmas y asistencias de este dispositivo. ¿Continuar?')) return;
+    const t=prompt('Escriba BORRAR (en mayúsculas) para confirmar:');
+    if(t!=='BORRAR') return;
+    [DATA_STORE,KEY_STORE].forEach(k=>localStorage.removeItem(k));
+    sessionStorage.removeItem(SESSION_ADM);
+    sessionStorage.removeItem(SESSION_EST);
+    S=DEFAULTS(); await guardar();
+    alert('Todos los datos locales han sido eliminados.');
+    adminMode=false; location.hash=''; render();
+  };
+
+  refrescarPanel();
+  arrancarTic();
+}
+
+function refrescarPanel(){
+  const el=$('#clave');
+  if(el) el.value=S.sesion.clave||'Sin generar';
+  const abrir=$('#abrir'), det=$('#detener'), re=$('#reiniciar');
+  if(abrir){
+    abrir.disabled=!!S.sesion.abierta;
+    det.disabled=!S.sesion.abierta;
+    re.disabled=!S.sesion.abierta;
+  }
+  const b=$('#copiar');
+  if(b) b.disabled=!S.sesion.clave;
+  const e=estadoSesion();
+  $$('[data-estado]').forEach(x=>{
+    x.innerHTML=(e.abierto?I.clock:I.lock)+esc(e.texto);
+    x.className='badge '+(e.abierto?'ok':'no');
+  });
+  pintarHoja();
+}
+
+/* ============================================================
+   LOGIN ADMIN — Solo ingreso, el PIN ya está en el código
+   ============================================================ */
+function loginAdmin(app){
+  adminMode=false;
+
+  app.innerHTML =
+    cabecera('Acceso del docente') +
+    '<p class="np" style="margin-bottom:16px"><button class="s back-button" id="volver">'+I.arrowLeft+'Inicio</button></p>' +
+    '<div class="card" style="max-width:520px;margin:0 auto">' +
+      '<h2>'+I.lock+'Acceso restringido</h2>' +
+      '<label for="pin">Contraseña de administrador</label>' +
+      '<div class="row">' +
+        '<input id="pin" type="password" maxlength="64" autocomplete="current-password" style="letter-spacing:.1em">' +
+        '<button id="entrar">'+I.key+'Entrar</button>' +
+      '</div>' +
+      '<p class="mut" id="pinMsg" role="status" style="margin-top:12px"></p>' +
+      '<p class="mut" id="lockMsg" role="status" style="color:var(--bad);font-weight:600"></p>' +
+      '<p class="mut">Tras <b>'+MAX_INTENTOS+' intentos fallidos</b>, el acceso se bloquea 5 minutos.</p>' +
+    '</div>';
+
+  $('#volver').onclick=()=>{ location.hash=''; };
+
+  const entrar=async()=>{
+    const msg=$('#pinMsg');
+    const s=estaBloqueado();
+    if(s>0){ msg.textContent='Bloqueado. Espere '+s+' s.'; return; }
+    const v=$('#pin').value;
+    if(await verificarPin(v)){
+      limpiarFallos();
+      sessionStorage.setItem(SESSION_ADM,'1'); render();
+    } else {
+      const o=registrarFallo();
+      if(o.until && o.until>Date.now()){
+        msg.textContent='Demasiados intentos fallidos. Bloqueado 5 minutos.';
+      } else {
+        msg.textContent='PIN incorrecto. Intento '+o.n+' de '+MAX_INTENTOS+'.';
+      }
+      $('#pin').value=''; $('#pin').focus();
+    }
+  };
+  $('#entrar').onclick=entrar;
+  $('#pin').onkeydown=e=>{ if(e.key==='Enter') entrar(); };
+  $('#pin').focus();
+}
+
+/* ------------------- Hoja institucional ---------------------- */
+function pintarHoja(){
+  const h=$('#hoja');
+  if(!h) return;
+  h.innerHTML=hojaHTML();
+  h.querySelectorAll('[data-del]').forEach(b=>{
+    b.onclick=async()=>{
+      if(!confirm('¿Eliminar este registro de asistencia?')) return;
+      S.estudiantes=S.estudiantes.filter(x=>x.id!==b.dataset.del);
+      await guardar(); pintarHoja();
+    };
+  });
+}
+
+function hojaHTML(){
+  const c=S.cfg;
+  const total=Math.max(20,S.estudiantes.length+1);
+  const logoSrc = LOGO_SRC;   /* 🔒 SIEMPRE logo.png */
+  let filas='';
+  for(let i=0;i<total;i++){
+    const f=S.estudiantes[i];
+    if(f){
+      filas+='<tr>' +
+        '<td class="n">'+(i+1)+'.</td>' +
+        '<td>'+esc(f.nombre)+
+          (adminMode?' <button class="del np" data-del="'+esc(f.id)+'" title="Eliminar registro">'+I.x+'</button>':'') +
+        '</td>' +
+        '<td class="id">'+esc(f.ident)+'</td>' +
+        '<td class="f">'+(f.firma?'<img src="'+esc(f.firma)+'" alt="Firma">':'')+'</td>' +
+      '</tr>';
+    } else {
+      filas+='<tr><td class="n">'+(i+1)+'.</td><td></td><td class="id"></td><td class="f"></td></tr>';
+    }
+  }
+  return '' +
+  '<table class="top"><tr>' +
+    '<td class="logo-cell"><img src="'+esc(logoSrc)+'" alt="Logo institucional"></td>' +
+    '<td class="tt">REGISTRO DE ASISTENCIA A CLASES QUE LLEVA EL DOCENTE</td>' +
+    '<td style="width:22%"></td>' +
+  '</tr></table>' +
+
+  '<table style="margin-top:8px">' +
+    '<tr><td class="l">FACULTAD</td><td>'+esc(c.facultad)+'</td>' +
+        '<td class="l">PROGRAMA</td><td>'+esc(c.programa)+'</td></tr>' +
+    '<tr><td class="l">NIVEL</td><td>'+esc(c.nivel)+'</td>' +
+        '<td class="l">ASIGNATURA</td><td>'+esc(c.asignatura)+'</td></tr>' +
+    '<tr><td class="l">CÓDIGO DE ASIGNATURA</td><td>'+esc(c.codigo)+'</td>' +
+        '<td class="l">PERIODO ACADÉMICO</td><td>'+esc(c.periodo)+'</td></tr>' +
+    '<tr><td class="l">CDS</td><td>'+esc(c.cds)+'</td>' +
+        '<td class="l">FECHA</td><td>'+esc(fmtFecha(c.fecha))+(c.hora?' · '+esc(c.hora):'')+'</td></tr>' +
+    '<tr><td class="l">NOMBRE Y APELLIDOS DEL DOCENTE</td><td colspan="3">'+esc(c.docente)+'</td></tr>' +
+    '<tr><td class="l">TEMAS TRATADOS</td><td colspan="3" class="temas">'+esc(c.temas)+'</td></tr>' +
+  '</table>' +
+
+  '<table style="margin-top:8px">' +
+    '<thead><tr>' +
+      '<th style="width:6%">No.</th>' +
+      '<th>NOMBRES Y APELLIDOS DEL ESTUDIANTE</th>' +
+      '<th style="width:22%">NÚMERO DE IDENTIFICACIÓN</th>' +
+      '<th style="width:26%">FIRMA</th>' +
+    '</tr></thead>' +
+    '<tbody>'+filas+'</tbody>' +
+  '</table>' +
+
+  '<div class="pie">' +
+    '<div>'+(S.firmaDoc?'<img src="'+esc(S.firmaDoc)+'" alt="Firma del docente">':'')+'FIRMA DEL DOCENTE</div>' +
+    '<div>'+(S.firmaRep?'<img src="'+esc(S.firmaRep)+'" alt="Firma del representante">':'')+'FIRMA DEL REPRESENTANTE</div>' +
+  '</div>' +
+
+  '<div class="cc">CONTROL DE CAMBIOS</div>' +
+  '<table class="ctl">' +
+    '<tr><th style="width:20%">FECHA</th><th>CAMBIO</th><th style="width:15%">VERSIÓN</th></tr>' +
+    '<tr><td>14-01-2023</td><td>Lanzamiento del formato</td><td style="text-align:center">01</td></tr>' +
+  '</table>' +
+  '<table class="ctl" style="margin-top:6px"><tr>' +
+    '<td><b>Elaboró:</b> Leidy Lorena Cuesta Mena<br>Cargo: Profesional Universitario<br>Fecha: 14-01-2023</td>' +
+    '<td><b>Revisó:</b> Ana Silvia Rentería<br>Cargo: Vicerrectora de Docencia<br>Fecha: 14-01-2023</td>' +
+    '<td><b>Aprobó:</b> Tamara Mery Ketty<br>Cargo: Coordinadora de Calidad<br>Fecha: 14-01-2023</td>' +
+  '</tr></table>' +
+
+  '<p class="foot">Universidad Tecnológica del Chocó Diego Luis Córdoba · Nit. 891.680.009-4 · Carrera 22 #18B-10 B. ' +
+  'Nicolás Medrano – Ciudadela Universitaria · Tel: (+57) 6046726565 · Línea gratuita: 018000938824 · ' +
+  'contactenos@utch.edu.co · notificacionesjudiciales@utch.edu.co · utch.edu.co · Quibdó, Chocó (Colombia)</p>';
+}
+
+/* --------------------------- Arranque ------------------------ */
+(async function init(){
+  await cargar();
+  window.addEventListener('hashchange',render);
+  window.addEventListener('beforeprint',()=>{ if(adminMode) pintarHoja(); });
+  render();
+  if(!(globalThis.crypto && crypto.subtle)){
+    document.body.insertAdjacentHTML('afterbegin',
+      '<p class="mut np" style="text-align:center;margin:8px">Este navegador no soporta Web Crypto; ' +
+      'el cifrado AES no está disponible. Use un navegador moderno.</p>');
+  }
+})();
+</script>
+</body>
+</html>

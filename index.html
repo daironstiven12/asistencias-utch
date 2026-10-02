@@ -520,6 +520,7 @@ const DEFAULTS = () => ({
   materias:MATERIAS_SEMESTRE.map(materia=>({...materia,datos:{...materia.datos}})), materiaActiva:'',
   firmaDoc:'',firmaRep:'',logo:'',
   sesion:{ abierta:false,inicio:0,minutos:15,clave:'' },
+  clavesUsadas:[],
   estudiantes:[]
 });
 let S=DEFAULTS(), adminMode=false, tic=null, saveTimer=null, pads={};
@@ -562,6 +563,7 @@ function normalizar(o){
       minutos:Math.max(0,Math.min(240,Number(ses.minutos)||0)),
       clave:clean(ses.clave,8).toUpperCase()
     },
+    clavesUsadas:(Array.isArray(src.clavesUsadas)?src.clavesUsadas:[]).map(c=>clean(c,8).toUpperCase()).filter(Boolean).slice(-40),
     estudiantes:(Array.isArray(src.estudiantes)?src.estudiantes:[])
       .map((f,i)=>({
         id:clean(f&&f.id,40)||('imp'+i),
@@ -604,6 +606,9 @@ function alCambiarAlmacenamiento(e){
 /* ------------------------- Sesión ---------------------------- */
 function estadoSesion(){
   const s=S.sesion;
+  /* Conectado al docente pero aún sin su estado: NO se puede afirmar que
+     esté cerrado, o el estudiante ve un mensaje falso mientras carga. */
+  if(modoRemoto&&!estadoRemotoRecibido) return { abierto:true, conectando:true, texto:'Conectando con el docente…' };
   if(!s.abierta) return { abierto:false, texto:'El registro está cerrado.' };
   const m=+s.minutos||0;
   if(!m) return { abierto:true, texto:'Registro abierto · sin límite de tiempo.' };
@@ -613,7 +618,27 @@ function estadoSesion(){
   return { abierto:true, texto:`Registro abierto · quedan ${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}` };
 }
 const ALFABETO='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const nuevaClave = () => Array.from(rndBytes(6)).map(n=>ALFABETO[n%ALFABETO.length]).join('');
+/* Si el registro está abierto y cambia la materia, la clave(old)caduca:
+   el código de una clase no sirve para registrar en otra. */
+async function rotarClaveSiAbierta(){
+  if(!S.sesion.abierta||!anfitrionAbierto) return;
+  await cerrarAnfitrion();
+  S.sesion.clave=nuevaClave();
+  await guardar();
+  refrescarPanel();
+  await asegurarAnfitrion();
+  refrescarPanel();
+}
+/* La clave NUNCA se repite: ni en la misma materia ni entre materias.
+   Así un código de una clase no sirve para registrar a otro en otra. */
+function nuevaClave(){
+  const usadas=new Set((S.clavesUsadas||[]).map(c=>String(c).toUpperCase()));
+  const sortea=()=>Array.from(rndBytes(6)).map(n=>ALFABETO[n%ALFABETO.length]).join('');
+  let clave=sortea();
+  for(let intento=0;intento<50 && usadas.has(clave);intento++) clave=sortea();
+  S.clavesUsadas=[...usadas,clave].slice(-40);
+  return clave;
+}
 
 /* ============================================================
    COMUNICACIÓN ENTRE DISPOSITIVOS
@@ -630,6 +655,7 @@ const PEER_LIB='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
 const HOST_PREFIJO='utch-asistencia-';
 let anfitrion=null, conexiones={}, _libPeer=null, cliente=null, conDocente=null;
 let redMensaje='', anfitrionAbierto=false, redCargando=false, redMensajeDocente='';
+let estadoRemotoRecibido=false;
 
 function cargarPeerJS(){
   if(window.Peer) return Promise.resolve(window.Peer);
@@ -760,6 +786,7 @@ const espera=ms=>new Promise(r=>setTimeout(r,ms));
 async function cerrarCliente(){
   if(conDocente){ try{ conDocente.close(); }catch(e){} conDocente=null; }
   if(cliente){ try{ cliente.destroy(); }catch(e){} cliente=null; }
+  estadoRemotoRecibido=false;
 }
 function mostrarExitoEstudiante(nombre,ident){
   sessionStorage.setItem('utch.registro.'+S.sesion.clave,'1');
@@ -781,6 +808,7 @@ function mostrarErrorEstudiante(texto){
   if(msg) msg.textContent=texto||'No se pudo registrar la asistencia.';
 }
 function aplicarEstadoDocente(d){
+  estadoRemotoRecibido=true;
   if(d.cfg&&typeof d.cfg==='object'){
     for(const k of MATERIA_CAMPOS) if(k!=='temas' && typeof d.cfg[k]==='string') S.cfg[k]=clean(d.cfg[k],160);
   }
@@ -820,8 +848,13 @@ function conectarComoEstudiante(clave){
       });
       cliente.on('open',()=>{
         conDocente=cliente.connect(HOST_PREFIJO+clave,{reliable:true,serialization:'json'});
+        /* Se resuelve SOLO cuando llega el estado real del docente: así la
+           pantalla nunca muestra "registro cerrado" con datos vacíos. */
         conDocente.on('open',()=>{ if(!listo){ listo=true; clearTimeout(t); res(); } });
-        conDocente.on('data',d=>recibirDelDocente(d));
+        conDocente.on('data',d=>{
+          if(!listo&&d&&d.t==='estado'){ listo=true; clearTimeout(t); res(); }
+          recibirDelDocente(d);
+        });
         conDocente.on('close',()=>{
           if(!listo){ fallo('Se perdió la conexión con el docente.'); return; }
           modoRemoto=false;
@@ -982,9 +1015,11 @@ function pararTic(){ if(tic){ clearInterval(tic); tic=null; } }
 function arrancarTic(){
   pararTic();
   tic=setInterval(()=>{
+    if(zonaFijada) return;               /* ya firmó: no se toca la pantalla */
     refrescarZona();
     const e=estadoSesion();
     $$('[data-estado]').forEach(el=>{
+      if(!el.offsetParent) return;       /* estado oculto: no se inventa */
       el.innerHTML=(e.abierto?I.clock:I.lock)+esc(e.texto);
       el.className='badge '+(e.abierto?'ok':'no');
     });
@@ -1048,6 +1083,13 @@ function pintarTituloEstudiante(){
   s.textContent=[
     c.docente, c.nivel, c.periodo, c.codigo?('Cód. '+c.codigo):''
   ].filter(Boolean).join(' · ');
+  /* Sin clave validada no hay sesión que mostrar: esconder el estado evita
+     que el estudiante lea "registro cerrado" antes de conectarse. */
+  const badge=$('#estadoEst');
+  if(badge){
+    const clave=S.sesion.clave||'';
+    badge.parentNode.style.display=(clave&&sessionStorage.getItem(SESSION_EST)===clave)?'':'none';
+  }
 }
 function vistaEstudiante(app){
   adminMode=false;
@@ -1057,7 +1099,7 @@ function vistaEstudiante(app){
     '<div class="card">' +
       '<h2>'+I.file+'<span id="titEst"></span></h2>' +
       '<p class="mut" id="subEst"></p>' +
-      '<p><span class="badge" data-estado></span></p>' +
+      '<p><span class="badge" data-estado id="estadoEst"></span></p>' +
       '<div id="zona"></div>' +
     '</div>' +
     avisoLocal;
@@ -1120,10 +1162,10 @@ function pintarZonaEstudiante(){
         /* Primero se intenta la clase abierta en ESTE dispositivo
            (modo quiosco) y, si no existe, se conecta al docente. */
         if(S.sesion.clave && v===S.sesion.clave){
-          modoRemoto=false;
+          modoRemoto=false; estadoRemotoRecibido=false;
         }else{
+          modoRemoto=true; estadoRemotoRecibido=false;
           await conectarComoEstudiante(v);
-          modoRemoto=true;
         }
         sessionStorage.setItem(SESSION_EST,v);
         S.sesion.clave=v;
@@ -1419,6 +1461,7 @@ function vistaAdmin(app){
     actualizarSelectorMaterias();
     $('#materiaMsg').textContent='Materia guardada. En adelante puede seleccionarla y completar solo la fecha y la hora.';
     await guardar();
+    await rotarClaveSiAbierta();
     pintarHoja();
   };
 

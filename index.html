@@ -80,10 +80,24 @@ a:hover{text-decoration:underline}
 }
 @media (max-width:640px){
   main{padding:20px 16px 56px}
-  .app-header{gap:14px;padding-bottom:20px;margin-bottom:20px}
-  .app-header .logo{height:58px}
-  .app-header h1{font-size:1.15rem}
-  .app-header p{font-size:.76rem}
+  .app-header{
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    gap:16px;
+    padding-bottom:24px;
+    margin-bottom:24px;
+  }
+  .app-header .logo{height:64px;margin:0 auto}
+  .app-header .titulos{display:flex;flex-direction:column;align-items:center}
+  .app-header h1{font-size:1.25rem}
+  .app-header p{font-size:.85rem}
+  /* Secciones alineadas a la izquierda en móvil */
+  .card{text-align:left}
+  .card h2{text-align:left}
+  .card p{text-align:left}
+  .aviso{text-align:left}
+  .aviso span{text-align:left}
 }
 
 .card{
@@ -187,6 +201,48 @@ input[readonly]{background:var(--green-softer);color:var(--green-darker);font-we
 
 .portal-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px}
 @media (max-width:600px){.portal-grid{grid-template-columns:1fr}}
+@media (max-width:768px){
+  .portal-grid[style*="1fr 1fr 1fr"]{
+    grid-template-columns:1fr !important;
+    gap:12px;
+    width:100%;
+    box-sizing:border-box;
+  }
+  .portal-card{
+    padding:18px 16px;
+    display:grid;
+    grid-template-columns:auto 1fr;
+    grid-template-rows:auto auto;
+    column-gap:14px;
+    align-items:start;
+    width:100%;
+    max-width:100%;
+    box-sizing:border-box;
+    min-width:0;
+  }
+  .portal-icon{
+    grid-column:1;
+    grid-row:1;
+    width:48px;
+    height:48px;
+    flex-shrink:0;
+  }
+  .portal-icon svg{width:24px;height:24px}
+  .portal-card h3{
+    grid-column:2;
+    grid-row:1;
+    font-size:1rem;
+    margin:0;
+    align-self:center;
+  }
+  .portal-card p{
+    grid-column:2;
+    grid-row:2;
+    font-size:.85rem;
+    margin:0;
+    line-height:1.4;
+  }
+}
 .portal-card{
   background:#fff;border:1.5px solid var(--line);
   border-radius:var(--radius);padding:28px 24px;
@@ -252,8 +308,8 @@ input[readonly]{background:var(--green-softer);color:var(--green-darker);font-we
 #hoja td.f img{max-height:24px;max-width:100%}
 #hoja .temas{font-size:11px;white-space:pre-wrap;height:26px}
 #hoja .pie{display:flex;justify-content:space-around;margin:16px 0 8px;text-align:center;font-weight:700;font-size:10px}
-#hoja .pie div{width:42%;border-top:1px solid #000;padding-top:3px;position:relative}
-#hoja .pie img{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);max-height:34px}
+#hoja .pie div{width:42%;border-top:1px solid #000;padding-top:3px;position:relative;min-height:96px}
+#hoja .pie img{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);max-height:88px;max-width:92%;object-fit:contain}
 #hoja .cc{font-weight:700;text-align:center;margin:8px 0 3px;font-size:11px}
 #hoja .ctl td{font-size:9px;vertical-align:top;line-height:1.2}
 #hoja .ctl .firma b{font-size:9px}
@@ -265,6 +321,21 @@ input[readonly]{background:var(--green-softer);color:var(--green-darker);font-we
 @media (max-width:900px){#hoja{zoom:.82}}
 @media (max-width:680px){#hoja{zoom:.55}}
 @media (max-width:420px){#hoja{zoom:.42}}
+
+.site-footer{
+  max-width:1040px;margin:0 auto;padding:14px 20px 26px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  border-top:1px solid var(--line);
+  color:var(--mut);font-size:.8rem;
+}
+.site-footer img{height:32px;width:auto;display:block}
+.site-footer .dev{font-weight:600;color:var(--ink-2)}
+.site-footer .fb{margin-left:auto;display:inline-flex;align-items:center;gap:8px;color:var(--green-dark);font-weight:600;min-height:44px}
+.site-footer .fb svg{width:16px;height:16px}
+@media (max-width:640px){
+  .site-footer{justify-content:center;text-align:center}
+  .site-footer .fb{margin-left:0}
+}
 
 @media print{
   @page{size:8.5in 14in;margin:6mm 8mm}
@@ -286,6 +357,11 @@ input[readonly]{background:var(--green-softer);color:var(--green-darker);font-we
 </head>
 <body>
 <main id="app"></main>
+<footer class="site-footer np">
+  <img src="ingenio.jpg" alt="Ingenio Digital">
+  <span class="dev">Desarrollado por Ingenio Digital</span>
+  <a class="fb" href="https://www.facebook.com/profile.php?id=61587633734785" target="_blank" rel="noopener noreferrer" aria-label="Síguenos en Facebook (Ingenio Digital)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>Facebook</a>
+</footer>
 <script>
 "use strict";
 /* ============================================================
@@ -370,6 +446,7 @@ const LOGO_SRC = 'logo.png';
 const DATA_STORE='utch.asistencia.v1', KEY_STORE='utch.asistencia.k',
       SESSION_ADM='utch.sesion.adm',
       SESSION_EST='utch.sesion.est',
+      SESSION_API='utch.sesion.apiId',
       LOCK_STORE='utch.asistencia.lock';
 
 /* ============================================================
@@ -505,29 +582,39 @@ function estaBloqueado() {
 
 /* -------------------------- Estado --------------------------- */
 const MATERIA_CAMPOS=['facultad','programa','nivel','asignatura','codigo','periodo','cds','docente','temas'];
+/* Datos comunes a todas las asignaturas (configuración del período académico) */
+const DATOS_COMUNES={
+  facultad:'INGENIERÍA',
+  programa:'INGENIERÍA DE TELECOMUNICACIONES E INFORMÁTICA',
+  nivel:'VIII',
+  periodo:'2026-1'
+};
 const MATERIAS_SEMESTRE=[
-  {id:'sem-2720208-comunicacion-analoga',datos:{asignatura:'COMUNICACIÓN ANÁLOGA',codigo:'2720208',docente:'JOHAN FERNEY PINO CUESTA'},correo:'',horas:4},
-  {id:'sem-2720308-microcontroladores',datos:{asignatura:'MICROCONTROLADORES',codigo:'2720308',docente:'JACKSON BERNEY RENTERIA MENA'},correo:'d-jackson.renteria@utch.edu.co',horas:3},
-  {id:'sem-2720408-administracion-sistemas-operativos',datos:{asignatura:'ADMINISTRACIÓN Y GESTIÓN DE SISTEMAS OPERATIVOS',codigo:'2720408',docente:'DEINER MENA WALDO'},correo:'deiner.mena@utch.edu.co',horas:4},
-  {id:'sem-2720608-metodologia-investigacion-ii',datos:{asignatura:'METODOLOGÍA DE LA INVESTIGACIÓN II',codigo:'2720608',docente:'HECTOR DAVID AGUDELO ARIAS'},correo:'d-hector.agudelo@utch.edu.co',horas:2},
-  {id:'sem-2720108-electiva-ii',datos:{asignatura:'ELECTIVA II',codigo:'2720108',docente:'HARLINTON PALACIOS MOSQUERA'},correo:'harlinton.palacios@utch.edu.co',horas:2},
-  {id:'sem-2720408-ingenieria-software-ii',datos:{asignatura:'INGENIERÍA DE SOFTWARE II',codigo:'2720408',docente:'ARISLEYDA RENTERIA CASTRO'},correo:'arisleyda.renteria@utch.edu.co',horas:3},
-  {id:'sem-2720708-analitica-datos',datos:{asignatura:'ANALÍTICA DE DATOS',codigo:'2720708',docente:'ERWIN ENRIQUE MOYA LOZANO'},correo:'d-erwin.moya@utch.edu.co',horas:4}
+  {id:'sem-2720208-comunicacion-analoga',datos:{asignatura:'COMUNICACIÓN ANÁLOGA',codigo:'2720208',docente:'JOHAN FERNEY PINO CUESTA'},correo:'',horas:4,courseOfferingId:1},
+  {id:'sem-2720308-microcontroladores',datos:{asignatura:'MICROCONTROLADORES',codigo:'2720308',docente:'JACKSON BERNEY RENTERIA MENA'},correo:'d-jackson.renteria@utch.edu.co',horas:3,courseOfferingId:2},
+  {id:'sem-2720408-administracion-sistemas-operativos',datos:{asignatura:'ADMINISTRACIÓN Y GESTIÓN DE SISTEMAS OPERATIVOS',codigo:'2720408',docente:'DEINER MENA WALDO'},correo:'deiner.mena@utch.edu.co',horas:4,courseOfferingId:3},
+  {id:'sem-2720608-metodologia-investigacion-ii',datos:{asignatura:'METODOLOGÍA DE LA INVESTIGACIÓN II',codigo:'2720608',docente:'HECTOR DAVID AGUDELO ARIAS'},correo:'d-hector.agudelo@utch.edu.co',horas:2,courseOfferingId:4},
+  {id:'sem-2720108-electiva-ii',datos:{asignatura:'ELECTIVA II',codigo:'2720108',docente:'HARLINTON PALACIOS MOSQUERA'},correo:'harlinton.palacios@utch.edu.co',horas:2,courseOfferingId:5},
+  {id:'sem-2720708-analitica-datos',datos:{asignatura:'ANALÍTICA DE DATOS',codigo:'2720708',docente:'ERWIN ENRIQUE MOYA LOZANO'},correo:'d-erwin.moya@utch.edu.co',horas:4,courseOfferingId:6}
 ];
 const DEFAULTS = () => ({
   cfg:{ facultad:'',programa:'',nivel:'',asignatura:'',codigo:'',
         periodo:'',cds:'',fecha:hoy(),hora:'',docente:'',temas:'' },
   materias:MATERIAS_SEMESTRE.map(materia=>({...materia,datos:{...materia.datos}})), materiaActiva:'',
   firmaDoc:'',firmaRep:'',logo:'',
-  sesion:{ abierta:false,inicio:0,minutos:15,clave:'' },
+  sesion:{ abierta:false,inicio:0,minutos:15,clave:'',sessionId:'' },
   clavesUsadas:[],
   estudiantes:[]
 });
 let S=DEFAULTS(), adminMode=false, tic=null, saveTimer=null, pads={};
+let pollApi=null, pollApiCtrl=null;
+let docenteSessionId=null, pollApiDocente=null, pollApiDocenteCtrl=null, docenteInfo=null;
+let cierreEnCurso=false;
 
 function normalizar(o){
   const d=DEFAULTS(), src=(o&&typeof o==='object')?o:{};
   const materiasPorId=new Map();
+  const ofertaCatalogo=new Map(MATERIAS_SEMESTRE.map(materia=>[materia.id,Math.max(0,Number(materia.courseOfferingId)||0)]));
   [...MATERIAS_SEMESTRE,...(Array.isArray(src.materias)?src.materias:[])].forEach((materia,i)=>{
     const datos={};
     for(const k of MATERIA_CAMPOS){
@@ -538,7 +625,8 @@ function normalizar(o){
     materiasPorId.set(id,{
       id,datos,
       correo:clean(materia&&materia.correo,160),
-      horas:Math.max(0,Number(materia&&materia.horas)||0)
+      horas:Math.max(0,Number(materia&&materia.horas)||0),
+      courseOfferingId:Math.max(0,Number(materia&&materia.courseOfferingId)||ofertaCatalogo.get(id)||0)
     });
   });
   const materias=Array.from(materiasPorId.values()).filter(materia=>materia.datos.asignatura);
@@ -561,7 +649,9 @@ function normalizar(o){
       abierta:!!ses.abierta,
       inicio:Number(ses.inicio)||0,
       minutos:Math.max(0,Math.min(240,Number(ses.minutos)||0)),
-      clave:clean(ses.clave,8).toUpperCase()
+      clave:clean(ses.clave,8).toUpperCase(),
+      claveDocente:clean(ses.claveDocente,8).toUpperCase(),
+      sessionId:clean(ses.sessionId,40)
     },
     clavesUsadas:(Array.isArray(src.clavesUsadas)?src.clavesUsadas:[]).map(c=>clean(c,8).toUpperCase()).filter(Boolean).slice(-40),
     estudiantes:(Array.isArray(src.estudiantes)?src.estudiantes:[])
@@ -591,8 +681,19 @@ async function cargar(){
 /* Relee los datos guardados por OTRA pestaña sin volver a escribir
    (evita un bucle infinito de eventos "storage"). */
 async function sincronizar(){
+  const claveRemota = (modoRemoto) ? String(sessionStorage.getItem(SESSION_EST)||(S&&S.sesion&&S.sesion.clave)||'').trim().toUpperCase() : '';
+  const apiRemota = (modoRemoto) ? String(sessionStorage.getItem(SESSION_API)||(S&&S.sesion&&S.sesion.sessionId)||'').trim() : '';
+  const abiertaRemota = (modoRemoto) ? !!((S&&S.sesion&&S.sesion.abierta)) : false;
+  const inicioRemoto = (modoRemoto) ? Number(S&&S.sesion&&S.sesion.inicio)||0 : 0;
   const raw=localStorage.getItem(DATA_STORE);
   if(raw){ const o=await descifrar(raw); if(o) S=normalizar(o); }
+  if(claveRemota){ S.sesion.clave=claveRemota; }
+  if(modoRemoto){
+    if(apiRemota){ S.sesion.sessionId=apiRemota; }
+    S.sesion.abierta=abiertaRemota;
+    S.sesion.inicio=inicioRemoto;
+    S.sesion.minutos=0;
+  }
   const ruta=location.hash.replace(/^#\/?/,'').split('?')[0];
   if(ruta==='estudiante') refrescarZona();
   else if(ruta==='admin' && adminMode) refrescarPanel();
@@ -617,177 +718,23 @@ function estadoSesion(){
   const t=Math.ceil(restante/1000);
   return { abierto:true, texto:`Registro abierto · quedan ${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}` };
 }
-const ALFABETO='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-/* Si el registro está abierto y cambia la materia, la clave(old)caduca:
-   el código de una clase no sirve para registrar en otra. */
-async function rotarClaveSiAbierta(){
-  if(!S.sesion.abierta||!anfitrionAbierto) return;
-  await cerrarAnfitrion();
-  S.sesion.clave=nuevaClave();
-  await guardar();
-  refrescarPanel();
-  await asegurarAnfitrion();
-  refrescarPanel();
-}
-/* La clave NUNCA se repite: ni en la misma materia ni entre materias.
-   Así un código de una clase no sirve para registrar a otro en otra. */
-function nuevaClave(){
-  const usadas=new Set((S.clavesUsadas||[]).map(c=>String(c).toUpperCase()));
-  const sortea=()=>Array.from(rndBytes(6)).map(n=>ALFABETO[n%ALFABETO.length]).join('');
-  let clave=sortea();
-  for(let intento=0;intento<50 && usadas.has(clave);intento++) clave=sortea();
-  S.clavesUsadas=[...usadas,clave].slice(-40);
-  return clave;
-}
-
-/* ============================================================
-   COMUNICACIÓN ENTRE DISPOSITIVOS
-   ------------------------------------------------------------
-   El docente es el ANFITRIÓN: al abrir el registro publica la
-   clave en un servicio de conexión pública y cada estudiante se
-   une desde su propio teléfono. No requiere cuentas ni claves de
-   API. Los datos viajan cifrados por el propio navegador (el
-   anfitrión los guarda con AES-GCM como siempre) y solo durante
-   la clase abierta. Si el servicio no está disponible, el
-   docente puede continuar en modo local (un solo dispositivo).
-   ============================================================ */
-const PEER_LIB='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
-const HOST_PREFIJO='utch-asistencia-';
-let anfitrion=null, conexiones={}, _libPeer=null, cliente=null, conDocente=null;
-let redMensaje='', anfitrionAbierto=false, redCargando=false, redMensajeDocente='';
-let estadoRemotoRecibido=false;
-
-function cargarPeerJS(){
-  if(window.Peer) return Promise.resolve(window.Peer);
-  if(_libPeer) return _libPeer;
-  _libPeer=new Promise((res,rej)=>{
-    const s=document.createElement('script');
-    s.src=PEER_LIB; s.async=true;
-    s.onload=()=>window.Peer?res(window.Peer):rej(new Error('No se pudo cargar el servicio de conexión.'));
-    s.onerror=()=>rej(new Error('No se pudo cargar el servicio de conexión.'));
-    document.head.appendChild(s);
-  });
-  return _libPeer;
-}
-
-const resumenCfg=()=>({
-  facultad:S.cfg.facultad, programa:S.cfg.programa, nivel:S.cfg.nivel,
-  asignatura:S.cfg.asignatura, codigo:S.cfg.codigo, periodo:S.cfg.periodo,
-  cds:S.cfg.cds, fecha:S.cfg.fecha, hora:S.cfg.hora, docente:S.cfg.docente
-});
-function instantaneaSesion(){
-  const e=estadoSesion();
-  return {
-    t:'estado',
-    cfg:resumenCfg(),
-    abierta:S.sesion.abierta, minutos:S.sesion.minutos, inicio:S.sesion.inicio,
-    abiertaAhora:e.abierto, texto:e.texto, total:S.estudiantes.length
-  };
-}
-function emitirEstado(){
-  const m=instantaneaSesion();
-  Object.values(conexiones).forEach(c=>{ try{ c.send(m); }catch(e){} });
-}
-const conectados=()=>Object.keys(conexiones).length;
-
-async function abrirAnfitrion(clave){
-  await cerrarAnfitrion();
-  const Peer=await cargarPeerJS();
-  return new Promise((res,rej)=>{
-    const p=new Peer(HOST_PREFIJO+clave,{debug:0});
-    anfitrion=p;
-    let abierto=false;
-    const t=setTimeout(()=>rej(new Error('El servicio de conexión no respondió.')),20000);
-    p.on('open',()=>{ abierto=true; clearTimeout(t); res(); });
-    p.on('error',err=>{
-      if(abierto){ redMensaje='Aviso del servicio: '+String(err&&err.type||err); pintarRed(); return; }
-      clearTimeout(t); rej(err);
-    });
-    p.on('connection',con=>{
-      conexiones[con.peer]=con;
-      con.on('open',()=>{ redMensaje=''; pintarRed(); emitirEstado(); });
-      con.on('data',d=>recibirDeEstudiante(con,d));
-      con.on('close',()=>{ delete conexiones[con.peer]; pintarRed(); });
-      con.on('error',()=>{ delete conexiones[con.peer]; pintarRed(); });
-    });
-  });
-}
-
-async function recibirDeEstudiante(con,d){
-  if(!d||typeof d!=='object') return;
-  const responder=m=>{ try{ con.send(m); }catch(e){} };
-
-  if(d.t==='hola'){ emitirEstado(); return; }
-
-  if(d.t==='alta'){
-    const est=estadoSesion();
-    if(!S.sesion.abierta||!est.abierto){
-      return responder({t:'error',msg:'El docente cerró el registro. No se pudo guardar su asistencia.'});
-    }
-    const nombre=clean(d.nombre,80), ident=clean(d.ident,20), firma=firmaSegura(d.firma);
-    if(nombre.length<5) return responder({t:'error',msg:'Escriba sus nombres y apellidos completos.'});
-    if(!/^[A-Za-z0-9-]{5,20}$/.test(ident)) return responder({t:'error',msg:'Número de identificación no válido (5 a 20 caracteres).'});
-    if(!firma) return responder({t:'error',msg:'La firma es obligatoria.'});
-    if(S.estudiantes.some(e=>e.ident===ident)){
-      return responder({t:'error',msg:'Esa identificación ya tiene una asistencia registrada en esta clase.'});
-    }
-    S.estudiantes.push({
-      id:'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-      nombre, ident, firma, ts:Date.now()
-    });
-    await guardar();
-    responder({t:'ok',nombre,ident,total:S.estudiantes.length});
-    emitirEstado();
-    refrescarPanel();
-    return;
-  }
-}
+/* Conexión entre dispositivos migrada a API + PostgreSQL. */
+let redMensaje='', estadoRemotoRecibido=false;
 
 function pintarRed(){
   const el=$('#red'); if(!el) return;
-  const n=conectados();
   const activo=S.sesion.abierta && S.sesion.clave;
-  el.className='aviso '+(activo?(anfitrionAbierto?'ok':'warn'):'');
-  el.innerHTML=(anfitrionAbierto?I.shieldCheck:I.users)+'<span>'+
+  el.className='aviso '+(activo?'ok':'');
+  el.innerHTML=(activo?I.shieldCheck:I.users)+'<span>'+
     (activo
-      ? (anfitrionAbierto
-          ? 'Registro abierto. Los estudiantes pueden conectarse desde cualquier dispositivo con el código <b>'+esc(S.sesion.clave)+'</b>'+
-            (n?('. <b>'+n+'</b> estudiante(s) conectado(s).'):'. Esperando estudiantes.')
-          : 'El servicio de conexión no está disponible. Los estudiantes deben usar <b>este mismo dispositivo</b>.')
+      ? 'Registro abierto. Los estudiantes pueden conectarse desde cualquier dispositivo con el código <b>'+esc(S.sesion.clave)+'</b>.'
       : 'El registro está cerrado. Abra la asistencia para que los estudiantes puedan conectarse.')+
     (redMensaje?' <b>'+esc(redMensaje)+'</b>':'')+'</span>';
-}
-
-function cerrarConexiones(){
-  Object.values(conexiones).forEach(c=>{ try{ c.close(); }catch(e){} });
-  conexiones={};
-}
-async function cerrarAnfitrion(){
-  anfitrionAbierto=false;
-  cerrarConexiones();
-  if(anfitrion){ try{ anfitrion.destroy(); }catch(e){} anfitrion=null; }
-}
-
-async function asegurarAnfitrion(){
-  if(!S.sesion.abierta||!S.sesion.clave) return;
-  if(anfitrionAbierto) return;
-  try{
-    await abrirAnfitrion(S.sesion.clave);
-    anfitrionAbierto=true; redMensaje='';
-  }catch(e){
-    anfitrionAbierto=false;
-    redMensaje='Sin conexión entre dispositivos: '+String(e&&e.message||e);
-  }
 }
 
 const espera=ms=>new Promise(r=>setTimeout(r,ms));
 
 /* -------------------- Estudiante: conexión ------------------- */
-async function cerrarCliente(){
-  if(conDocente){ try{ conDocente.close(); }catch(e){} conDocente=null; }
-  if(cliente){ try{ cliente.destroy(); }catch(e){} cliente=null; }
-  estadoRemotoRecibido=false;
-}
 function mostrarExitoEstudiante(nombre,ident){
   sessionStorage.setItem('utch.registro.'+S.sesion.clave,'1');
   zonaFijada=true; zonaEstado='ya-registrado:'+S.sesion.clave;
@@ -806,65 +753,6 @@ function mostrarErrorEstudiante(texto){
   if(env) env.disabled=false;
   const msg=$('#msg');
   if(msg) msg.textContent=texto||'No se pudo registrar la asistencia.';
-}
-function aplicarEstadoDocente(d){
-  estadoRemotoRecibido=true;
-  if(d.cfg&&typeof d.cfg==='object'){
-    for(const k of MATERIA_CAMPOS) if(k!=='temas' && typeof d.cfg[k]==='string') S.cfg[k]=clean(d.cfg[k],160);
-  }
-  S.sesion.abierta=!!d.abierta;
-  S.sesion.inicio=Number(d.inicio)||0;
-  S.sesion.minutos=Math.max(0,Number(d.minutos)||0);
-  if(!S.sesion.clave) S.sesion.clave=sessionStorage.getItem(SESSION_EST)||'';
-  S.estudiantes=[];
-  pintarTituloEstudiante();
-}
-function recibirDelDocente(d){
-  if(!d||typeof d!=='object') return;
-  if(d.t==='estado'){
-    aplicarEstadoDocente(d);
-    const m=$('#msgClave'); if(m) m.textContent='';
-    redCargando=false; redMensajeDocente='';
-    if(zonaFijada) return;          /* no borra la confirmación de registro */
-    pintarZonaEstudiante();
-    return;
-  }
-  if(d.t==='ok'){ mostrarExitoEstudiante(d.nombre,d.ident); return; }
-  if(d.t==='error'){ mostrarErrorEstudiante(d.msg); return; }
-}
-function conectarComoEstudiante(clave){
-  redCargando=true;
-  return new Promise((res,rej)=>{
-    let listo=false;
-    const fallo=m=>{ if(!listo){ listo=true; redCargando=false; rej(new Error(m)); } };
-    const t=setTimeout(()=>fallo('No hay ninguna clase abierta con ese código. Verifíquelo con el docente.'),25000);
-    cargarPeerJS().then(Peer=>{
-      cliente=new Peer({debug:0});
-      cliente.on('error',err=>{
-        clearTimeout(t);
-        fallo(err&&err.type==='peer-unavailable'
-          ? 'No hay ninguna clase abierta con ese código. Verifíquelo con el docente.'
-          : 'No se pudo conectar con el docente. Intente de nuevo.');
-      });
-      cliente.on('open',()=>{
-        conDocente=cliente.connect(HOST_PREFIJO+clave,{reliable:true,serialization:'json'});
-        /* Se resuelve SOLO cuando llega el estado real del docente: así la
-           pantalla nunca muestra "registro cerrado" con datos vacíos. */
-        conDocente.on('open',()=>{ if(!listo){ listo=true; clearTimeout(t); res(); } });
-        conDocente.on('data',d=>{
-          if(!listo&&d&&d.t==='estado'){ listo=true; clearTimeout(t); res(); }
-          recibirDelDocente(d);
-        });
-        conDocente.on('close',()=>{
-          if(!listo){ fallo('Se perdió la conexión con el docente.'); return; }
-          modoRemoto=false;
-          const msg=$('#msg');
-          if(zonaFijada) return;
-          if(msg) msg.textContent='Se perdió la conexión con el docente. Vuelva a escribir la clave.';
-        });
-      });
-    }).catch(e=>{ clearTimeout(t); fallo(e.message||'No se pudo conectar con el docente.'); });
-  });
 }
 
 /* --------------------------- Firma pad ----------------------- */
@@ -1006,8 +894,11 @@ const avisoLocal =
 function render(){
   const app=$('#app');
   pararTic();
+  detenerPollingApi();
+  detenerPollingApiDocente();
   const ruta=location.hash.replace(/^#\/?/,'').split('?')[0];
   if(ruta==='estudiante') return vistaEstudiante(app);
+  if(ruta==='docente')    return vistaDocente(app);
   if(ruta==='admin')      return vistaAdmin(app);
   return vistaPortal(app);
 }
@@ -1043,7 +934,6 @@ function arrancarTic(){
     }
     if(adminMode){
       pintarRed();
-      if(conectados()>0) pintarHoja();
     }
   },1000);
 }
@@ -1056,21 +946,27 @@ function vistaPortal(app){
     '<div class="card">' +
       '<h2>'+I.users+'Seleccione su acceso</h2>' +
       '<p class="mut" style="margin-bottom:18px">Sistema institucional de registro de asistencia a clases.</p>' +
-      '<div class="portal-grid">' +
+      '<div class="portal-grid" style="grid-template-columns:1fr 1fr 1fr;">' +
         '<button class="portal-card" id="irEst">' +
           '<div class="portal-icon">'+I.student+'</div>' +
           '<h3>Estudiante</h3>' +
           '<p>Firmar la asistencia a la clase</p>' +
         '</button>' +
-        '<button class="portal-card" id="irAdm">' +
+        '<button class="portal-card" id="irDoc">' +
           '<div class="portal-icon">'+I.teacher+'</div>' +
-          '<h3>Docente / Administrador</h3>' +
+          '<h3>Docente</h3>' +
+          '<p>Consultar asistencia y firmar</p>' +
+        '</button>' +
+        '<button class="portal-card" id="irAdm">' +
+          '<div class="portal-icon">'+I.shield+'</div>' +
+          '<h3>Representante</h3>' +
           '<p>Gestionar el registro y exportar el formato oficial</p>' +
         '</button>' +
       '</div>' +
     '</div>' +
     avisoLocal;
   $('#irEst').onclick=()=>{ location.hash='estudiante'; };
+  $('#irDoc').onclick=()=>{ location.hash='docente'; };
   $('#irAdm').onclick=()=>{ location.hash='admin'; };
 }
 
@@ -1138,6 +1034,23 @@ function pintarZonaEstudiante(){
   const clave=S.sesion.clave||'';
   const claveOk = !!clave && sessionStorage.getItem(SESSION_EST)===clave;
 
+  /* Función auxiliar: crear botón reintentar de forma segura (máximo 1) */
+  const crearRetryBtn=(contenedor,onclick)=>{
+    if(!contenedor) return null;
+    /* Buscar si ya existe un botón reintentar y eliminarlo */
+    const existente=contenedor.querySelector('button[data-retry]');
+    if(existente) existente.remove();
+    /* Crear nuevo botón */
+    const btn=document.createElement('button');
+    btn.className='s';
+    btn.style.marginLeft='10px';
+    btn.setAttribute('data-retry','1');
+    btn.innerHTML=I.refresh+'Reintentar';
+    btn.onclick=()=>{ btn.remove(); onclick(); };
+    contenedor.appendChild(btn);
+    return btn;
+  };
+
   /* 1) Pedir la clave. NUNCA se bloquea antes de esto: el estudiante
         siempre puede escribir el código que le entregó el docente,
         aunque en su dispositivo no exista ninguna clase abierta. */
@@ -1160,22 +1073,39 @@ function pintarZonaEstudiante(){
       btn.disabled=true;
       try{
         /* Primero se intenta la clase abierta en ESTE dispositivo
-           (modo quiosco) y, si no existe, se conecta al docente. */
-        if(S.sesion.clave && v===S.sesion.clave){
+           (modo quiosco) y, si no existe, se valida el código con la API. */
+        if(S.sesion.clave && v===S.sesion.clave && !modoRemoto){
           modoRemoto=false; estadoRemotoRecibido=false;
         }else{
           modoRemoto=true; estadoRemotoRecibido=false;
-          await conectarComoEstudiante(v);
+          const r=await fetch('/api/sessions/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:v})});
+          const data=await r.json().catch(()=>null);
+          if(!r.ok||!data||!data.ok){
+            throw new Error('El código no es válido o la sesión ya no está disponible.');
+          }
+          if(data.role!=='STUDENT'){
+            throw new Error('Este código no es de estudiante. Solicite el código de estudiante al docente.');
+          }
+          estadoRemotoRecibido=true;
+          S.sesion.abierta=true; S.sesion.inicio=Date.now(); S.sesion.minutos=0;
+          S.sesion.sessionId=String(data.sessionId||'');
+          sessionStorage.setItem(SESSION_API,S.sesion.sessionId);
+          if(data.cfg&&typeof data.cfg==='object'){
+            for(const k of ['facultad','programa','nivel','periodo','asignatura','codigo','docente','correo']){
+              if(typeof data.cfg[k]==='string'&&data.cfg[k]) S.cfg[k]=clean(data.cfg[k],160);
+            }
+          }
         }
         sessionStorage.setItem(SESSION_EST,v);
         S.sesion.clave=v;
         pintarZonaEstudiante();
       }catch(err){
         modoRemoto=false;
-        await cerrarCliente();
         msg.textContent=(err&&err.message)||'No se pudo validar la clave.';
         btn.disabled=false;
         $('#claveEst').focus();
+        /* Agregar botón de reintentar (máximo 1) */
+        crearRetryBtn(btn.parentNode,()=>validar(v));
       }
     };
     $('#validar').onclick=()=>validar();
@@ -1213,6 +1143,7 @@ function pintarZonaEstudiante(){
   }
 
   /* 4) Formulario de registro */
+  const conectado=modoRemoto&&!!S.sesion.sessionId;
   zona.innerHTML =
     '<div class="grid">' +
       '<div><label for="nombres">Nombres y apellidos completos *</label>' +
@@ -1227,7 +1158,8 @@ function pintarZonaEstudiante(){
       'No se transmiten a servidores de terceros ni se venden.</span>' +
     '</div>' +
     '<p><button id="enviar">'+I.check+'Enviar asistencia</button> ' +
-    '<span id="msg" class="mut" role="status"></span></p>';
+    '<span id="msg" class="mut" role="status"></span></p>' +
+    (conectado?'<p class="mut" style="color:var(--green);font-weight:600;">✓ Conectado al docente</p>':'<p class="mut" style="color:var(--warn);font-weight:600;">⚠ Sin conexión</p>');
 
   pads.est=sigPad($('#pad'));
 
@@ -1248,10 +1180,26 @@ function pintarZonaEstudiante(){
     boton.disabled=true;
     msg.textContent='Enviando...';
 
-    /* Si hay conexión con el docente, él valida y guarda (evita que
-       dos estudiantes con la misma identificación se registren). */
-    if(modoRemoto && conDocente && conDocente.open){
-      conDocente.send({t:'alta',nombre,ident,firma});
+    /* Registro mediante API con el sessionId validado. */
+    if(modoRemoto && S.sesion.sessionId){
+      const ctrl=new AbortController();
+      const timeoutId=setTimeout(()=>ctrl.abort(),30000);
+      try{
+        const r=await fetch('/api/records',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:S.sesion.sessionId,fullName:nombre,identification:ident,studentSignature:firma}),signal:ctrl.signal});
+        clearTimeout(timeoutId);
+        const data=await r.json().catch(()=>null);
+        if(r.ok&&data&&data.ok){ mostrarExitoEstudiante(nombre,ident); return; }
+        const codeErr=data&&data.error;
+        if(codeErr==='DUPLICATE_IDENTIFICATION'){ mostrarErrorEstudiante('Esa identificación ya tiene una asistencia registrada en esta clase.'); return; }
+        if(codeErr==='SESSION_NOT_AVAILABLE'){ S.sesion.abierta=false; mostrarErrorEstudiante('La asistencia ya no está disponible. Solicite un nuevo código al docente.'); pintarZonaEstudiante(); return; }
+        mostrarErrorEstudiante('No se pudo registrar la asistencia. Inténtelo nuevamente.');
+        crearRetryBtn(boton.parentNode,()=>{ const b=$('#enviar'); if(b) b.click(); });
+      }catch(e){
+        clearTimeout(timeoutId);
+        boton.disabled=false;
+        msg.textContent='No se pudo conectar con el servidor. Verifique su conexión e inténtelo nuevamente.';
+        crearRetryBtn(boton.parentNode,()=>{ const b=$('#enviar'); if(b) b.click(); });
+      }
       return;
     }
 
@@ -1264,6 +1212,179 @@ function pintarZonaEstudiante(){
     mostrarExitoEstudiante(nombre,ident);
   };
 }
+
+/* ---------------------------- DOCENTE ------------------------- */
+function vistaDocente(app){
+  adminMode=false;
+  docenteSessionId=null; docenteInfo=null;
+  app.innerHTML =
+    cabecera('Acceso del docente') +
+    '<p class="np" style="margin-bottom:16px"><button class="s back-button" id="volverDoc">'+I.arrowLeft+'Inicio</button></p>' +
+    '<div class="card" style="max-width:520px;margin:0 auto">' +
+      '<h2>'+I.teacher+'Acceso del docente</h2>' +
+      '<p class="mut">Ingrese el código de asistencia proporcionado por el representante.</p>' +
+      '<label for="codigoDocente">Código de asistencia</label>' +
+      '<div class="row">' +
+        '<input id="codigoDocente" autocapitalize="characters" autocomplete="off" maxlength="8" placeholder="Ej. D8K4P7" style="letter-spacing:.15em;text-transform:uppercase;font-weight:600">' +
+        '<button id="ingresarDocente">'+I.key+'Ingresar</button>' +
+      '</div>' +
+      '<p class="mut" id="msgDocente" role="status" style="margin-top:10px"></p>' +
+    '</div>';
+  $('#volverDoc').onclick=()=>{ location.hash=''; };
+  const ingresar=async()=>{
+    const v=clean($('#codigoDocente').value,8).toUpperCase();
+    if(!v) return;
+    const msg=$('#msgDocente');
+    msg.textContent='Conectando...';
+    const btn=$('#ingresarDocente');
+    btn.disabled=true;
+    try{
+      const r=await fetch('/api/sessions/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:v})});
+      const data=await r.json().catch(()=>null);
+      if(!r.ok||!data||!data.ok){
+        throw new Error('El código no es válido o la sesión ya no está disponible.');
+      }
+      if(data.role!=='TEACHER'){
+        throw new Error('Este código no es de docente. Solicite el código de docente al representante.');
+      }
+      docenteSessionId=String(data.sessionId||'');
+      docenteInfo={};
+      if(data.cfg&&typeof data.cfg==='object'){
+        for(const k of ['facultad','programa','nivel','periodo','asignatura','codigo','docente','correo']){
+          if(typeof data.cfg[k]==='string'&&data.cfg[k]) S.cfg[k]=clean(data.cfg[k],160);
+        }
+        for(const k of ['facultad','programa','nivel','periodo','asignatura','codigo','docente','correo','fecha']){
+          docenteInfo[k]=(k==='fecha')?hoy():(typeof data.cfg[k]==='string'?data.cfg[k]:'');
+        }
+      }
+      sessionStorage.setItem('utch.docente',v);
+      mostrarVistaDocente();
+    }catch(err){
+      msg.textContent=(err&&err.message)||'No se pudo conectar.';
+      btn.disabled=false;
+      $('#codigoDocente').focus();
+    }
+  };
+  $('#ingresarDocente').onclick=ingresar;
+  $('#codigoDocente').onkeydown=e=>{ if(e.key==='Enter') ingresar(); };
+}
+function mostrarVistaDocente(){
+  const app=$('#app');
+  const c=docenteInfo||{};
+  app.innerHTML =
+    cabecera('Asistencia') +
+    '<p class="np" style="margin-bottom:16px"><button class="s back-button" id="volverDoc2">'+I.arrowLeft+'Inicio</button></p>' +
+    '<div class="card">' +
+      '<h2>'+I.file+'Información de la asistencia</h2>' +
+      '<div class="grid">' +
+        '<div><label>Asignatura</label><p><b>'+esc(c.asignatura||'-')+'</b></p></div>' +
+        '<div><label>Código</label><p><b>'+esc(c.codigo||'-')+'</b></p></div>' +
+        '<div><label>Docente</label><p><b>'+esc(c.docente||'-')+'</b></p></div>' +
+        '<div><label>Fecha</label><p><b>'+esc(fmtFecha(c.fecha)||'-')+'</b></p></div>' +
+        '<div><label>Facultad</label><p><b>'+esc(c.facultad||'-')+'</b></p></div>' +
+        '<div><label>Programa</label><p><b>'+esc(c.programa||'-')+'</b></p></div>' +
+        '<div><label>Nivel</label><p><b>'+esc(c.nivel||'-')+'</b></p></div>' +
+        '<div><label>Período</label><p><b>'+esc(c.periodo||'-')+'</b></p></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="card">' +
+      '<h2>'+I.users+'Estudiantes registrados (<span id="totalEst">0</span>)</h2>' +
+      '<div id="hoja"></div>' +
+    '</div>' +
+    '<div class="card">' +
+      '<h2>'+I.pencil+'Firma del docente</h2>' +
+      '<div id="padDocente"></div>' +
+      '<p style="margin-top:12px">' +
+        '<button class="s" id="limpiarFirmaDoc">'+I.eraser+'Limpiar</button> ' +
+        '<button id="confirmarFirmaDoc">'+I.check+'Confirmar firma</button>' +
+        '<span id="msgFirmaDoc" class="mut" role="status" style="margin-left:10px;"></span>' +
+      '</p>' +
+    '</div>';
+  $('#volverDoc2').onclick=()=>{ location.hash=''; };
+  // Mostrar lista
+  actualizarListaDocente();
+  iniciarPollingApiDocente();
+  // Firma
+  pads.docente=sigPad($('#padDocente'));
+  $('#limpiarFirmaDoc').onclick=()=>{ pads.docente.clear(); };
+  $('#confirmarFirmaDoc').onclick=async()=>{
+    const firma=pads.docente.get();
+    if(!firma){ $('#msgFirmaDoc').textContent='Realice su firma primero.'; return; }
+    if(docenteSessionId){
+      $('#msgFirmaDoc').textContent='Enviando firma...';
+      const ctrl=new AbortController();
+      const timeoutId=setTimeout(()=>ctrl.abort(),30000);
+      try{
+        const r=await fetch('/api/sessions/teacher-signature',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:docenteSessionId,teacherSignature:firma}),signal:ctrl.signal});
+        clearTimeout(timeoutId);
+        const data=await r.json().catch(()=>null);
+        if(r.ok&&data&&data.ok){
+          S.firmaDoc=firma;
+          $('#msgFirmaDoc').textContent='Firma enviada correctamente.';
+          actualizarListaDocente();
+          return;
+        }
+        if(data&&data.error==='SESSION_NOT_AVAILABLE'){ $('#msgFirmaDoc').textContent='La asistencia ya no está disponible.'; return; }
+        $('#msgFirmaDoc').textContent='No se pudo enviar la firma. Inténtelo nuevamente.';
+      }catch(e){
+        clearTimeout(timeoutId);
+        $('#msgFirmaDoc').textContent='No se pudo conectar con el servidor. Verifique su conexión e inténtelo nuevamente.';
+      }
+      return;
+    }
+    S.firmaDoc=firma;
+    await guardar();
+    $('#msgFirmaDoc').textContent='Firma guardada.';
+  };
+}
+function actualizarListaDocente(){
+  const total=$('#totalEst');
+  if(total) total.textContent=S.estudiantes.length;
+  pintarHoja();
+}
+
+/* ----------------- Docente: lista desde API ----------------- */
+async function actualizarListaDocenteDesdeAPI(){
+  if(!docenteSessionId) return;
+  if(pollApiDocenteCtrl){ try{ pollApiDocenteCtrl.abort(); }catch(e){} }
+  pollApiDocenteCtrl=new AbortController();
+  const sid=docenteSessionId;
+  try{
+    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid),{signal:pollApiDocenteCtrl.signal});
+    const data=await r.json().catch(()=>null);
+    if(!r.ok||!data||!data.ok||!Array.isArray(data.records)) return;
+    if(docenteSessionId!==sid) return;
+    S.firmaDoc=firmaSegura(data.teacherSignature||'');
+    S.estudiantes=data.records.map(f=>{
+      let ts=Date.parse(f.createdAt);
+      if(isNaN(ts)) ts=Date.now();
+      return {
+        id:String(f.id||''),
+        nombre:clean(f.fullName,80),
+        ident:clean(f.identification,20),
+        firma:firmaSegura(f.studentSignature),
+        ts
+      };
+    }).filter(f=>f.nombre&&f.ident);
+    actualizarListaDocente();
+  }catch(e){ /* abort o red: se reintenta en el siguiente ciclo */ }
+}
+function detenerPollingApiDocente(){
+  if(pollApiDocente){ clearInterval(pollApiDocente); pollApiDocente=null; }
+  if(pollApiDocenteCtrl){ try{ pollApiDocenteCtrl.abort(); }catch(e){} pollApiDocenteCtrl=null; }
+}
+function iniciarPollingApiDocente(){
+  detenerPollingApiDocente();
+  if(!docenteSessionId) return;
+  actualizarListaDocenteDesdeAPI();
+  pollApiDocente=setInterval(()=>{
+    if(!docenteSessionId){ detenerPollingApiDocente(); return; }
+    actualizarListaDocenteDesdeAPI();
+  },4000);
+}
+
+/* -------------------- Conexión del DOCENTE ------------------- */
+/* (Migrada a API: ver ingresar() en vistaDocente y actualizarListaDocenteDesdeAPI.) */
 
 function actualizarSelectorMaterias(){
   const select=$('#materiaSelect');
@@ -1286,9 +1407,10 @@ function confirmarCambioAsistencia(){
   if(S.estudiantes.length && !confirm(
     'La lista actual contiene '+S.estudiantes.length+' asistencias. Exporte el reporte antes de cambiar la materia o la fecha. ¿Desea borrarla y continuar?'
   )) return false;
-  cerrarAnfitrion();
+  detenerPollingApi();
   S.estudiantes=[];
   S.sesion.clave='';
+  S.sesion.sessionId='';
   S.sesion.inicio=0;
   return true;
 }
@@ -1307,6 +1429,34 @@ function vistaAdmin(app){
     '<p class="np" style="margin-bottom:16px">' +
       '<button class="s back-button" id="salir">'+I.lock+'Cerrar sesión</button>' +
     '</p>' +
+
+    '<div class="card np">' +
+      '<h2>'+I.file+'Materia</h2>' +
+      '<label for="materiaSelect">Seleccionar materia guardada</label>' +
+      '<div class="row">' +
+        '<select id="materiaSelect"><option value="">Seleccione una materia</option></select>' +
+        '<button class="s" id="nuevaMateria">Nueva materia</button>' +
+        '<button id="guardarMateria">Guardar materia</button>' +
+      '</div>' +
+      '<p class="mut" id="materiaMsg" role="status" style="margin-top:10px">Seleccione una materia para cargar sus datos, o cree una nueva.</p>' +
+      '<div class="grid">' +
+        campo('facultad','Facultad') +
+        campo('programa','Programa') +
+        campo('nivel','Nivel') +
+        campo('asignatura','Asignatura') +
+        campo('codigo','Código de asignatura') +
+        campo('periodo','Periodo académico') +
+        campo('cds','CDS') +
+        campo('docente','Nombre y apellidos del docente') +
+        '<div><label for="f_correo">Correo del docente</label>' +
+          '<input id="f_correo" data-k="correo" maxlength="160" value="'+esc(c.correo||'')+'"></div>' +
+        '<div><label for="f_horas">Horas semanales</label>' +
+          '<input id="f_horas" data-k="horas" type="number" min="0" max="20" value="'+esc(c.horas||'')+'"></div>' +
+        '<div class="w"><label for="f_temas">Temas tratados</label>' +
+          '<textarea id="f_temas" data-k="temas" maxlength="800" rows="2">'+esc(c.temas||'')+'</textarea></div>' +
+      '</div>' +
+      '<p class="mut" style="margin-top:14px">El logo institucional es fijo: <b>logo.png</b></p>' +
+    '</div>' +
 
     '<div class="card np">' +
       '<h2>'+I.clock+'Ventana de asistencia</h2>' +
@@ -1333,30 +1483,11 @@ function vistaAdmin(app){
         '<button class="s" id="copiar">'+I.copy+'Copiar clave</button>' +
         '<button class="s" id="nuevaClave">'+I.key+'Generar nueva</button>' +
       '</div>' +
-    '</div>' +
-
-    '<div class="card np">' +
-      '<h2>'+I.file+'Materia</h2>' +
-      '<label for="materiaSelect">Seleccionar materia guardada</label>' +
-      '<div class="row">' +
-        '<select id="materiaSelect"><option value="">Seleccione una materia</option></select>' +
-        '<button class="s" id="nuevaMateria">Nueva materia</button>' +
-        '<button id="guardarMateria">Guardar materia</button>' +
+      '<div class="row" style="margin-top:10px;">' +
+        '<div><label for="claveDocente">Clave de acceso para docente (firma)</label>' +
+          '<input id="claveDocente" readonly aria-label="Clave de acceso docente"></div>' +
+        '<button class="s" id="copiarDocente">'+I.copy+'Copiar clave</button>' +
       '</div>' +
-      '<p class="mut" id="materiaMsg" role="status" style="margin-top:10px">Seleccione una materia para cargar sus datos, o cree una nueva.</p>' +
-      '<div class="grid">' +
-        campo('facultad','Facultad') +
-        campo('programa','Programa') +
-        campo('nivel','Nivel') +
-        campo('asignatura','Asignatura') +
-        campo('codigo','Código de asignatura') +
-        campo('periodo','Periodo académico') +
-        campo('cds','CDS') +
-        campo('docente','Nombre y apellidos del docente') +
-        '<div class="w"><label for="f_temas">Temas tratados</label>' +
-          '<textarea id="f_temas" data-k="temas" maxlength="800" rows="2">'+esc(c.temas||'')+'</textarea></div>' +
-      '</div>' +
-      '<p class="mut" style="margin-top:14px">El logo institucional es fijo: <b>logo.png</b></p>' +
     '</div>' +
 
     '<div class="card np">' +
@@ -1401,7 +1532,7 @@ function vistaAdmin(app){
     '<div class="wrap"><div id="hoja"></div></div>';
 
   $('#salir').onclick=async()=>{
-    await cerrarAnfitrion();
+    detenerPollingApi();
     sessionStorage.removeItem(SESSION_ADM);
     adminMode=false; location.hash='';
   };
@@ -1413,11 +1544,34 @@ function vistaAdmin(app){
     if(!materia || id===S.materiaActiva){ e.target.value=S.materiaActiva; return; }
     if(!confirmarCambioAsistencia()){ e.target.value=S.materiaActiva; return; }
     S.materiaActiva=id;
+    /* Cargar datos comunes (se aplican a todas las asignaturas) */
+    S.cfg.facultad=DATOS_COMUNES.facultad;
+    S.cfg.programa=DATOS_COMUNES.programa;
+    S.cfg.nivel=DATOS_COMUNES.nivel;
+    S.cfg.periodo=DATOS_COMUNES.periodo;
+    /* Cargar datos específicos de la materia */
     for(const k of MATERIA_CAMPOS){
-      S.cfg[k]=materia.datos[k];
+      if(k==='facultad'||k==='programa'||k==='nivel'||k==='periodo') continue; /* Ya cargados */
+      S.cfg[k]=materia.datos[k]||'';
       const input=$('#f_'+k);
-      if(input) input.value=materia.datos[k];
+      if(input) input.value=materia.datos[k]||'';
     }
+    /* Cargar datos comunes en los campos */
+    const facultadInput=$('#f_facultad');
+    const programaInput=$('#f_programa');
+    const nivelInput=$('#f_nivel');
+    const periodoInput=$('#f_periodo');
+    if(facultadInput) facultadInput.value=DATOS_COMUNES.facultad;
+    if(programaInput) programaInput.value=DATOS_COMUNES.programa;
+    if(nivelInput) nivelInput.value=DATOS_COMUNES.nivel;
+    if(periodoInput) periodoInput.value=DATOS_COMUNES.periodo;
+    /* Cargar correo y horas (campos adicionales) */
+    S.cfg.correo=materia.correo||'';
+    S.cfg.horas=materia.horas||'';
+    const correoInput=$('#f_correo');
+    const horasInput=$('#f_horas');
+    if(correoInput) correoInput.value=materia.correo||'';
+    if(horasInput) horasInput.value=materia.horas||'';
     const detalleDocente=[materia.correo,materia.horas?materia.horas+' horas semanales':''].filter(Boolean).join(' · ');
     $('#materiaMsg').textContent='Materia cargada. Para esta asistencia, indique la fecha y la hora de inicio.'+
       (detalleDocente?' '+detalleDocente+'.':'');
@@ -1432,6 +1586,12 @@ function vistaAdmin(app){
       const input=$('#f_'+k);
       if(input) input.value='';
     }
+    S.cfg.correo='';
+    S.cfg.horas='';
+    const correoInput=$('#f_correo');
+    const horasInput=$('#f_horas');
+    if(correoInput) correoInput.value='';
+    if(horasInput) horasInput.value='';
     actualizarSelectorMaterias();
     $('#materiaMsg').textContent='Complete los datos y pulse Guardar materia.';
     await guardar();
@@ -1448,20 +1608,26 @@ function vistaAdmin(app){
       $('#f_asignatura').focus();
       return;
     }
+    /* Obtener correo y horas */
+    const correo=$('#f_correo').value.trim();
+    const horas=parseInt($('#f_horas').value)||0;
     let materia=S.materias.find(item=>item.id===S.materiaActiva);
     if(materia){
       materia.datos=datos;
+      materia.correo=correo;
+      materia.horas=horas;
     } else {
       const id='m'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
-      materia={id,datos};
+      materia={id,datos,correo,horas};
       S.materias.push(materia);
       S.materiaActiva=id;
     }
     for(const k of MATERIA_CAMPOS) S.cfg[k]=datos[k];
+    S.cfg.correo=correo;
+    S.cfg.horas=horas;
     actualizarSelectorMaterias();
     $('#materiaMsg').textContent='Materia guardada. En adelante puede seleccionarla y completar solo la fecha y la hora.';
     await guardar();
-    await rotarClaveSiAbierta();
     pintarHoja();
   };
 
@@ -1470,6 +1636,7 @@ function vistaAdmin(app){
       const k=inp.dataset.k;
       if(k==='fecha') return;
       if(k==='temas') S.cfg[k]=cleanMulti(inp.value,800);
+      else if(k==='horas') S.cfg[k]=parseInt(inp.value)||0;
       else S.cfg[k]=clean(inp.value,160);
       pintarHoja(); guardarDiferido();
     });
@@ -1487,34 +1654,128 @@ function vistaAdmin(app){
   $('#min').value=String(S.sesion.minutos||0);
   $('#min').onchange=e=>{ S.sesion.minutos=+e.target.value||0; guardarDiferido(); };
   $('#abrir').onclick=async()=>{
-    S.sesion.abierta=true; S.sesion.inicio=Date.now();
-    S.sesion.clave=nuevaClave();
-    await guardar(); refrescarPanel();
-    await asegurarAnfitrion(); refrescarPanel();
+    const btnAbrir=$('#abrir');
+    if(btnAbrir) btnAbrir.disabled=true;
+    const materiaAbierta=S.materias.find(item=>item.id===S.materiaActiva);
+    const ofertaAbierta=materiaAbierta&&Number(materiaAbierta.courseOfferingId)||0;
+    if(!ofertaAbierta){
+      redMensaje='Seleccione una asignatura válida antes de abrir la asistencia.';
+      pintarRed();
+      if(btnAbrir) btnAbrir.disabled=false;
+      return;
+    }
+    try{
+      /* Crear la asistencia en el servidor: los códigos los genera la API. */
+      const r=await fetch('/api/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({courseOfferingId:ofertaAbierta})});
+      const data=await r.json().catch(()=>null);
+      if(!r.ok||!data||!data.ok||!data.session||!data.session.id||!data.session.studentCode||!data.session.teacherCode){
+        throw new Error('api');
+      }
+      S.sesion.abierta=true; S.sesion.inicio=Date.now();
+      S.sesion.sessionId=String(data.session.id);
+      S.sesion.clave=String(data.session.studentCode).toUpperCase();
+      S.sesion.claveDocente=String(data.session.teacherCode).toUpperCase();
+      redMensaje='';
+      await guardar(); refrescarPanel();
+      iniciarPollingApi();
+    }catch(e){
+      redMensaje='No se pudo crear la asistencia en el servidor. Verifique su conexión e inténtelo nuevamente.';
+      pintarRed();
+      if(btnAbrir) btnAbrir.disabled=false;
+    }
   };
   $('#reiniciar').onclick=async()=>{
     if(!S.sesion.abierta) return;
     S.sesion.inicio=Date.now(); await guardar(); refrescarPanel();
-    emitirEstado(); pintarRed();
+    pintarRed();
   };
   $('#detener').onclick=async()=>{
-    S.sesion.abierta=false;
-    await guardar();
-    emitirEstado();                       /* se informa primero a los teléfonos */
-    refrescarPanel();
-    await wait(900);                      /* margen para que llegue el aviso */
-    cerrarConexiones();
-    pintarRed();                          /* el anfitrión sigue vivo: da "cerrado" */
+    if(cierreEnCurso) return;
+    cierreEnCurso=true;
+    const detBtn=$('#detener'); if(detBtn) detBtn.disabled=true;
+    try{
+      const sid=S.sesion.sessionId||'';
+      if(sid){
+        let r=null, data=null;
+        try{
+          r=await fetch('/api/sessions/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid})});
+          data=await r.json().catch(()=>null);
+        }catch(e){ r=null; data=null; }
+        if(!r||!r.ok||!data||!data.ok){
+          const codeErr=data&&data.error;
+          /* Sesión ya cerrada/inexistente en el servidor: se continúa con el
+             cierre local para dejar un estado consistente. */
+          if(!(codeErr==='SESSION_ALREADY_CLOSED'||codeErr==='SESSION_NOT_FOUND')){
+            redMensaje='No se pudo cerrar la asistencia en el servidor. Verifique su conexión e inténtelo nuevamente.';
+            pintarRed();
+            return;
+          }
+        }
+      }
+      detenerPollingApi();
+      S.sesion.abierta=false;
+      S.sesion.clave='';           // Invalida código estudiantes
+      S.sesion.claveDocente='';    // Invalida código docente
+      S.sesion.sessionId='';
+      S.sesion.inicio=0;
+      S.estudiantes=[];
+      S.firmaDoc='';
+      S.firmaRep='';
+      if(pads.doc) pads.doc.clear();
+      if(pads.rep) pads.rep.clear();
+      await guardar();
+      refrescarPanel();
+      await espera(900);
+      pintarRed();
+    }finally{
+      cierreEnCurso=false;
+    }
   };
   $('#nuevaClave').onclick=async()=>{
-    await cerrarAnfitrion();
-    S.sesion.clave=nuevaClave();
-    await guardar(); refrescarPanel();
-    await asegurarAnfitrion(); refrescarPanel();
+    detenerPollingApi();
+    const btnNueva=$('#nuevaClave'); if(btnNueva) btnNueva.disabled=true;
+    const materiaNueva=S.materias.find(item=>item.id===S.materiaActiva);
+    const ofertaNueva=materiaNueva&&Number(materiaNueva.courseOfferingId)||0;
+    if(!ofertaNueva){
+      redMensaje='Seleccione una asignatura válida antes de generar una nueva asistencia.';
+      pintarRed();
+      if(btnNueva) btnNueva.disabled=false;
+      iniciarPollingApi();
+      return;
+    }
+    try{
+      const sidViejo=S.sesion.sessionId||'';
+      if(sidViejo){
+        try{
+          await fetch('/api/sessions/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sidViejo})});
+        }catch(e){}
+      }
+      const r=await fetch('/api/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({courseOfferingId:ofertaNueva})});
+      const data=await r.json().catch(()=>null);
+      if(!r.ok||!data||!data.ok||!data.session||!data.session.id||!data.session.studentCode||!data.session.teacherCode){
+        throw new Error('api');
+      }
+      S.sesion.sessionId=String(data.session.id);
+      S.sesion.clave=String(data.session.studentCode).toUpperCase();
+      S.sesion.claveDocente=String(data.session.teacherCode).toUpperCase();
+      redMensaje='';
+      await guardar(); refrescarPanel();
+      iniciarPollingApi();
+    }catch(e){
+      redMensaje='No se pudo generar una nueva asistencia en el servidor. Verifique su conexión e inténtelo nuevamente.';
+      pintarRed();
+      iniciarPollingApi();
+    }
   };
   $('#copiar').onclick=async()=>{
     const b=$('#copiar');
     try{ await navigator.clipboard.writeText(S.sesion.clave||''); b.innerHTML=I.check+'Copiada'; }
+    catch(e){ b.innerHTML=I.copy+'Seleccione y copie'; }
+    setTimeout(()=>{ b.innerHTML=I.copy+'Copiar clave'; },1800);
+  };
+  $('#copiarDocente').onclick=async()=>{
+    const b=$('#copiarDocente');
+    try{ await navigator.clipboard.writeText(S.sesion.claveDocente||''); b.innerHTML=I.check+'Copiada'; }
     catch(e){ b.innerHTML=I.copy+'Seleccione y copie'; }
     setTimeout(()=>{ b.innerHTML=I.copy+'Copiar clave'; },1800);
   };
@@ -1568,7 +1829,7 @@ function vistaAdmin(app){
     if(!confirm('Esto borrará DEFINITIVAMENTE todas las materias, firmas y asistencias de este dispositivo. ¿Continuar?')) return;
     const t=prompt('Escriba BORRAR (en mayúsculas) para confirmar:');
     if(t!=='BORRAR') return;
-    await cerrarAnfitrion();
+    detenerPollingApi();
     [DATA_STORE,KEY_STORE].forEach(k=>localStorage.removeItem(k));
     sessionStorage.removeItem(SESSION_ADM);
     sessionStorage.removeItem(SESSION_EST);
@@ -1579,12 +1840,55 @@ function vistaAdmin(app){
 
   refrescarPanel();
   arrancarTic();
-  asegurarAnfitrion().then(()=>{ refrescarPanel(); pintarRed(); });
+  iniciarPollingApi();
+}
+
+/* ----------------- Representante: lista desde API -----------------
+   Fuente de verdad PostgreSQL. Un solo intervalo, sin duplicados. */
+async function actualizarListaDesdeAPI(){
+  if(!adminMode||!S.sesion.abierta||!S.sesion.sessionId) return;
+  if(pollApiCtrl){ try{ pollApiCtrl.abort(); }catch(e){} }
+  pollApiCtrl=new AbortController();
+  const sid=S.sesion.sessionId;
+  try{
+    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid),{signal:pollApiCtrl.signal});
+    const data=await r.json().catch(()=>null);
+    if(!r.ok||!data||!data.ok||!Array.isArray(data.records)) return;
+    if(!adminMode||S.sesion.sessionId!==sid) return;
+    S.firmaDoc=firmaSegura(data.teacherSignature||'');
+    S.estudiantes=data.records.map(f=>{
+      let ts=Date.parse(f.createdAt);
+      if(isNaN(ts)) ts=Date.now();
+      return {
+        id:String(f.id||''),
+        nombre:clean(f.fullName,80),
+        ident:clean(f.identification,20),
+        firma:firmaSegura(f.studentSignature),
+        ts
+      };
+    }).filter(f=>f.nombre&&f.ident);
+    pintarHoja();
+  }catch(e){ /* abort o red: se reintenta en el siguiente ciclo */ }
+}
+function detenerPollingApi(){
+  if(pollApi){ clearInterval(pollApi); pollApi=null; }
+  if(pollApiCtrl){ try{ pollApiCtrl.abort(); }catch(e){} pollApiCtrl=null; }
+}
+function iniciarPollingApi(){
+  detenerPollingApi();
+  if(!adminMode||!S.sesion.abierta||!S.sesion.sessionId) return;
+  actualizarListaDesdeAPI();
+  pollApi=setInterval(()=>{
+    if(!adminMode||!S.sesion.abierta||!S.sesion.sessionId){ detenerPollingApi(); return; }
+    actualizarListaDesdeAPI();
+  },4000);
 }
 
 function refrescarPanel(){
   const el=$('#clave');
   if(el) el.value=S.sesion.clave||'Sin generar';
+  const elDoc=$('#claveDocente');
+  if(elDoc) elDoc.value=S.sesion.claveDocente||'Sin generar';
   const abrir=$('#abrir'), det=$('#detener'), re=$('#reiniciar');
   if(abrir){
     abrir.disabled=!!S.sesion.abierta;
@@ -1593,6 +1897,8 @@ function refrescarPanel(){
   }
   const b=$('#copiar');
   if(b) b.disabled=!S.sesion.clave;
+  const bDoc=$('#copiarDocente');
+  if(bDoc) bDoc.disabled=!S.sesion.claveDocente;
   const e=estadoSesion();
   $$('[data-estado]').forEach(x=>{
     x.innerHTML=(e.abierto?I.clock:I.lock)+esc(e.texto);
@@ -1722,7 +2028,6 @@ function pintarHoja(){
     b.onclick=async()=>{
       if(!confirm('¿Eliminar este registro de asistencia?')) return;
       S.estudiantes=S.estudiantes.filter(x=>x.id!==b.dataset.del);
-      emitirEstado();
       await guardar(); pintarHoja();
     };
   });
@@ -1761,7 +2066,7 @@ function hojaHTML(){
 
   /* Datos de la clase */
   '<table>' +
-    '<tr>'+etiqueta('FACULTAD',c.facultad)+etiqueta('PROGRAMA',c.programa)+'</tr>' +
+    '<tr><td class="lbl">FACULTAD</td><td style="width:16%">'+esc(c.facultad)+'</td><td class="lbl">PROGRAMA</td><td colspan="3">'+esc(c.programa)+'</td></tr>' +
     '<tr>'+etiqueta('NIVEL',c.nivel)+etiqueta('ASIGNATURA',c.asignatura)+etiqueta('CÓDIGO DE ASIGNATURA',c.codigo)+'</tr>' +
     '<tr>'+etiqueta('PERIODO ACADÉMICO',c.periodo)+etiqueta('CDS',c.cds)+etiqueta('FECHA',fmtFecha(c.fecha)+(c.hora?' · '+c.hora:''))+'</tr>' +
     '<tr><td class="lbl">NOMBRE Y APELLIDOS DEL DOCENTE</td><td colspan="5">'+esc(c.docente)+'</td></tr>' +
@@ -1781,19 +2086,19 @@ function hojaHTML(){
   '</tbody>' +
   '</table>' +
 
-  /* Firmas */
-  '<div class="pie">' +
+  /* Firmas - con espacio mínimo garantizado después de la tabla */
+  '<div class="pie" style="margin-top:96px;break-inside:avoid;page-break-inside:avoid;">' +
     '<div>'+(S.firmaDoc?'<img src="'+esc(S.firmaDoc)+'" alt="Firma del docente">':'')+'FIRMA DEL DOCENTE</div>' +
     '<div>'+(S.firmaRep?'<img src="'+esc(S.firmaRep)+'" alt="Firma del representante">':'')+'FIRMA DEL REPRESENTANTE</div>' +
   '</div>' +
 
-  /* Control de cambios */
-  '<div class="cc">CONTROL DE CAMBIOS</div>' +
-  '<table class="ctl">' +
+  /* Control de cambios - con espacio y sin partirse entre páginas */
+  '<div class="cc" style="margin-top:20px;break-inside:avoid;page-break-inside:avoid;">CONTROL DE CAMBIOS</div>' +
+  '<table class="ctl" style="break-inside:avoid;page-break-inside:avoid;">' +
     '<tr><th style="width:20%">FECHA</th><th>CAMBIO</th><th style="width:15%">VERSIÓN</th></tr>' +
     '<tr><td>14-01-2023</td><td>Lanzamiento del formato</td><td style="text-align:center">01</td></tr>' +
   '</table>' +
-  '<table class="ctl" style="margin-top:3px"><tr>' +
+  '<table class="ctl" style="margin-top:3px;break-inside:avoid;page-break-inside:avoid;"><tr>' +
     '<td class="firma"><b>Elaboró:</b> Leidy Lorena Cuesta Mena<br>Cargo: Profesional Universitario<br>Fecha: 14-01-2023</td>' +
     '<td class="firma"><b>Revisó:</b> Ana Silvia Rentería<br>Cargo: Vicerrectora de Docencia<br>Fecha: 14-01-2023</td>' +
     '<td class="firma"><b>Aprobó:</b> Tamara Mery Ketty<br>Cargo: Coordinadora de Calidad<br>Fecha: 14-01-2023</td>' +

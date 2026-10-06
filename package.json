@@ -1,0 +1,12 @@
+{
+  "name": "asistencias-utch",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Registro de asistencia UTCH: frontend estatico + Vercel Functions + PostgreSQL",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}

@@ -1,7 +1,11 @@
 "use strict";
 
-/* POST /api/sessions/teacher-signature — firma del docente en sesión OPEN. */
+/* POST /api/sessions/teacher-signature — firma del docente en sesión OPEN.
+   Exige el teacherCode de la sesión (no basta el UUID): solo quien posee el
+   código de docente puede firmar. Solo toca teacher_signature /
+   teacher_signed_at; representative_* nunca se modifica aquí. */
 
+const crypto = require("crypto");
 const { query } = require("../../lib/db");
 
 const MAX_SIGNATURE = 1000000;
@@ -18,6 +22,15 @@ function readBody(req) {
   return body && typeof body === "object" ? body : undefined;
 }
 
+function codeMatches(given, expected) {
+  if (typeof given !== "string" || typeof expected !== "string") return false;
+  const g = given.trim().toUpperCase();
+  const a = Buffer.from(g);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || a.length === 0) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -26,18 +39,21 @@ module.exports = async function handler(req, res) {
   const body = readBody(req);
   const sessionId = body && body.sessionId;
   const teacherSignature = body && body.teacherSignature;
+  const teacherCode = body && body.teacherCode;
   if (
     typeof sessionId !== "string" ||
     sessionId.trim() === "" ||
     typeof teacherSignature !== "string" ||
     teacherSignature.trim() === "" ||
-    teacherSignature.trim().length > MAX_SIGNATURE
+    teacherSignature.trim().length > MAX_SIGNATURE ||
+    typeof teacherCode !== "string" ||
+    teacherCode.trim() === ""
   ) {
     return res.status(400).json({ ok: false, error: "INVALID_DATA" });
   }
   try {
     const s = await query(
-      "SELECT id, status FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1",
+      "SELECT id, status, teacher_code FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1",
       [sessionId.trim()]
     );
     const row = s.rows[0];
@@ -46,6 +62,9 @@ module.exports = async function handler(req, res) {
     }
     if (row.status !== "OPEN") {
       return res.status(400).json({ ok: false, error: "SESSION_NOT_AVAILABLE" });
+    }
+    if (!codeMatches(teacherCode, row.teacher_code)) {
+      return res.status(401).json({ ok: false, error: "INVALID_CODE" });
     }
     const r = await query(
       "UPDATE attendance_runtime_sessions SET teacher_signature = $1, teacher_signed_at = NOW()" +

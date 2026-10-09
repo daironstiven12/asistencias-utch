@@ -6,6 +6,7 @@
 const crypto = require("crypto");
 const { query } = require("../lib/db");
 const { generateSessionCodes } = require("../lib/codes");
+const { currentRep } = require("../lib/repSession");
 
 function readBody(req) {
   let body = req.body;
@@ -37,6 +38,26 @@ module.exports = async function handler(req, res) {
     if (!offering.rows[0]) {
       return res.status(400).json({ ok: false, error: "OFFERING_NOT_AVAILABLE" });
     }
+    // Si hay representante autenticado, la oferta debe estarle asignada
+    // y la sesión queda bajo su propiedad. Sin cookie, flujo heredado.
+    let representativeId = null;
+    try {
+      const rep = await currentRep(req);
+      if (rep) {
+        const assigned = await query(
+          "SELECT 1 FROM attendance_representative_offerings" +
+            " WHERE representative_id = $1 AND course_offering_id = $2 LIMIT 1",
+          [rep.id, courseOfferingId]
+        );
+        if (!assigned.rows[0]) {
+          return res.status(403).json({ ok: false, error: "OFFERING_NOT_ASSIGNED" });
+        }
+        representativeId = rep.id;
+      }
+    } catch (err) {
+      console.error("sessions owner error:", err && err.message);
+      return res.status(500).json({ ok: false, error: "INTERNAL_ERROR" });
+    }
     let studentCode = null;
     let teacherCode = null;
     let id = null;
@@ -50,9 +71,9 @@ module.exports = async function handler(req, res) {
       teacherCode = codes.teacherCode;
       try {
         await query(
-          "INSERT INTO attendance_runtime_sessions (id, student_code, teacher_code, status, course_offering_id)" +
-            " VALUES ($1, $2, $3, 'OPEN', $4)",
-          [id, studentCode, teacherCode, courseOfferingId]
+          "INSERT INTO attendance_runtime_sessions (id, student_code, teacher_code, status, course_offering_id, representative_id)" +
+            " VALUES ($1, $2, $3, 'OPEN', $4, $5)",
+          [id, studentCode, teacherCode, courseOfferingId, representativeId]
         );
         break;
       } catch (err) {

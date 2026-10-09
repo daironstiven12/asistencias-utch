@@ -1,3 +1,43 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/ruta-administrativa",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/api/admin/docentes",
+      "destination": "/api/admin/representatives?op=docentes"
+    },
+    {
+      "source": "/api/rep/login",
+      "destination": "/api/rep/auth?op=login"
+    },
+    {
+      "source": "/api/rep/logout",
+      "destination": "/api/rep/auth?op=logout"
+    },
+    {
+      "source": "/api/rep/me",
+      "destination": "/api/rep/auth?op=me"
+    },
+    {
+      "source": "/api/rep/offerings",
+      "destination": "/api/rep/data?op=offerings"
+    },
+    {
+      "source": "/api/rep/sessions",
+      "destination": "/api/rep/data?op=sessions"
+    },
+    {
+      "source": "/api/rep/session",
+      "destination": "/api/rep/data?op=session"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/purge",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }

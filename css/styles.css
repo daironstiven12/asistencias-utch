@@ -400,8 +400,8 @@ input[readonly]{background:var(--green-softer);color:var(--green-darker);font-we
 #hoja th{background:#fff;font-size:10px;text-align:center;font-weight:700;line-height:1.2}
 #hoja td.n{text-align:center;width:5%}
 #hoja td.id{width:22%}
-#hoja td.f{width:24%;height:26px;padding:0 2px;text-align:center}
-#hoja td.f img{max-height:24px;max-width:100%}
+#hoja td.f{width:26%;height:44px;padding:2px 4px;text-align:center;vertical-align:middle}
+#hoja td.f img{max-height:40px;max-width:100%;width:auto;height:auto;object-fit:contain}
 #hoja .temas{font-size:11px;white-space:pre-wrap;height:26px}
 #hoja .pie{display:flex;justify-content:space-around;margin:16px 0 8px;text-align:center;font-weight:700;font-size:10px}
 #hoja .pie div{width:42%;border-top:1px solid #000;padding-top:3px;position:relative;min-height:96px}
@@ -414,9 +414,9 @@ input[readonly]{background:var(--green-softer);color:var(--green-darker);font-we
 #hoja .del{border:0;background:none;color:#b3261e;padding:0 3px;cursor:pointer;vertical-align:middle;display:inline-flex;align-items:center}
 #hoja .del svg{width:12px;height:12px}
 #hoja tr,#hoja .cc,#hoja .pie,#hoja .ctl,#hoja .tit,#hoja .pie-inst{break-inside:avoid;page-break-inside:avoid}
-@media (max-width:900px){#hoja{zoom:.82}}
-@media (max-width:680px){#hoja{zoom:.55}}
-@media (max-width:420px){#hoja{zoom:.42}}
+@media screen and (max-width:900px){#hoja{zoom:.82}}
+@media screen and (max-width:680px){#hoja{zoom:.55}}
+@media screen and (max-width:420px){#hoja{zoom:.42}}
 
 .site-footer{
   max-width:1040px;margin:0 auto;padding:14px 20px 26px;
@@ -443,10 +443,19 @@ input[readonly]{background:var(--green-softer);color:var(--green-darker);font-we
   #hoja{
     width:auto;box-shadow:none;padding:0;border:0;border-radius:0;
   }
-  /* El alto de fila lo calcula la impresión para que TODO quepa en
-     una sola hoja; la firma se encoge con él y nunca marca el mínimo. */
-  #hoja tbody.filas td{height:var(--fila,26px);padding:0 2px}
-  #hoja tbody.filas td.firma img{width:auto;max-width:100%;max-height:none;height:calc(var(--fila,26px) - 4px)}
+  /* El alto de fila lo calcula la impresión: una sola hoja solo si cabe
+     con altura legible; si no, altura cómoda fija y paginación natural
+     en varias páginas (las firmas nunca se comprimen hasta lo ilegible). */
+  #hoja tbody.filas td{height:var(--fila,38px);padding:0 2px;font-size:13px}
+  #hoja tbody.filas td.f img{width:auto;max-width:100%;height:calc(var(--fila,38px) - 6px);object-fit:contain}
+  #hoja thead{display:table-header-group}
+  /* Cada bloque de 20 filas de la planilla impresa abre su propia página. */
+  #hoja table.salto-pagina{break-before:page;page-break-before:always}
+  /* En impresión el pie se escala para que quepa junto a la tabla. */
+  #hoja .pie-inst img{max-height:110px;width:auto}
+  /* Margen justo para las firmas flotantes (máx. 88px): acerca el bloque
+     final a la tabla sin superponerlo. No toca la pantalla. */
+  #hoja .pie{margin-top:88px !important}
   #hoja .del{display:none!important}
   #hoja *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }

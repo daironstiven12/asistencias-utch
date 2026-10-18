@@ -1,0 +1,19 @@
+# .vercelignore — archivos excluidos del despliegue con Vercel CLI
+#
+# IMPORTANTE: el CLI de Vercel NO lee .gitignore para decidir qué sube.
+# Aplica una lista interna de exclusiones y, si existe, AÑADE las reglas de
+# este archivo. Por eso aquí se replican también las reglas de .gitignore
+# para no publicar secretos ni archivos locales.
+
+# --- Documentación interna: solo local, no se publica (petición explícita) ---
+manual/
+
+# --- Secretos / configuración local: NUNCA publicar ---
+# (lib/localConfig.js contiene ADMIN_SECRET y REP_SESSION_SECRET; la app en
+#  producción usa las variables de entorno de Vercel y este require va en
+#  try/catch, así que excluirlo no rompe la autenticación.)
+lib/localConfig.js
+.env
+.env.local
+.env.*.local
+.vercel

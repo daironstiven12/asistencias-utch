@@ -1,13 +1,8 @@
 "use strict";
 
-/* /api/records
-   POST — registra un estudiante en una sesión OPEN (flujo público con sessionId).
-   GET ?sessionId=... [&teacherCode=...] — lista registros de esa sesión.
-   Autorización del GET: representante autenticado dueño de la sesión, o
-   teacherCode coincidente (vista del docente). Sin credencial válida → 401. */
 
 const crypto = require("crypto");
-const { query } = require("../lib/db");
+const { query, getPool } = require("../lib/db");
 const { currentRep } = require("../lib/repSession");
 
 const LIMITS = {
@@ -15,6 +10,9 @@ const LIMITS = {
   identification: 30,
   studentSignature: 1000000,
 };
+
+
+const MAX_STUDENTS_PER_SESSION = 28;
 
 function readBody(req) {
   let body = req.body;
@@ -51,47 +49,66 @@ async function handlePost(req, res) {
   ) {
     return res.status(400).json({ ok: false, error: "INVALID_DATA" });
   }
+
+  const client = await getPool().connect();
   try {
+    await client.query("BEGIN");
+    const st = await client.query(
+      "SELECT status, registration_open FROM attendance_runtime_sessions WHERE id = $1 FOR UPDATE",
+      [sessionId.trim()]
+    );
+    const srow = st.rows[0];
+    if (!srow) {
+      try { await client.query("ROLLBACK"); } catch (e) {}
+      return res.status(400).json({ ok: false, error: "SESSION_NOT_AVAILABLE" });
+    }
+    const dup = await client.query(
+      "SELECT 1 FROM attendance_runtime_records WHERE session_id = $1 AND identification = $2 LIMIT 1",
+      [sessionId.trim(), identification.trim()]
+    );
+    if (dup.rows[0]) {
+      try { await client.query("ROLLBACK"); } catch (e) {}
+      return res.status(409).json({ ok: false, error: "DUPLICATE_IDENTIFICATION" });
+    }
+    if (srow.status !== "OPEN") {
+      try { await client.query("ROLLBACK"); } catch (e) {}
+      return res.status(400).json({ ok: false, error: "SESSION_NOT_AVAILABLE" });
+    }
+    if (srow.registration_open === false) {
+      try { await client.query("ROLLBACK"); } catch (e) {}
+      return res.status(409).json({ ok: false, code: "REGISTRATION_CLOSED", message: "Los registros de estudiantes ya fueron cerrados." });
+    }
+    const cnt = await client.query(
+      "SELECT COUNT(*)::int AS n FROM attendance_runtime_records WHERE session_id = $1",
+      [sessionId.trim()]
+    );
+    if (cnt.rows[0].n >= MAX_STUDENTS_PER_SESSION) {
+      try { await client.query("ROLLBACK"); } catch (e) {}
+      return res.status(409).json({ ok: false, code: "SESSION_FULL", message: "Esta lista de asistencia ya alcanzó el máximo de 28 estudiantes." });
+    }
     const id = crypto.randomUUID();
     let row;
     try {
-      // Inserción atómica: solo si la sesión está OPEN con registros abiertos.
-      const r = await query(
-        "WITH target AS (" +
-          " SELECT id FROM attendance_runtime_sessions" +
-          " WHERE id = $1 AND status = 'OPEN' AND registration_open IS TRUE" +
-        " )" +
-        " INSERT INTO attendance_runtime_records" +
-        " (id, session_id, full_name, identification, student_signature)" +
-        " SELECT $2, target.id, $3, $4, $5 FROM target" +
-        " RETURNING id, session_id, full_name, identification, student_signature, created_at",
-        [sessionId.trim(), id, fullName.trim(), identification.trim(), studentSignature.trim()]
+      const r = await client.query(
+        "INSERT INTO attendance_runtime_records" +
+          " (id, session_id, full_name, identification, student_signature)" +
+          " VALUES ($1, $2, $3, $4, $5)" +
+          " RETURNING id, session_id, full_name, identification, student_signature, created_at",
+        [id, sessionId.trim(), fullName.trim(), identification.trim(), studentSignature.trim()]
       );
       row = r.rows[0];
     } catch (err) {
+      try { await client.query("ROLLBACK"); } catch (e) {}
       if (err && err.code === "23505") {
         return res.status(409).json({ ok: false, error: "DUPLICATE_IDENTIFICATION" });
       }
       throw err;
     }
     if (!row) {
-      const dup = await query(
-        "SELECT 1 FROM attendance_runtime_records WHERE session_id = $1 AND identification = $2 LIMIT 1",
-        [sessionId.trim(), identification.trim()]
-      );
-      if (dup.rows[0]) {
-        return res.status(409).json({ ok: false, error: "DUPLICATE_IDENTIFICATION" });
-      }
-      const st = await query(
-        "SELECT status, registration_open FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1",
-        [sessionId.trim()]
-      );
-      const srow = st.rows[0];
-      if (srow && srow.status === "OPEN" && srow.registration_open === false) {
-        return res.status(409).json({ ok: false, code: "REGISTRATION_CLOSED", message: "Los registros de estudiantes ya fueron cerrados." });
-      }
+      try { await client.query("ROLLBACK"); } catch (e) {}
       return res.status(400).json({ ok: false, error: "SESSION_NOT_AVAILABLE" });
     }
+    await client.query("COMMIT");
     return res.status(201).json({
       ok: true,
       record: {
@@ -104,8 +121,11 @@ async function handlePost(req, res) {
       },
     });
   } catch (err) {
+    try { await client.query("ROLLBACK"); } catch (e) {}
     console.error("records post error:", err && err.message);
     return res.status(500).json({ ok: false, error: "INTERNAL_ERROR" });
+  } finally {
+    client.release();
   }
 }
 

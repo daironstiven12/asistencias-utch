@@ -10,6 +10,10 @@
       "destination": "/api/admin/representatives?op=docentes"
     },
     {
+      "source": "/api/admin/sesiones",
+      "destination": "/api/admin/representatives?op=sesiones"
+    },
+    {
       "source": "/api/rep/login",
       "destination": "/api/rep/auth?op=login"
     },

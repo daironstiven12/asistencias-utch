@@ -18,11 +18,43 @@ const cleanMulti = (s, max=800) => String(s ?? '')
   .slice(0,max);
 const firmaSegura = s =>
   /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(String(s||'')) ? String(s) : '';
-const hoy = () => { const d=new Date(), z=n=>String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; };
+/* Fecha académica por defecto en zona America/Bogota, sin depender de la
+   zona del equipo. Formato YYYY-MM-DD (igual que <input type="date">). */
+const hoy = () => {
+  try{
+    const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    if(/^\d{4}-\d{2}-\d{2}$/.test(p)) return p;
+  }catch(e){}
+  const d=new Date(), z=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+};
 const fmtFecha = iso => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||''));
   return m ? `${m[3]}-${m[2]}-${m[1]}` : String(iso||'');
+};
+/* Fecha/hora de apertura de una sesión (created_at del servidor) expresadas
+   en America/Bogota para los campos de la planilla. Devuelven '' si el valor
+   no es válido, caso en el que se conserva la fecha ya configurada. */
+const fechaAperturaBogota = iso => {
+  try{
+    if(iso===null||iso===undefined||iso==='') return '';
+    const d=new Date(iso);
+    if(isNaN(d)) return '';
+    const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(p)) return p;
+  }catch(e){}
+  return '';
+};
+const horaAperturaBogota = iso => {
+  try{
+    if(iso===null||iso===undefined||iso==='') return '';
+    const d=new Date(iso);
+    if(isNaN(d)) return '';
+    const p=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Bogota',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(d);
+    const m=/^(\d{2}):(\d{2})/.exec(p);
+    if(m) return m[1]+':'+m[2];
+  }catch(e){}
+  return '';
 };
 const rndBytes = n => {
   if (!(globalThis.crypto && crypto.getRandomValues)) throw new Error('Web Crypto no está disponible.');
@@ -80,6 +112,7 @@ const LOGO_SRC = 'logo.png';
 /* -------------------------- Cifrado -------------------------- */
 const DATA_STORE='utch.asistencia.v1', KEY_STORE='utch.asistencia.k',
       SESSION_REP='utch.sesion.rep',
+      SESSION_REP_ID='utch.sesion.repId',
       SESSION_EST='utch.sesion.est',
       SESSION_API='utch.sesion.apiId',
       LOCK_STORE='utch.asistencia.lock';
@@ -168,7 +201,10 @@ const DEFAULTS = () => ({
   firmaDoc:'',firmaRep:'',logo:'',
   sesion:{ abierta:false,inicio:0,minutos:15,clave:'',sessionId:'' },
   clavesUsadas:[],
-  estudiantes:[]
+  estudiantes:[],
+  /* Dueño del borrador local (id del representante autenticado).
+     Evita mezclar borradores entre cuentas del mismo navegador. */
+  repOwner:''
 });
 let S=DEFAULTS(), adminMode=false, tic=null, saveTimer=null, pads={};
 let tituloPDF=null;
@@ -220,6 +256,7 @@ function normalizar(o){
       sessionId:clean(ses.sessionId,40)
     },
     clavesUsadas:(Array.isArray(src.clavesUsadas)?src.clavesUsadas:[]).map(c=>clean(c,8).toUpperCase()).filter(Boolean).slice(-40),
+    repOwner:clean(src&&src.repOwner,80),
     estudiantes:(Array.isArray(src.estudiantes)?src.estudiantes:[])
       .map((f,i)=>({
         id:clean(f&&f.id,40)||('imp'+i),
@@ -244,6 +281,94 @@ async function cargar(){
   if(raw){ const o=await descifrar(raw); if(o) S=normalizar(o); }
   await guardar();
 }
+
+/* ------------- Aislamiento del borrador por representante -------------
+   El borrador local (materias, configuración, lista, firmas, sesión) se
+   vincula al id estable del representante autenticado (S.repOwner). Al
+   cambiar de cuenta se archiva el borrador actual bajo su dueño y se
+   restaura el propio si existe; nunca se borra. La autorización real
+   sigue en el servidor (cookie HttpOnly); esto solo evita mostrar en
+   pantalla el borrador de otra cuenta del mismo navegador. */
+let repIdActual='', repNombre='';
+function repIdSesion(){
+  try{ return clean(sessionStorage.getItem(SESSION_REP_ID),80); }catch(e){ return ''; }
+}
+function claveRespaldo(id){
+  return DATA_STORE+':respaldo:'+String(id||'legado').slice(0,80);
+}
+function borradorEnUso(){
+  if(S.estudiantes.length) return true;
+  if(S.firmaDoc||S.firmaRep) return true;
+  if(S.sesion&&(S.sesion.sessionId||S.sesion.clave)) return true;
+  if(S.materiaActiva) return true;
+  const c=S.cfg||{};
+  for(const k of ['facultad','programa','nivel','asignatura','codigo','docente']) if(c[k]) return true;
+  return false;
+}
+async function adoptarBorrador(repId){
+  repId=clean(repId,80);
+  if(!repId) return false;
+  const actual=clean(S&&S.repOwner,80);
+  if(actual===repId){ repIdActual=repId; return false; }
+  /* Archiva el borrador actual bajo su dueño (o legado) sin borrarlo. */
+  try{
+    const raw=localStorage.getItem(DATA_STORE);
+    if(raw&&borradorEnUso()) localStorage.setItem(claveRespaldo(actual||'legado'),raw);
+  }catch(e){}
+  /* Restaura el borrador propio si existe; si no, estado fresco. */
+  let restaurado=false;
+  try{
+    const propio=localStorage.getItem(claveRespaldo(repId));
+    if(propio){
+      const o=await descifrar(propio);
+      if(o){ S=normalizar(o); restaurado=true; }
+    }
+  }catch(e){}
+  if(!restaurado) S=DEFAULTS();
+  S.repOwner=repId;
+  repIdActual=repId;
+  await guardar();
+  return true;
+}
+function pintarSaludo(){
+  const el=$('#repSaludo'); if(!el) return;
+  el.textContent=repNombre?('Hola, '+repNombre):'Hola';
+}
+/* Revalida la sesión contra el servidor al entrar al panel: confirma la
+   identidad (id+nombre desde la BD), vincula el borrador y pinta el saludo.
+   Sin sesión válida no se muestra el panel (ni borradores ajenos). */
+async function confirmarIdentidadRep(){
+  let rep=null, red=false;
+  try{
+    const r=await fetch('/api/rep/me');
+    const data=await r.json().catch(()=>null);
+    if(r.ok&&data&&data.ok&&data.representative&&data.representative.id) rep=data.representative;
+  }catch(e){ red=true; }
+  if(!rep){
+    if(red){
+      /* Sin red no se puede confirmar: saludo neutro y se conserva el
+         estado local; el servidor seguirá autorizando cada operación. */
+      const sid=repIdSesion();
+      if(sid){
+        repIdActual=sid;
+        if(S.repOwner&&S.repOwner!==sid) await adoptarBorrador(sid);
+      }
+      pintarSaludo();
+      return null;
+    }
+    try{ sessionStorage.removeItem(SESSION_REP); }catch(e){}
+    try{ sessionStorage.removeItem(SESSION_REP_ID); }catch(e){}
+    repIdActual=''; repNombre='';
+    adminMode=false; render(); return null;
+  }
+  try{ sessionStorage.setItem(SESSION_REP_ID,rep.id); }catch(e){}
+  repIdActual=clean(rep.id,80);
+  repNombre=clean(rep.name,120);
+  const cambio=await adoptarBorrador(rep.id);
+  pintarSaludo();
+  if(cambio) render();
+  return rep;
+}
 /* Relee los datos guardados por OTRA pestaña sin volver a escribir
    (evita un bucle infinito de eventos "storage"). */
 async function sincronizar(){
@@ -252,7 +377,21 @@ async function sincronizar(){
   const abiertaRemota = (modoRemoto) ? !!((S&&S.sesion&&S.sesion.abierta)) : false;
   const inicioRemoto = (modoRemoto) ? Number(S&&S.sesion&&S.sesion.inicio)||0 : 0;
   const raw=localStorage.getItem(DATA_STORE);
-  if(raw){ const o=await descifrar(raw); if(o) S=normalizar(o); }
+  if(raw){
+    const o=await descifrar(raw);
+    if(o){
+      const previo=clean(S&&S.repOwner,80);
+      const candidato=normalizar(o);
+      const yo=repIdActual||repIdSesion();
+      /* Otra pestaña cambió de cuenta: no se incorpora un borrador ajeno.
+         Se revalida contra el servidor, que restaura lo que corresponda. */
+      if(yo&&candidato.repOwner&&candidato.repOwner!==yo&&previo!==candidato.repOwner){
+        confirmarIdentidadRep().catch(()=>{});
+        return;
+      }
+      S=candidato;
+    }
+  }
   if(claveRemota){ S.sesion.clave=claveRemota; }
   if(modoRemoto){
     if(apiRemota){ S.sesion.sessionId=apiRemota; }
@@ -328,10 +467,8 @@ function sigPad(el){
     '<div class="sig-tabs">' +
       '<button type="button" data-m="d" class="active">'+I.pencil+'Dibujar</button>' +
       '<button type="button" data-m="u">'+I.image+'Subir imagen</button>' +
-      '<button type="button" data-m="t">'+I.type+'Escribir</button>' +
     '</div>' +
     '<div class="pane" data-p="u" hidden><input type="file" accept="image/png,image/jpeg"></div>' +
-    '<div class="pane" data-p="t" hidden><input type="text" maxlength="40" placeholder="Escriba su nombre como firma"></div>' +
     '<canvas width="360" height="120" aria-label="Área de firma"></canvas>' +
     '<button type="button" class="s" data-c style="margin-top:10px">'+I.eraser+'Borrar</button>';
 
@@ -386,25 +523,6 @@ function sigPad(el){
     im.src=URL.createObjectURL(f);
     e.target.value='';
   };
-  el.querySelector('input[type=text]').oninput=e=>{
-    textoFirma=clean(e.target.value,40);
-    pintarTextoFirma();
-  };
-  let textoFirma='';
-  const pintarTextoFirma=()=>{
-    clear();
-    if(!textoFirma) return;
-    x.fillStyle='#111';
-    let s=52; x.font=s+'px Caveat, cursive';
-    while(x.measureText(textoFirma).width>340 && s>14){ s-=2; x.font=s+'px Caveat, cursive'; }
-    x.textBaseline='middle'; x.fillText(textoFirma,10,62); dirty=true;
-  };
-  /* Cuando la fuente manuscrita termina de cargar se redibuja, sin
-     bloquear nunca la escritura del estudiante. */
-  if(document.fonts&&document.fonts.ready){
-    document.fonts.ready.then(()=>{ if(textoFirma) pintarTextoFirma(); });
-    try{ document.fonts.load('40px Caveat').then(()=>{ if(textoFirma) pintarTextoFirma(); }); }catch(_){}
-  }
   return {
     get:()=>(dirty?cv.toDataURL('image/png'):''),
     clear,
@@ -445,16 +563,14 @@ function cabecera(sub){
 const avisoLocal =
   '<div class="card np privacy-card">' +
     '<h2>'+I.shield+'Cómo funciona y privacidad</h2>' +
-    '<p class="mut">La contraseña de administrador está predefinida en el sistema institucional. ' +
-    'Los registros se cifran con AES-256-GCM y no se envían a Internet.</p>' +
+    '<p class="mut">El representante abre la asistencia y comparte un código temporal con la clase. ' +
+    'Cada estudiante escribe el código, completa su nombre, su identificación y su firma, ' +
+    'y queda registrado una sola vez.</p>' +
     '<div class="privacy-extra">' +
-    '<p class="mut">Mientras el docente tiene el registro abierto, cada estudiante que escribe la clave ' +
-    'se conecta directamente al dispositivo del docente y envía allí sus datos y su firma. El enlace se ' +
-    'establece a través de un servicio público de conexión, que solo negocia la comunicación: ' +
-    'no guarda nombres, identificaciones ni firmas.</p>' +
-    '<p class="mut">Al cerrar el registro, la conexión se corta y los datos quedan solo en el equipo del ' +
-    'docente. Quien tenga acceso al dispositivo o a sus herramientas de navegador puede inspeccionar o ' +
-    'borrar el almacenamiento local.</p>' +
+    '<p class="mut">Los registros viajan por una conexión segura y se guardan en el servidor de la plataforma, ' +
+    'junto con la firma del estudiante y la del docente. Solo pueden consultar la lista el representante ' +
+    'responsable, el docente con su código y la administración. La firma del representante se guarda ' +
+    'únicamente en el navegador donde se dibuja.</p>' +
     '</div>' +
     '<button type="button" class="privacy-toggle" aria-expanded="false">Ver más información &gt;</button>' +
   '</div>';
@@ -784,6 +900,7 @@ function pintarZonaEstudiante(){
         const codeErr=data&&(data.code||data.error);
         if(codeErr==='DUPLICATE_IDENTIFICATION'){ mostrarErrorEstudiante('Esa identificación ya tiene una asistencia registrada en esta clase.'); return; }
         if(codeErr==='REGISTRATION_CLOSED'){ mostrarErrorEstudiante('Esta asistencia ya no permite nuevos registros.'); return; }
+        if(codeErr==='SESSION_FULL'){ mostrarErrorEstudiante('Lista llena: esta asistencia ya alcanzó el máximo de 28 estudiantes. No se pueden registrar más personas en esta sesión.'); return; }
         if(codeErr==='SESSION_NOT_AVAILABLE'){ S.sesion.abierta=false; mostrarErrorEstudiante('La asistencia ya no está disponible. Solicite un nuevo código al docente.'); pintarZonaEstudiante(); return; }
         mostrarErrorEstudiante('No se pudo registrar la asistencia. Inténtelo nuevamente.');
         crearRetryBtn(boton.parentNode,()=>{ const b=$('#enviar'); if(b) b.click(); });
@@ -1037,7 +1154,8 @@ async function cargarAsistenciasRep(){
       '<div class="row" style="align-items:center;border-top:1px solid var(--line);padding:8px 0">' +
         '<div><b>'+esc(s.asignatura||'Asistencia')+'</b><br>' +
         '<span class="mut">'+esc([s.codigo,s.docente].filter(Boolean).join(' · '))+' · '+esc(s.status)+
-        (s.registrationOpen?'':' · registros cerrados')+' · '+esc(String(s.recordCount))+' est.</span></div>' +
+        (s.registrationOpen?'':' · registros cerrados')+' · '+esc(String(s.recordCount))+' est.'+
+        (s.recordCount>=28?' · lista llena':'')+'</span></div>' +
         '<button class="s" data-sid="'+esc(s.sessionId)+'">Abrir</button>' +
       '</div>'
     ).join('');
@@ -1069,6 +1187,18 @@ async function seleccionarAsistenciaRep(sessionId){
     S.sesion.inicio=Date.now(); S.sesion.minutos=0;
     for(const k of ['facultad','programa','nivel','periodo','asignatura','codigo','docente']){
       if(typeof s[k]==='string'&&s[k]) S.cfg[k]=clean(s[k],160);
+    }
+    /* La planilla debe fechar la asistencia SELECCIONADA (apertura del
+       servidor en Bogotá), no el borrador local: sin esto conservaba una
+       fecha antigua de otra configuración. Solo se aplica con valor válido. */
+    const fAp=fechaAperturaBogota(s.createdAt), hAp=horaAperturaBogota(s.createdAt);
+    if(fAp){
+      S.cfg.fecha=fAp;
+      const ff=$('#f_fecha'); if(ff) ff.value=fAp;
+    }
+    if(hAp){
+      S.cfg.hora=hAp;
+      const fh=$('#f_hora'); if(fh) fh.value=hAp;
     }
     S.firmaDoc=firmaSegura(data.session.teacherSignature||'');
     S.firmaRep=firmaSegura(data.session.representativeSignature||'');
@@ -1116,8 +1246,9 @@ function vistaAdmin(app){
 
   app.innerHTML =
     cabecera('Panel del docente') +
-    '<p class="np" style="margin-bottom:16px">' +
-      '<button class="s back-button" id="salir">'+I.lock+'Cerrar sesión</button>' +
+    '<p class="np" style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+      '<strong id="repSaludo" style="font-size:1.05rem">Hola</strong>' +
+      '<button class="s back-button" id="salir" style="margin-left:auto">'+I.lock+'Cerrar sesión</button>' +
     '</p>' +
 
     '<div class="card np">' +
@@ -1146,6 +1277,14 @@ function vistaAdmin(app){
           '<textarea id="f_temas" data-k="temas" maxlength="800" rows="2">'+esc(c.temas||'')+'</textarea></div>' +
       '</div>' +
       '<p class="mut" style="margin-top:14px">El logo institucional es fijo: <b>logo.png</b></p>' +
+    '</div>' +
+
+    '<div class="card np">' +
+      '<h2>'+I.clock+'Datos de esta asistencia</h2>' +
+      '<div class="grid">' +
+        campo('fecha','Fecha','date') +
+        campo('hora','Hora de inicio','time') +
+      '</div>' +
     '</div>' +
 
     '<div class="card np">' +
@@ -1185,14 +1324,6 @@ function vistaAdmin(app){
     '</div>' +
 
     '<div class="card np">' +
-      '<h2>'+I.clock+'Datos de esta asistencia</h2>' +
-      '<div class="grid">' +
-        campo('fecha','Fecha','date') +
-        campo('hora','Hora de inicio','time') +
-      '</div>' +
-    '</div>' +
-
-    '<div class="card np">' +
       '<h2>'+I.pencil+'Firmas del docente y del representante</h2>' +
       '<div class="row" style="align-items:start">' +
         '<div><label>Firma del docente</label><div id="padDoc"></div>' +
@@ -1215,9 +1346,9 @@ function vistaAdmin(app){
       '<input type="file" id="importFile" accept="application/json,.json">' +
       '<hr style="border:0;border-top:1px solid var(--line);margin:22px 0 18px">' +
       '<h2 style="color:var(--bad);border-color:transparent">'+I.trash+'Zona de riesgo</h2>' +
-      '<p class="mut">Una vez exportado el reporte, puede borrar las materias, firmas y asistencias de este dispositivo. La contraseña de administrador se conserva.</p>' +
+      '<p class="mut">Limpia los datos temporales de la asistencia anterior en este dispositivo (lista local, firmas sin guardar y códigos temporales). Conserva su sesión de representante y sus materias. No cierra ni borra asistencias del servidor: si hay una asistencia abierta, ciérrela primero con el botón «Cerrar».</p>' +
       '<div class="row" style="margin-top:12px">' +
-        '<button class="d" id="wipe">'+I.trash+'Borrar registros locales</button>' +
+        '<button class="d" id="wipe">'+I.trash+'Eliminar datos locales</button>' +
       '</div>' +
     '</div>' +
 
@@ -1239,6 +1370,8 @@ function vistaAdmin(app){
       await fetch('/api/rep/logout',{method:'POST'});
     }catch(e){}
     sessionStorage.removeItem(SESSION_REP);
+    try{ sessionStorage.removeItem(SESSION_REP_ID); }catch(e){}
+    repIdActual=''; repNombre='';
     adminMode=false; location.hash='';
   };
 
@@ -1533,7 +1666,7 @@ function vistaAdmin(app){
     const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
     const lineas=['No.,Nombre,Identificación,Hora de registro'];
     S.estudiantes.forEach((f,i)=>lineas.push(
-      [i+1,q(f.nombre),q(f.ident),q(new Date(f.ts).toLocaleTimeString())].join(',')
+      [i+1,q(f.nombre),q(f.ident),q(new Date(f.ts).toLocaleTimeString('es-CO',{timeZone:'America/Bogota',hour12:false}))].join(',')
     ));
     descargar('asistencia_'+(S.cfg.codigo||'clase')+'_'+(S.cfg.fecha||hoy())+'.csv',
       new Blob(['\ufeff'+lineas.join('\n')],{type:'text/csv;charset=utf-8'}));
@@ -1547,29 +1680,87 @@ function vistaAdmin(app){
         const o=JSON.parse(r.result);
         if(!o||typeof o!=='object'||!Array.isArray(o.estudiantes)) throw new Error('formato');
         if(!(await uiConfirm({title:'Importar respaldo',message:'¿Reemplazar los datos actuales por el contenido del respaldo?'}))) return;
-        S=normalizar(o); await guardar(); render();
+        S=normalizar(o);
+        if(repIdActual) S.repOwner=repIdActual;
+        await guardar(); render();
         await uiAlert({kind:'success',title:'Respaldo importado',message:'Respaldo importado correctamente.'});
       }catch(err){ await uiAlert({kind:'error',title:'Respaldo no válido',message:'El archivo no es un respaldo válido.'}); }
     };
     r.readAsText(f); e.target.value='';
   };
 
+  /* Eliminar datos locales: limpia SOLO los datos temporales de la
+     asistencia anterior en este dispositivo (lista local, firmas
+     pendientes en el equipo y códigos temporales). Conserva la sesión
+     del representante (SESSION_REP), la clave de cifrado (KEY_STORE),
+     las materias y la configuración. Nunca llama a la API, nunca cierra
+     ni borra la asistencia remota y nunca toca PostgreSQL. Si hay una
+     asistencia abierta, se bloquea y se pide cerrarla primero con
+     «Cerrar». Con indicador de carga y protección anti-doble-clic. */
+  let wipeEnCurso=false;
   $('#wipe').onclick=async()=>{
-    if(!(await uiConfirm({kind:'danger',title:'Borrar todo',okText:'Sí, continuar',message:'Esto borrará DEFINITIVAMENTE todas las materias, firmas y asistencias de este dispositivo. ¿Continuar?'}))) return;
-    const t=await uiPrompt({title:'Confirmar borrado',message:'Escriba BORRAR (en mayúsculas) para confirmar:',okText:'Borrar todo',placeholder:'BORRAR'});
-    if(t!=='BORRAR') return;
-    detenerPollingApi();
-    [DATA_STORE,KEY_STORE].forEach(k=>localStorage.removeItem(k));
-    sessionStorage.removeItem(SESSION_REP);
-    sessionStorage.removeItem(SESSION_EST);
-    S=DEFAULTS(); await guardar();
-    await uiAlert({kind:'success',title:'Datos eliminados',message:'Todos los datos locales han sido eliminados.'});
-    adminMode=false; location.hash=''; render();
+    if(wipeEnCurso) return;
+    const btnWipe=$('#wipe');
+    /* No mezclar limpieza local con cierre remoto. */
+    if(S.sesion.abierta){
+      await uiAlert({kind:'warn',title:'Asistencia abierta',
+        message:'Hay una asistencia abierta en este dispositivo'+(S.sesion.clave?(' (código '+S.sesion.clave+')'):'')+'. La limpieza local no la cierra ni la borra del servidor. Ciérrela primero con el botón «Cerrar» y luego, si lo necesita, limpie los datos locales.'});
+      return;
+    }
+    const pendientes=S.estudiantes.length;
+    const hayFirmas=!!(S.firmaDoc||S.firmaRep);
+    const detalle='Se limpiarán: la lista local'+(pendientes?(' ('+pendientes+' registro(s))'):'')+', '+
+      'las firmas pendientes en este equipo'+(hayFirmas?' (hay firmas sin exportar)':'')+' y los códigos temporales de la asistencia anterior. '+
+      'Se conserva su sesión de representante, sus materias y su configuración. No se cierra ni se borra nada del servidor.';
+    if(!(await uiConfirm({kind:'danger',title:'Eliminar datos locales',okText:'Sí, limpiar',cancelText:'Cancelar',
+      message:(pendientes||hayFirmas?'La lista actual contiene datos. Exporte el reporte (PDF/CSV/JSON) antes de continuar si los necesita.\n\n':'')+detalle}))) return;
+    wipeEnCurso=true;
+    const txtOriginal=btnWipe?btnWipe.innerHTML:'';
+    if(btnWipe){ btnWipe.disabled=true; btnWipe.innerHTML=I.refresh+'Limpiando…'; }
+    try{
+      detenerPollingApi();
+      const claveAnterior=(S.sesion&&S.sesion.clave)||'';
+      /* Limpieza local dirigida: NO se toca KEY_STORE, LOCK_STORE ni
+         SESSION_REP (autenticación). Solo temporales de la asistencia. */
+      try{ sessionStorage.removeItem(SESSION_EST); }catch(e){}
+      try{ sessionStorage.removeItem(SESSION_API); }catch(e){}
+      try{ sessionStorage.removeItem('utch.docente'); }catch(e){}
+      try{
+        if(claveAnterior) sessionStorage.removeItem('utch.registro.'+claveAnterior);
+        const borrar=[];
+        for(let i=0;i<sessionStorage.length;i++){
+          const k=sessionStorage.key(i);
+          if(k&&k.indexOf('utch.registro.')===0) borrar.push(k);
+        }
+        /* Solo se retiran marcas de la asistencia anterior ya cerrada;
+           con sesión abierta se habría bloqueado arriba. */
+        borrar.forEach(k=>{ try{ sessionStorage.removeItem(k); }catch(e){} });
+      }catch(e){}
+      S.sesion={abierta:false,inicio:0,minutos:0,clave:'',sessionId:''};
+      S.estudiantes=[];
+      S.firmaDoc='';
+      S.firmaRep='';
+      repRegAbiertos=true;
+      redMensaje='';
+      try{ localStorage.removeItem(claveRespaldo(S.repOwner)); }catch(e){}
+      if(pads.doc){ try{ pads.doc.clear(); }catch(e){} }
+      if(pads.rep){ try{ pads.rep.clear(); }catch(e){} }
+      await guardar();
+      refrescarPanel();
+      await uiAlert({kind:'success',title:'Datos locales eliminados',
+        message:'Se limpiaron los datos temporales de la asistencia anterior. Su sesión sigue activa y puede iniciar una nueva asistencia con «Abrir registro». La asistencia del servidor no se modificó.'});
+    }finally{
+      wipeEnCurso=false;
+      if(btnWipe){ btnWipe.disabled=false; btnWipe.innerHTML=txtOriginal; }
+    }
   };
 
   refrescarPanel();
   arrancarTic();
   iniciarPollingApi();
+  /* Revalida la identidad contra el servidor: vincula el borrador propio,
+     expulsa sesiones inválidas y pinta el saludo con el nombre de la BD. */
+  confirmarIdentidadRep().catch(()=>{});
 }
 
 /* ----------------- Representante: lista desde API -----------------
@@ -1620,7 +1811,14 @@ function iniciarPollingApi(){
 
 function pintarEstadoReg(){
   const txt=$('#estadoReg'), btn=$('#bloquearReg');
-  if(txt) txt.textContent=!S.sesion.sessionId ? '' : (!S.sesion.abierta ? 'Asistencia cerrada.' : (repRegAbiertos?'Registros permitidos.':'Registros cerrados.'));
+  /* Aviso de lista llena: se deriva de los registros de la propia sesión
+     (S.estudiantes es el espejo local de los registros del servidor, que
+     solo el dueño puede consultar). Texto fijo, sin datos personales.
+     No depende de la petición del estudiante: el polling lo actualiza. */
+  const listaLlena=!!S.sesion.abierta&&S.estudiantes.length>=28;
+  if(txt) txt.textContent=!S.sesion.sessionId ? '' : (!S.sesion.abierta ? 'Asistencia cerrada.' :
+    (listaLlena ? 'Lista llena: se alcanzó el límite de 28 estudiantes. No se admitirán más registros en esta sesión.' :
+    (repRegAbiertos?'Registros permitidos.':'Registros cerrados.')));
   if(btn){
     btn.disabled=!S.sesion.abierta||!S.sesion.sessionId||!repRegAbiertos;
     btn.textContent=repRegAbiertos?'No permitir más registros':'Registros cerrados';
@@ -1976,6 +2174,10 @@ function loginAdmin(app){
         throw new Error('No se pudo confirmar la sesión.');
       }
       limpiarFallos();
+      try{ sessionStorage.setItem(SESSION_REP_ID,me.representative.id); }catch(e){}
+      repIdActual=clean(me.representative.id,80);
+      repNombre=clean(me.representative.name,120);
+      await adoptarBorrador(me.representative.id);
       sessionStorage.setItem(SESSION_REP,'1'); render();
     } catch(err) {
       const o=registrarFallo();
@@ -1999,16 +2201,25 @@ function loginAdmin(app){
 const PIE_INSTITUCIONAL='pie-utch.jpg';
 /* Alto útil de una hoja Legal con los márgenes de impresión (8.5in x 14in) */
 const ALTO_HOJA_PX=(14*25.4-12)*96/25.4*0.99;   /* con margen de seguridad */
-const FILA_MIN=12, FILA_MAX=42;                /* alto de fila: encoge, nunca desaparece */
-const ZOOM_MIN=0.70;                           /* reducción máxima, aún legible */
-/* La hoja oficial debe salir SIEMPRE en una sola página. Se busca el mayor
-   alto de fila que, junto con la parte fija (encabezado, datos, firmas y
-   pie), cabe en la Legal reducing lo mínimo. */
+const FILA_MAX=42;                               /* alto máximo de fila en impresión */
+const FILA_COMODA=38;                           /* altura usada cuando la planilla ocupa varias páginas */
+const FILAS_POR_PAGINA=20;                      /* filas de estudiantes por página impresa */
+/* Un solo bloque (hasta 20 filas): altura uniforme calculada para que la
+   tabla y el bloque final quepan juntos en una hoja, con mínimo 28px.
+   Varios bloques: altura cómoda fija; cada bloque abre su página vía CSS. */
 function ajustarHojaUnaPagina(){
   const h=$('#hoja');
   if(!h) return 1;
   const limite=ALTO_HOJA_PX;
   h.style.zoom='1';                              /* neutraliza el zoom de pantalla */
+  /* Planilla impresa paginada (varios tbody.filas): altura cómoda fija.
+     Cada bloque de 20 filas abre su propia página vía CSS; no se recalcula
+     para no romper la paginación. */
+  if($$('#hoja tbody.filas').length>1){
+    h.style.setProperty('--fila',FILA_COMODA+'px');
+    h.style.removeProperty('zoom');
+    return 1;
+  }
   const cuerpo=$('#hoja tbody.filas');
   const n=cuerpo?cuerpo.rows.length:0;
   const alto=()=>h.getBoundingClientRect().height;
@@ -2019,15 +2230,10 @@ function ajustarHojaUnaPagina(){
   if(alto()<=limite){ h.style.removeProperty('zoom'); return 1; }   /* cabe y queda fiel */
 
   const fijo=alto()-n*FILA_MAX;                  /* parte que no depende de las filas */
-  const caben=Math.floor((limite/ZOOM_MIN-fijo)/n);
-  fila(Math.max(FILA_MIN,Math.min(FILA_MAX,caben)));
-  let z=1;                                        /* ajuste final por si sobra borde */
-  for(let i=0;i<5 && alto()>limite;i++){
-    z=Math.max(.4,z*limite/alto());
-    h.style.zoom=String(z);
-  }
-  if(z>=1){ h.style.removeProperty('zoom'); return 1; }
-  return z;
+  const caben=Math.floor((limite-fijo)/n);
+  fila(Math.max(30,Math.min(FILA_MAX,caben)));       /* cierra todo en una hoja */
+  h.style.removeProperty('zoom');
+  return 1;
 }
 /* Las imágenes deben estar cargadas antes de medir: si el pie mide 0,
    la hoja se calcularía corta y se imprimiría en dos páginas. */
@@ -2038,7 +2244,8 @@ function esperarImagenes(){
     : new Promise(r=>{ im.onload=im.onerror=()=>r(); setTimeout(r,2500); })));
 }
 function prepararImpresion(){
-  pintarHoja();
+  const h=$('#hoja');
+  if(h) h.innerHTML=hojaHTMLImpresion();
   return esperarImagenes().then(ajustarHojaUnaPagina);
 }
 function precargarImagenes(){
@@ -2050,9 +2257,9 @@ function avisoHoja(){
   const el=$('#avisoHoja');
   if(!el) return;
   const n=S.estudiantes.length;
-  if(n>=36){
-    el.innerHTML=I.alert+'<span>Hay <b>'+n+'</b> asistencias. Para que todo quepa en <b>una sola hoja</b> ' +
-      'las filas se imprimen más estrechas. Si la legibilidad es prioridad, exporte además el CSV.</span>';
+  if(n>FILAS_POR_PAGINA){
+    el.innerHTML=I.alert+'<span>Hay <b>'+n+'</b> asistencias. La planilla ocupará más de una página ' +
+      '('+FILAS_POR_PAGINA+' filas por hoja) sin omitir registros. Si la legibilidad es prioridad, exporte además el CSV.</span>';
     el.className='aviso warn np';
   } else {
     el.innerHTML=I.check+'<span>Todo el registro cabe en <b>una sola hoja</b> tamaño Legal, ' +
@@ -2077,19 +2284,48 @@ function pintarHoja(){
 function hojaHTML(){
   const c=S.cfg;
   const logoSrc = LOGO_SRC;   /* 🔒 SIEMPRE logo.png */
-  const total=Math.max(12,Math.min(60,S.estudiantes.length+1));
+  const total=Math.max(12,S.estudiantes.length+1);
   const etiqueta=(t,v)=>'<td class="lbl">'+t+'</td><td>'+esc(v)+'</td>';
   let filas='';
   for(let i=0;i<total;i++){
-    const f=S.estudiantes[i];
-    const del=adminMode&&f?' <button class="del np" data-del="'+esc(f.id)+'" title="Eliminar registro">'+I.x+'</button>':'';
-    filas+='<tr>' +
-      '<td class="n">'+(i+1)+'.</td>' +
-      '<td>'+(f?esc(f.nombre)+del:'')+'</td>' +
-      '<td class="id">'+(f?esc(f.ident):'')+'</td>' +
-      '<td class="f">'+(f&&f.firma?'<img src="'+esc(f.firma)+'" alt="Firma">':'')+'</td>' +
-    '</tr>';
+    filas+=filaEstudianteHTML(i,S.estudiantes[i],true);
   }
+  return '' +
+  encabezadoPlanillaHTML(c,etiqueta) +
+  tablaEstudiantesHTML(filas,false) +
+  piePlanillaHTML();
+}
+
+function filaEstudianteHTML(i,f,conDel){
+  const del=(conDel&&adminMode&&f)?' <button class="del np" data-del="'+esc(f.id)+'" title="Eliminar registro">'+I.x+'</button>':'';
+  return '<tr>' +
+    '<td class="n">'+(i+1)+'.</td>' +
+    '<td>'+(f?esc(f.nombre)+del:'')+'</td>' +
+    '<td class="id">'+(f?esc(f.ident):'')+'</td>' +
+    '<td class="f">'+(f&&f.firma?'<img src="'+esc(f.firma)+'" alt="Firma">':'')+'</td>' +
+  '</tr>';
+}
+
+function theadEstudiantesHTML(){
+  return '<thead><tr>' +
+    '<th style="width:5%">No.</th>' +
+    '<th style="width:47%">NOMBRES Y APELLIDOS DEL ESTUDIANTE</th>' +
+    '<th style="width:22%">NÚMERO DE IDENTIFICACIÓN</th>' +
+    '<th style="width:26%">FIRMA</th>' +
+  '</tr></thead>';
+}
+
+function tablaEstudiantesHTML(filasHTML,salto){
+  return '<table'+(salto?' class="salto-pagina"':'')+' style="margin-top:4px">' +
+    theadEstudiantesHTML() +
+    '<tbody class="filas">' +
+    filasHTML +
+    '</tbody>' +
+  '</table>';
+}
+
+function encabezadoPlanillaHTML(c,etiqueta){
+  const logoSrc = LOGO_SRC;   /* 🔒 SIEMPRE logo.png */
   return '' +
   /* Encabezado institucional (idéntico al del documento Word) */
   '<table class="enc"><tr>' +
@@ -2111,21 +2347,11 @@ function hojaHTML(){
     '<tr>'+etiqueta('PERIODO ACADÉMICO',c.periodo)+etiqueta('CDS',c.cds)+etiqueta('FECHA',fmtFecha(c.fecha)+(c.hora?' · '+c.hora:''))+'</tr>' +
     '<tr><td class="lbl">NOMBRE Y APELLIDOS DEL DOCENTE</td><td colspan="5">'+esc(c.docente)+'</td></tr>' +
     '<tr><td class="lbl">TEMAS TRATADOS</td><td colspan="5" class="temas">'+esc(c.temas)+'</td></tr>' +
-  '</table>' +
+  '</table>';
+}
 
-  /* Listado de estudiantes */
-  '<table style="margin-top:4px">' +
-    '<tr>' +
-      '<th style="width:5%">No.</th>' +
-      '<th style="width:47%">NOMBRES Y APELLIDOS DEL ESTUDIANTE</th>' +
-      '<th style="width:22%">NÚMERO DE IDENTIFICACIÓN</th>' +
-      '<th style="width:26%">FIRMA</th>' +
-    '</tr>' +
-    '<tbody class="filas">' +
-  filas +
-  '</tbody>' +
-  '</table>' +
-
+function piePlanillaHTML(){
+  return '' +
   /* Firmas - con espacio mínimo garantizado después de la tabla */
   '<div class="pie" style="margin-top:96px;break-inside:avoid;page-break-inside:avoid;">' +
     '<div>'+(S.firmaDoc?'<img src="'+esc(S.firmaDoc)+'" alt="Firma del docente">':'')+'FIRMA DEL DOCENTE</div>' +
@@ -2146,6 +2372,29 @@ function hojaHTML(){
 
   /* Pie institucional del documento oficial */
   '<div class="pie-inst"><img src="'+esc(PIE_INSTITUCIONAL)+'" alt="Universidad Tecnológica del Chocó Diego Luis Córdoba, Nit. 891.680.009-4, Quibdó, Chocó (Colombia)"></div>';
+}
+
+/* Planilla de impresión: misma información y formato, con la tabla de
+   estudiantes paginada en bloques de 20 filas numeradas en continuo
+   (21, 22, …) y filas vacías hasta completar cada página. */
+function hojaHTMLImpresion(){
+  const c=S.cfg;
+  const etiqueta=(t,v)=>'<td class="lbl">'+t+'</td><td>'+esc(v)+'</td>';
+  const total=S.estudiantes.length;
+  const paginas=Math.max(1,Math.ceil(total/FILAS_POR_PAGINA));
+  let tablas='';
+  for(let p=0;p<paginas;p++){
+    let filas='';
+    for(let k=0;k<FILAS_POR_PAGINA;k++){
+      const idx=p*FILAS_POR_PAGINA+k;
+      filas+=filaEstudianteHTML(idx,S.estudiantes[idx],false);
+    }
+    tablas+=tablaEstudiantesHTML(filas,p>0);
+  }
+  return '' +
+  encabezadoPlanillaHTML(c,etiqueta) +
+  tablas +
+  piePlanillaHTML();
 }
 
 /* ------------- Modal propio (reemplaza alert/confirm/prompt) -------------
@@ -2247,7 +2496,7 @@ function uiPrompt(o){
   });
   window.addEventListener('storage',alCambiarAlmacenamiento);
   window.addEventListener('focus',()=>{ if(!saveTimer) sincronizar(); });
-  window.addEventListener('beforeprint',()=>{ if(adminMode){ pintarHoja(); ajustarHojaUnaPagina(); } });
+  window.addEventListener('beforeprint',()=>{ if(adminMode){ const h=$('#hoja'); if(h) h.innerHTML=hojaHTMLImpresion(); ajustarHojaUnaPagina(); } });
   window.addEventListener('afterprint',()=>{ const h=$('#hoja'); if(h){ h.style.removeProperty('zoom'); h.style.removeProperty('--fila'); } if(tituloPDF){ document.title=tituloPDF; tituloPDF=null; } });
   render();
   if(!(globalThis.crypto && crypto.subtle)){

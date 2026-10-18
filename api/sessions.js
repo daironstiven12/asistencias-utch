@@ -1,7 +1,8 @@
 "use strict";
 
 /* POST /api/sessions — crea una asistencia runtime.
-   Responde { ok, session: { id, studentCode, teacherCode, status } }. */
+   Solo representantes autenticados (cookie rep_session) sobre ofertas que
+   tengan asignadas. Responde { ok, session: { id, studentCode, teacherCode, status } }. */
 
 const crypto = require("crypto");
 const { query } = require("../lib/db");
@@ -38,22 +39,25 @@ module.exports = async function handler(req, res) {
     if (!offering.rows[0]) {
       return res.status(400).json({ ok: false, error: "OFFERING_NOT_AVAILABLE" });
     }
-    // Si hay representante autenticado, la oferta debe estarle asignada
-    // y la sesión queda bajo su propiedad. Sin cookie, flujo heredado.
+    // Solo el representante autenticado dueño potencial: la oferta debe
+    // estarle asignada y la sesión queda bajo su propiedad. Sin cookie
+    // válida se rechaza (antes existía un flujo heredado anónimo que
+    // permitía crear sesiones huérfanas sin dueño).
     let representativeId = null;
     try {
       const rep = await currentRep(req);
-      if (rep) {
-        const assigned = await query(
-          "SELECT 1 FROM attendance_representative_offerings" +
-            " WHERE representative_id = $1 AND course_offering_id = $2 LIMIT 1",
-          [rep.id, courseOfferingId]
-        );
-        if (!assigned.rows[0]) {
-          return res.status(403).json({ ok: false, error: "OFFERING_NOT_ASSIGNED" });
-        }
-        representativeId = rep.id;
+      if (!rep) {
+        return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
       }
+      const assigned = await query(
+        "SELECT 1 FROM attendance_representative_offerings" +
+          " WHERE representative_id = $1 AND course_offering_id = $2 LIMIT 1",
+        [rep.id, courseOfferingId]
+      );
+      if (!assigned.rows[0]) {
+        return res.status(403).json({ ok: false, error: "OFFERING_NOT_ASSIGNED" });
+      }
+      representativeId = rep.id;
     } catch (err) {
       console.error("sessions owner error:", err && err.message);
       return res.status(500).json({ ok: false, error: "INTERNAL_ERROR" });

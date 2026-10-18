@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Manual de usuario Versión 1.0 — Plataforma de Asistencia Académica">
+<meta name="manual-version" content="1.0">
+<title>Manual de usuario v1.0 — Plataforma de Asistencia Académica</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="cover">
+  <span class="kicker">Guía del usuario</span>
+  <h1>Plataforma de Asistencia Académica</h1>
+  <p class="sub">Manual de usuario</p>
+  <span class="ver">Versión 1.0</span>
+  <p class="desc desc-full">Este manual orienta a representantes, docentes, estudiantes y administradores en el manejo de las funciones disponibles actualmente en la plataforma.</p>
+  <p class="desc desc-short">Guía práctica para representantes, docentes, estudiantes y administradores.</p>
+  <p class="note">Primera versión del manual. El contenido podrá actualizarse conforme evolucionen las funcionalidades de la plataforma.</p>
+</header>
+
+<div class="topbar">
+  <button class="btn sec" id="menuBtn" aria-label="Abrir menú">☰</button>
+  <strong>Manual v1.0</strong>
+  <span class="sp"></span>
+  <button class="btn sec" id="homeBtnTop" aria-label="Ir al inicio">Inicio</button>
+</div>
+
+<div class="layout">
+  <aside class="sidebar" aria-label="Índice del manual">
+    <h2>Contenido · v1.0</h2>
+    <nav id="sideNav"></nav>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+  <main class="content">
+    <div class="searchbox no-print">
+      <input id="q" type="search" maxlength="80" placeholder="Buscar en el manual… (mínimo 2 letras)" aria-label="Buscar en el manual" autocomplete="off">
+      <ul id="searchResults"></ul>
+    </div>
+    <div class="progress no-print"><div id="readBar"></div></div>
+    <div id="chapters"></div>
+    <p style="text-align:center;margin-top:18px;" class="no-print">
+      <button class="btn sec" id="homeBtn">⌂ Volver al inicio</button>
+      <button class="btn" id="printBtn" style="margin-left:8px;">⎙ Imprimir / guardar PDF</button>
+    </p>
+  </main>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>

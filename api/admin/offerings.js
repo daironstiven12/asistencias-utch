@@ -8,6 +8,11 @@
           subjects → curriculum_subjects → course_offerings (+ teaching_assignments
           opcional). Reutiliza asignatura / curriculum_subject / grupo cuando ya
           existen en vez de fallar; si no hay grupo para la combinación, lo crea.
+   DELETE — elimina ofertas por IDs validando dependencias. Bloquea las que
+          tengan sesiones, registros, asignaciones de representantes o sesiones
+          heredadas. Las asignaciones de docente vinculadas se retiran en la
+          misma transacción (el docente se conserva); subjects y
+          curriculum_subjects nunca se tocan.
    Protegido con ADMIN_SECRET. Nunca expone secretos. */
 
 const { query, getPool } = require("../../lib/db");
@@ -185,13 +190,29 @@ async function handlePost(req, res) {
       }
     }
 
-    // 2) Vínculo plan-asignatura-nivel (curriculum_subjects): reutilizar o crear.
+    // 2) Vínculo plan-asignatura (curriculum_subjects): la restricción
+    // uq_curriculum_subject permite UNO por (plan, asignatura). Reutilizar
+    // el existente cuando coincide el nivel; si la asignatura ya está
+    // registrada en otro nivel, error controlado (cambiar de nivel
+    // requiere el procedimiento de corrección, nunca un duplicado).
     let cs = await client.query(
-      "SELECT id FROM curriculum_subjects WHERE curriculum_id = $1 AND subject_id = $2 AND academic_level_id = $3 LIMIT 1",
-      [curriculumId, subject.id, nivelId]
+      "SELECT id, academic_level_id FROM curriculum_subjects WHERE curriculum_id = $1 AND subject_id = $2 LIMIT 1",
+      [curriculumId, subject.id]
     );
     let curriculumSubjectId;
     if (cs.rows[0]) {
+      if (Number(cs.rows[0].academic_level_id) !== Number(nivelId)) {
+        const niv = await client.query(
+          "SELECT id, name FROM academic_levels WHERE id = ANY($1) ORDER BY id",
+          [[cs.rows[0].academic_level_id, nivelId]]
+        );
+        const nom = {};
+        for (const r of niv.rows) nom[r.id] = r.name;
+        await client.query("ROLLBACK");
+        return res.status(409).json({ ok: false, error: "LEVEL_MISMATCH",
+          nivelAsignatura: nom[cs.rows[0].academic_level_id] || null,
+          nivelSolicitado: nom[nivelId] || null });
+      }
       curriculumSubjectId = Number(cs.rows[0].id);
     } else {
       const ins = await client.query(
@@ -321,6 +342,116 @@ async function handlePost(req, res) {
     try {
       await client.query("ROLLBACK");
     } catch (e) {}
+    if (err && err.code === "23505") {
+      return res.status(409).json({ ok: false, error: "CONFLICT" });
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function handleDelete(req, res) {
+  const body = readBody(req);
+  const raw = body && body.ids;
+  if (!Array.isArray(raw) || !raw.length || raw.length > 50) {
+    return res.status(400).json({ ok: false, error: "INVALID_DATA" });
+  }
+  const ids = [];
+  for (const v of raw) {
+    const n = toInt(v);
+    if (n > 0 && !ids.includes(n)) ids.push(n);
+  }
+  if (!ids.length) {
+    return res.status(400).json({ ok: false, error: "INVALID_DATA" });
+  }
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    const deleted = [];
+    const rejected = [];
+    const validos = [];
+    for (const id of ids) {
+      const o = await client.query(
+        "SELECT co.id, s.code, s.name AS asignatura FROM course_offerings co" +
+          " JOIN curriculum_subjects cs ON cs.id = co.curriculum_subject_id" +
+          " JOIN subjects s ON s.id = cs.subject_id WHERE co.id = $1 LIMIT 1",
+        [id]
+      );
+      if (!o.rows[0]) {
+        rejected.push({ id, reason: "NOT_FOUND" });
+        continue;
+      }
+      const ses = await client.query(
+        "SELECT COUNT(*)::int n FROM attendance_runtime_sessions WHERE course_offering_id = $1",
+        [id]
+      );
+      const rec = await client.query(
+        "SELECT COUNT(*)::int n FROM attendance_runtime_records r" +
+          " JOIN attendance_runtime_sessions s ON s.id = r.session_id" +
+          " WHERE s.course_offering_id = $1",
+        [id]
+      );
+      const leg = await client.query(
+        "SELECT COUNT(*)::int n FROM attendance_sessions WHERE course_offering_id = $1",
+        [id]
+      );
+      if (ses.rows[0].n > 0 || rec.rows[0].n > 0 || leg.rows[0].n > 0) {
+        rejected.push({
+          id,
+          reason: "HAS_SESSIONS",
+          detail:
+            ses.rows[0].n + " sesion(es), " + rec.rows[0].n + " registro(s)",
+        });
+        continue;
+      }
+      const rep = await client.query(
+        "SELECT COUNT(*)::int n FROM attendance_representative_offerings WHERE course_offering_id = $1",
+        [id]
+      );
+      if (rep.rows[0].n > 0) {
+        rejected.push({
+          id,
+          reason: "HAS_ASSIGNMENTS",
+          detail: rep.rows[0].n + " representante(s) asignado(s)",
+        });
+        continue;
+      }
+      const doc = await client.query(
+        "SELECT COUNT(*)::int n FROM teaching_assignments WHERE course_offering_id = $1",
+        [id]
+      );
+      validos.push({
+        id,
+        codigo: o.rows[0].code,
+        asignatura: o.rows[0].asignatura,
+        teacherLinks: doc.rows[0].n,
+      });
+    }
+    let removedTeacherLinks = 0;
+    if (validos.length) {
+      const validIds = validos.map((v) => v.id);
+      const delT = await client.query(
+        "DELETE FROM teaching_assignments WHERE course_offering_id = ANY($1)",
+        [validIds]
+      );
+      removedTeacherLinks = delT.rowCount;
+      const delO = await client.query(
+        "DELETE FROM course_offerings WHERE id = ANY($1) RETURNING id",
+        [validIds]
+      );
+      if (delO.rowCount !== validIds.length) {
+        await client.query("ROLLBACK");
+        return res.status(500).json({ ok: false, error: "INTERNAL_ERROR" });
+      }
+      for (const v of validos) deleted.push({ id: v.id, codigo: v.codigo, asignatura: v.asignatura });
+    }
+    await client.query("COMMIT");
+    return res.status(200).json({ ok: true, deleted, rejected, removedTeacherLinks });
+  } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (e) {}
     throw err;
   } finally {
     client.release();
@@ -328,14 +459,15 @@ async function handlePost(req, res) {
 }
 
 module.exports = async function handler(req, res) {
-  if (req.method !== "GET" && req.method !== "POST") {
-    res.setHeader("Allow", "GET, POST");
+  if (req.method !== "GET" && req.method !== "POST" && req.method !== "DELETE") {
+    res.setHeader("Allow", "GET, POST, DELETE");
     return res.status(405).json({ ok: false, error: "METHOD_NOT_ALLOWED" });
   }
   if (!requireAdmin(req, res)) return;
   try {
     if (req.method === "GET") return handleGet(req, res);
-    return handlePost(req, res);
+    if (req.method === "POST") return handlePost(req, res);
+    return handleDelete(req, res);
   } catch (err) {
     console.error("admin offerings error:", err && err.message);
     return res.status(500).json({ ok: false, error: "INTERNAL_ERROR" });

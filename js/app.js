@@ -552,8 +552,17 @@ function descargar(nombre, blob){
 
 /* --------------------------- Header -------------------------- */
 function cabecera(sub){
+  /* Encabezado definitivo: [logo sistema] | [logo UTCH] | título,
+     en una sola fila horizontal alineada a la izquierda. Se conservan
+     las clases e identificadores que usa el CSS/JS existente
+     (.app-header .np, .logo, .titulos, h1) y se añaden .logo-utch y
+     .hdr-sep (solo estilo). El .np mantiene el encabezado fuera de
+     la impresión F-GCA-24. */
   return '<header class="app-header np">' +
-    '<img class="logo" src="'+LOGO_SRC+'" alt="Universidad Tecnológica del Chocó">' +
+    '<img class="logo" src="/img/logo-v2.png" alt="Sistema de Asistencia DSJB">' +
+    '<span class="hdr-sep" aria-hidden="true"></span>' +
+    '<img class="logo-utch" src="'+LOGO_SRC+'" alt="Universidad Tecnológica del Chocó">' +
+    '<span class="hdr-sep" aria-hidden="true"></span>' +
     '<div class="titulos">' +
       '<h1>Registro de Asistencia</h1>' +
     '</div>' +
@@ -900,7 +909,6 @@ function pintarZonaEstudiante(){
         const codeErr=data&&(data.code||data.error);
         if(codeErr==='DUPLICATE_IDENTIFICATION'){ mostrarErrorEstudiante('Esa identificación ya tiene una asistencia registrada en esta clase.'); return; }
         if(codeErr==='REGISTRATION_CLOSED'){ mostrarErrorEstudiante('Esta asistencia ya no permite nuevos registros.'); return; }
-        if(codeErr==='SESSION_FULL'){ mostrarErrorEstudiante('Lista llena: esta asistencia ya alcanzó el máximo de 28 estudiantes. No se pueden registrar más personas en esta sesión.'); return; }
         if(codeErr==='SESSION_NOT_AVAILABLE'){ S.sesion.abierta=false; mostrarErrorEstudiante('La asistencia ya no está disponible. Solicite un nuevo código al docente.'); pintarZonaEstudiante(); return; }
         mostrarErrorEstudiante('No se pudo registrar la asistencia. Inténtelo nuevamente.');
         crearRetryBtn(boton.parentNode,()=>{ const b=$('#enviar'); if(b) b.click(); });
@@ -1155,7 +1163,7 @@ async function cargarAsistenciasRep(){
         '<div><b>'+esc(s.asignatura||'Asistencia')+'</b><br>' +
         '<span class="mut">'+esc([s.codigo,s.docente].filter(Boolean).join(' · '))+' · '+esc(s.status)+
         (s.registrationOpen?'':' · registros cerrados')+' · '+esc(String(s.recordCount))+' est.'+
-        (s.recordCount>=28?' · lista llena':'')+'</span></div>' +
+        '</span></div>' +
         '<button class="s" data-sid="'+esc(s.sessionId)+'">Abrir</button>' +
       '</div>'
     ).join('');
@@ -1811,14 +1819,8 @@ function iniciarPollingApi(){
 
 function pintarEstadoReg(){
   const txt=$('#estadoReg'), btn=$('#bloquearReg');
-  /* Aviso de lista llena: se deriva de los registros de la propia sesión
-     (S.estudiantes es el espejo local de los registros del servidor, que
-     solo el dueño puede consultar). Texto fijo, sin datos personales.
-     No depende de la petición del estudiante: el polling lo actualiza. */
-  const listaLlena=!!S.sesion.abierta&&S.estudiantes.length>=28;
   if(txt) txt.textContent=!S.sesion.sessionId ? '' : (!S.sesion.abierta ? 'Asistencia cerrada.' :
-    (listaLlena ? 'Lista llena: se alcanzó el límite de 28 estudiantes. No se admitirán más registros en esta sesión.' :
-    (repRegAbiertos?'Registros permitidos.':'Registros cerrados.')));
+    (repRegAbiertos?'Registros permitidos.':'Registros cerrados.'));
   if(btn){
     btn.disabled=!S.sesion.abierta||!S.sesion.sessionId||!repRegAbiertos;
     btn.textContent=repRegAbiertos?'No permitir más registros':'Registros cerrados';

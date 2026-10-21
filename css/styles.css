@@ -76,13 +76,17 @@ a{color:var(--green-dark);text-decoration:none}
 a:hover{text-decoration:underline}
 
 .app-header{
-  display:flex;align-items:center;gap:22px;
+  display:flex;align-items:center;gap:16px;
   padding:0 0 28px;margin-bottom:28px;
   border-bottom:1px solid var(--line);
 }
-.app-header .logo{
+.app-header .logo,.app-header .logo-utch{
   height:82px;width:auto;flex-shrink:0;display:block;
   object-fit:contain;
+}
+.app-header .hdr-sep{
+  width:1px;height:56px;flex-shrink:0;
+  background:#CBD5E1;
 }
 .app-header .titulos{flex:1;min-width:0}
 .app-header h1{
@@ -96,15 +100,16 @@ a:hover{text-decoration:underline}
 @media (max-width:640px){
   main{padding:20px 16px 56px}
   .app-header{
-    flex-direction:column;
+    flex-wrap:wrap;
     align-items:center;
-    text-align:center;
+    text-align:left;
     gap:16px;
     padding-bottom:24px;
     margin-bottom:24px;
   }
-  .app-header .logo{height:64px;margin:0 auto}
-  .app-header .titulos{display:flex;flex-direction:column;align-items:center}
+  .app-header .logo,.app-header .logo-utch{height:64px}
+  .app-header .hdr-sep{height:44px}
+  .app-header .titulos{flex:100%;display:flex;flex-direction:column;align-items:flex-start}
   .app-header h1{font-size:1.25rem}
   .app-header p{font-size:.85rem}
   /* Secciones alineadas a la izquierda en móvil */
@@ -432,6 +437,212 @@ input[readonly]{background:var(--green-softer);color:var(--green-darker);font-we
   .site-footer{justify-content:center;text-align:center}
   .site-footer .fb{margin-left:0}
 }
+
+/* =============================================================
+   RENOVACIÓN VISUAL — PORTADA: SOLO COLORES Y LOGO
+   Acotada a la portada con :has(...). NO se toca la geometría:
+   tamaños, espacios, distribución y orden de los componentes
+   son los originales. Únicamente se recolorean fondos, bordes,
+   textos, iconos y sombras existentes, y el logo se sustituye
+   por img/logo-v2.png sin deformarlo.
+   ============================================================= */
+:root{
+  /* Paleta acordada */
+  --nv-marino:#0B2854;   /* azul marino */
+  --nv-azul:#0866C6;     /* azul principal */
+  --nv-azul2:#1685E8;    /* azul secundario */
+  --nv-celeste:#DDF3FF;  /* celeste claro */
+  --nv-turquesa:#75E0DC; /* turquesa suave */
+  --nv-verde:#16A085;    /* verde */
+  --nv-fondo:#F3F9FE;    /* fondo claro */
+  --nv-texto2:#52647A;   /* texto secundario */
+}
+
+/* Fondo de la portada: mismas paradas que el original, otros colores */
+body:has(#app > .portal-access){
+  background:
+    radial-gradient(900px 480px at 8% -10%, rgba(117,224,220,.26), transparent 60%),
+    radial-gradient(860px 460px at 96% -6%, rgba(22,133,232,.16), transparent 62%),
+    linear-gradient(180deg,#FFFFFF 0%,var(--nv-fondo) 260px,var(--nv-fondo) 100%);
+  background-attachment:fixed;
+}
+
+/* Encabezado: mismas medidas exteriores que siempre (1000×110.9 en
+   escritorio). El doble logo, los separadores y la fila horizontal
+   los aporta cabecera() con los estilos base; aquí solo quedan los
+   colores propios de la portada (borde y título). */
+#app:has(> .portal-access) .app-header{border-bottom-color:rgba(11,40,84,.10)}
+#app:has(> .portal-access) .app-header h1{color:var(--nv-marino)}
+#app:has(> .portal-access) button:focus-visible{outline-color:var(--nv-azul)}
+
+/* Contenedor "Seleccione su acceso": mismas medidas; solo colores */
+#app:has(> .portal-access) .portal-access{
+  background:#FFFFFF;
+  border-color:rgba(11,40,84,.08);
+  box-shadow:0 8px 24px rgba(11,40,84,.07);
+}
+#app:has(> .portal-access) .portal-access > h2{color:var(--nv-marino)}
+#app:has(> .portal-access) .portal-access > h2 svg{color:var(--nv-azul)}
+#app:has(> .portal-access) .portal-access > p.mut{color:var(--nv-texto2)}
+
+/* Acentos por tarjeta (solo variables de color) */
+#irEst{--a:#0866C6;--a-soft:#DDF3FF;--a-shadow:rgba(8,102,198,.16)}
+#irDoc{--a:#16A085;--a-soft:#E4F7F1;--a-shadow:rgba(22,160,133,.16)}
+#irAdm{--a:#0E9E98;--a-soft:#E0FAF8;--a-shadow:rgba(14,158,152,.16)}
+
+/* Tarjetas de acceso: mismas medidas; la flecha es absoluta y no
+   altera el tamaño de la tarjeta (solo se muestra en escritorio). */
+#app:has(> .portal-access) .portal-card{
+  position:relative;
+  background:#FFFFFF;
+  border-color:rgba(11,40,84,.08);
+  box-shadow:0 4px 14px rgba(11,40,84,.06);
+}
+#app:has(> .portal-access) .portal-card::after{
+  content:"›";position:absolute;top:12px;right:18px;
+  font-size:28px;line-height:1;color:rgba(11,40,84,.20);
+}
+@media (max-width:768px){
+  #app:has(> .portal-access) .portal-card::after{content:none}
+}
+#app:has(> .portal-access) .portal-card:hover:not(:disabled){
+  border-color:var(--a);
+  box-shadow:0 12px 32px var(--a-shadow);
+}
+#app:has(> .portal-access) .portal-icon{background:var(--a-soft);color:var(--a)}
+#app:has(> .portal-access) .portal-card:hover .portal-icon{background:var(--a);color:#fff}
+#app:has(> .portal-access) .portal-card h3{color:var(--nv-marino)}
+#app:has(> .portal-access) .portal-card p{color:var(--nv-texto2)}
+
+/* "Cómo funciona y privacidad": mismas medidas; solo colores */
+#app:has(> .portal-access) .privacy-card{
+  background:#FFFFFF;
+  border-color:rgba(11,40,84,.07);
+  box-shadow:0 6px 18px rgba(11,40,84,.06);
+}
+#app:has(> .portal-access) .privacy-card > h2{color:var(--nv-marino)}
+#app:has(> .portal-access) .privacy-card > h2 svg{color:var(--nv-azul)}
+#app:has(> .portal-access) .privacy-card .mut{color:var(--nv-texto2)}
+#app:has(> .portal-access) .privacy-toggle{color:var(--nv-azul)}
+
+/* Pie de página: SIN franja azul marina. Fondo transparente (se ve
+   el fondo de la página) y texto con contraste suficiente sobre
+   fondo claro. Mismas medidas, mismo orden y misma estructura:
+   únicamente cambian colores. */
+body:has(#app > .portal-access) .site-footer{
+  background:transparent;
+  border-top-color:rgba(11,40,84,.10);
+  color:var(--nv-texto2);
+}
+body:has(#app > .portal-access) .site-footer .dev{color:var(--nv-marino)}
+body:has(#app > .portal-access) .site-footer .fb{color:var(--nv-azul)}
+body:has(#app > .portal-access) .site-footer .fb:hover{color:var(--nv-marino)}
+
+/* =============================================================
+   RENOVACIÓN VISUAL — VISTA ESTUDIANTE (Fase 2)
+   Solo colores, acotados con :has(#zona): el id #zona existe
+   únicamente en la vista del estudiante, por lo que portada,
+   docente, representante y administración quedan intactas.
+   La geometría es la original: no se tocan tamaños, espacios,
+   ni distribución, ni el logo, ni la planilla F-GCA-24.
+   ============================================================= */
+body:has(#zona){
+  /* Paleta del Sistema de Asistencia aplicada a las variables
+     de color que usan los estilos compartidos de esta vista. */
+  --green:#0866C6;          /* azul principal: botones, focos, iconos */
+  --green-dark:#0757A8;     /* azul para hover y enlaces */
+  --green-darker:#0B2854;   /* marino sobre fondos celestes */
+  --green-soft:#DDF3FF;     /* celeste claro */
+  --green-softer:#F3F9FE;   /* fondo claro */
+  --green-line:#BFDCFA;     /* borde azulado suave */
+  --ink:#0B2854;            /* títulos: azul marino */
+  --ink-2:#274B7C;          /* texto oscuro secundario */
+  --mut:#52647A;            /* texto secundario */
+  --line:#DCE8F5;           /* bordes */
+  --line-2:#EDF4FC;         /* separadores */
+  --shadow-xs:0 1px 2px rgba(11,40,84,.05);
+  --shadow-sm:0 2px 6px rgba(11,40,84,.06);
+  /* Fondo de la pantalla (el original usa colores literales) */
+  background:linear-gradient(180deg,#FFFFFF 0%,#F3F9FE 260px,#F3F9FE 100%);
+  background-attachment:fixed;
+}
+
+/* Sombras y tonos literales que no usan variables */
+body:has(#zona) button:hover:not(:disabled){box-shadow:0 6px 16px rgba(8,102,198,.22)}
+body:has(#zona) button.s:hover:not(:disabled){box-shadow:0 4px 12px rgba(8,102,198,.10)}
+body:has(#zona) input::placeholder,body:has(#zona) textarea::placeholder{color:#97A7BC}
+body:has(#zona) input:hover,body:has(#zona) select:hover,body:has(#zona) textarea:hover{border-color:#9FC4EA}
+body:has(#zona) input:focus,body:has(#zona) select:focus,body:has(#zona) textarea:focus{box-shadow:0 0 0 4px rgba(8,102,198,.12)}
+
+/* Estados y detalles secundarios en turquesa */
+body:has(#zona) .badge.ok{background:#E0FAF8;color:#0F6B66}
+body:has(#zona) .aviso.ok{background:#E0FAF8;border-color:#A8E8E4;border-left-color:#16A085}
+body:has(#zona) .aviso.ok svg{color:#16A085}
+
+/* Pie de página de esta pantalla: mismo marino que la portada */
+body:has(#zona) .site-footer{background:#0B2854;border-top-color:#16335F;color:#DDF3FF}
+body:has(#zona) .site-footer .dev{color:#FFFFFF}
+body:has(#zona) .site-footer .fb{color:#DDF3FF}
+body:has(#zona) .site-footer .fb:hover{color:#FFFFFF}
+
+/* Encabezado de esta pantalla: el doble logo y los separadores los
+   aporta cabecera() + estilos base (igual en las cuatro vistas);
+   aquí solo se conserva el color de borde propio de la renovación. */
+body:has(#zona) .app-header{border-bottom-color:rgba(11,40,84,.10)}
+
+/* =============================================================
+   RENOVACIÓN VISUAL — DOCENTE Y REPRESENTANTE (Fase 3)
+   Solo colores y logo, con el mismo enfoque que la vista del
+   estudiante. Anclas exclusivas: #codigoDocente y #volverDoc2
+   (vista docente, en sus dos fases) y #repUser y #repSaludo
+   (panel del representante, login y panel). La ruta de
+   administración (/ruta-administrativa) no contiene ninguna de
+   estas anclas, así que queda intacta, igual que la portada,
+   el estudiante y la planilla F-GCA-24 (cuyos estilos de
+   impresión usan colores literales).
+   ============================================================= */
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo){
+  /* Paleta del Sistema de Asistencia */
+  --green:#0866C6;          /* azul principal: botones, focos, iconos */
+  --green-dark:#0757A8;     /* azul para hover y enlaces */
+  --green-darker:#0B2854;   /* marino sobre fondos celestes */
+  --green-soft:#DDF3FF;     /* celeste claro */
+  --green-softer:#F3F9FE;   /* fondo claro */
+  --green-line:#BFDCFA;     /* borde azulado suave */
+  --ink:#0B2854;            /* títulos: azul marino */
+  --ink-2:#274B7C;          /* texto oscuro secundario */
+  --mut:#52647A;            /* texto secundario */
+  --line:#DCE8F5;           /* bordes */
+  --line-2:#EDF4FC;         /* separadores */
+  --shadow-xs:0 1px 2px rgba(11,40,84,.05);
+  --shadow-sm:0 2px 6px rgba(11,40,84,.06);
+  /* Fondo de la pantalla (el original usa colores literales) */
+  background:linear-gradient(180deg,#FFFFFF 0%,#F3F9FE 260px,#F3F9FE 100%);
+  background-attachment:fixed;
+}
+
+/* Sombras y tonos literales que no usan variables */
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) button:hover:not(:disabled){box-shadow:0 6px 16px rgba(8,102,198,.22)}
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) button.s:hover:not(:disabled){box-shadow:0 4px 12px rgba(8,102,198,.10)}
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) input::placeholder,body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) textarea::placeholder{color:#97A7BC}
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) input:hover,body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) select:hover,body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) textarea:hover{border-color:#9FC4EA}
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) input:focus,body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) select:focus,body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) textarea:focus{box-shadow:0 0 0 4px rgba(8,102,198,.12)}
+
+/* Estados y detalles secundarios en turquesa */
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .badge.ok{background:#E0FAF8;color:#0F6B66}
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .aviso.ok{background:#E0FAF8;border-color:#A8E8E4;border-left-color:#16A085}
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .aviso.ok svg{color:#16A085}
+
+/* Pie de página de estas pantallas: mismo marino que la portada */
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .site-footer{background:#0B2854;border-top-color:#16335F;color:#DDF3FF}
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .site-footer .dev{color:#FFFFFF}
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .site-footer .fb{color:#DDF3FF}
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .site-footer .fb:hover{color:#FFFFFF}
+
+/* Encabezado de estas pantallas: el doble logo y los separadores los
+   aporta cabecera() + estilos base (igual en las cuatro vistas);
+   aquí solo se conserva el color de borde propio de la renovación. */
+body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .app-header{border-bottom-color:rgba(11,40,84,.10)}
 
 @media print{
   body::before,body::after{display:none!important}

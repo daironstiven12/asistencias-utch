@@ -12,8 +12,6 @@ const LIMITS = {
 };
 
 
-const MAX_STUDENTS_PER_SESSION = 28;
-
 function readBody(req) {
   let body = req.body;
   if (typeof body === "string") {
@@ -77,14 +75,6 @@ async function handlePost(req, res) {
     if (srow.registration_open === false) {
       try { await client.query("ROLLBACK"); } catch (e) {}
       return res.status(409).json({ ok: false, code: "REGISTRATION_CLOSED", message: "Los registros de estudiantes ya fueron cerrados." });
-    }
-    const cnt = await client.query(
-      "SELECT COUNT(*)::int AS n FROM attendance_runtime_records WHERE session_id = $1",
-      [sessionId.trim()]
-    );
-    if (cnt.rows[0].n >= MAX_STUDENTS_PER_SESSION) {
-      try { await client.query("ROLLBACK"); } catch (e) {}
-      return res.status(409).json({ ok: false, code: "SESSION_FULL", message: "Esta lista de asistencia ya alcanzó el máximo de 28 estudiantes." });
     }
     const id = crypto.randomUUID();
     let row;

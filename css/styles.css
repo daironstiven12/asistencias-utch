@@ -1,696 +1,676 @@
+/* =============================================================
+   SISTEMA DE ASISTENCIA DSJB · UTCH
+   Hoja base compartida (pantallas públicas, estudiante, docente,
+   representante y administración). Sistema de diseño único:
+   azul marino / azul / turquesa, superficies claras y tipografía Inter.
+   ============================================================= */
+
+/* ------------------------- 1. Tokens ------------------------- */
 :root{
   color-scheme:light;
-  --green:#00A651;
-  --green-dark:#008A43;
-  --green-darker:#006B33;
-  --green-soft:#E8F6EE;
-  --green-softer:#F2FBF6;
-  --green-line:#C8E6D4;
-  --bg:#FFFFFF;
-  --bg-soft:#F7FBF8;
-  --card:#FFFFFF;
-  --ink:#0F2A1B;
-  --ink-2:#2C4536;
-  --mut:#6B8074;
-  --line:#E3EDE7;
-  --line-2:#F0F6F2;
-  --bad:#C0392B;
-  --bad-soft:#FDECEA;
-  --warn:#946A00;
-  --warn-soft:#FCF6E4;
-  --radius:14px;
-  --radius-sm:10px;
-  --shadow-xs:0 1px 2px rgba(15,42,27,.04);
-  --shadow-sm:0 2px 6px rgba(15,42,27,.05);
-  /* Opacidad de las marcas de agua de Ingenio Digital (body::before/::after).
-     0.02 muy transparente · 0.03 transparente · 0.04 sutil · 0.05 más visible. */
-  --ingenio-watermark-opacity:.18;
-  --ingenio-watermark-opacity-secondary:.10;
+
+  /* Paleta institucional */
+  --navy-900:#071a3d;
+  --navy-800:#0a2350;
+  --navy-700:#0f3270;
+  --blue-600:#1d6fe0;
+  --teal-500:#12b5a0;
+  --teal-300:#3ee0c8;
+  --ink:#0e2147;
+  --muted:#5b6b8c;
+  --line:#e3eaf5;
+  --bg:#f2f6fc;
+  --surface:#ffffff;
+
+  /* Estados */
+  --ok:#0f9d6b;
+  --ok-bg:#e2f7ee;
+  --off:#7a869f;
+  --off-bg:#eceff5;
+  --danger:#c0392b;
+  --danger-bg:#fff8f7;
+  --danger-line:#f3d4cf;
+
+  /* Acentos y degradados */
+  --grad-primary:linear-gradient(135deg,#1d6fe0,#0f9fb8 70%,#12b5a0);
+  --grad-soft:linear-gradient(135deg,#e8f1ff,#e5faf6);
+  --nav-hover:rgba(29,111,224,.08);
+
+  /* Radios, sombras y transiciones */
+  --radius-card:20px;
+  --radius-control:12px;
+  --shadow-card:0 6px 22px rgba(15,50,112,.07);
+  --shadow-card-hover:0 14px 34px rgba(15,50,112,.12);
+  --shadow-btn:0 8px 18px rgba(29,111,224,.3);
+  --ring:0 0 0 3px rgba(29,111,224,.35);
+  --t-fast:150ms ease;
+  --t:180ms ease;
+
+  /* Layout responsivo: gaps y paddings fluidos */
+  --gap:clamp(10px,2vh,22px);
+  --header-gap:clamp(6px,1.5vh,14px);
+  --card-padding:clamp(14px,2.2vh,26px);
+  --card-padding-inline:clamp(16px,2.4vw,28px);
+  --footer-padding:clamp(14px,2.4vh,28px);
+
+  /* Alias heredados usados por las plantillas existentes */
+  --green:#1d6fe0;
+  --green-dark:#1559b0;
+  --green-darker:#0a2350;
+  --green-soft:#e8f1ff;
+  --green-softer:#f4f8ff;
+  --green-line:#d7e4f7;
+  --card:var(--surface);
+  --bg-soft:#f7f9fd;
+  --ink-2:#274b7c;
+  --mut:var(--muted);
+  --line-2:#eef4fb;
+  --bad:var(--danger);
+  --bad-soft:var(--danger-bg);
+  --warn:#946a00;
+  --warn-soft:#fcf6e4;
+  --radius:var(--radius-card);
+  --radius-sm:var(--radius-control);
+  --shadow-xs:0 1px 2px rgba(15,50,112,.04);
+  --shadow-sm:0 2px 8px rgba(15,50,112,.06);
+
+  /* Marca de agua Ingenio Digital (imagen existente, muy tenue) */
+  --ingenio-watermark-opacity:.06;
+  --ingenio-watermark-opacity-secondary:.04;
 }
+
+/* ----------------------- 2. Base global ---------------------- */
 *,*::before,*::after{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;overflow-x:hidden}
 body{
   margin:0;
-  background:linear-gradient(180deg,#FFFFFF 0%,#F7FBF8 260px,#F7FBF8 100%);
-  background-attachment:fixed;
-  color:var(--ink);
-  font:15px/1.55 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  min-height:100vh;
+  min-height:100dvh;
+  overflow-x:hidden;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
-  min-height:100vh;
+  color:var(--ink);
+  background:#f4f8fd;
+  font:15px/1.58 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
 }
-main{max-width:1040px;margin:0 auto;padding:28px 20px 72px;position:relative;z-index:1}
-.site-footer{position:relative;z-index:1}
-/* Marcas de agua de Ingenio Digital (ingenio.jpg como imagen, sin recrear).
-   Muy sutiles, detrás del contenido, sin bloquear clics.
-   El fondo blanco del JPG se funde con multiply para no mostrar rectángulo. */
-body::before,body::after{
+main{
+  width:100%;max-width:1100px;margin:0 auto;
+  padding:calc(var(--header-gap) * 2) var(--card-padding-inline) calc(var(--footer-padding) * 2);
+  display:grid;align-content:center;gap:var(--gap);
+  position:relative;z-index:1;
+}
+[hidden]{display:none!important}
+::selection{background:rgba(29,111,224,.18)}
+
+/* Fondo decorativo: burbujas suaves azul claro en las esquinas, siempre
+   detrás del contenido. La marca de agua de Ingenio Digital queda casi
+   imperceptible y tampoco interfiere con el pie de página. */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(circle at 5% 3%, rgba(29,111,224,.20) 0 88px, rgba(29,111,224,.08) 118px, transparent 172px),
+    radial-gradient(circle at 96% 2%, rgba(18,181,160,.18) 0 64px, rgba(18,181,160,.07) 96px, transparent 150px),
+    radial-gradient(circle at 100% 48%, rgba(29,111,224,.11) 0 76px, transparent 150px),
+    radial-gradient(circle at 0% 58%, rgba(62,224,200,.12) 0 68px, transparent 142px),
+    radial-gradient(circle at 10% 100%, rgba(29,111,224,.10) 0 96px, transparent 188px),
+    radial-gradient(circle at 90% 100%, rgba(18,181,160,.10) 0 84px, transparent 168px);
+  opacity:.55;
+}
+body::after{
   content:"";position:fixed;z-index:0;pointer-events:none;
+  right:18px;bottom:18px;width:230px;height:230px;
   background:url('/ingenio.jpg') no-repeat center/contain;
-  mix-blend-mode:multiply;
+  mix-blend-mode:multiply;opacity:.035;
 }
-body::before{ /* secundaria: superior izquierda, menor presencia */
-  left:20px;top:20px;width:110px;height:110px;opacity:var(--ingenio-watermark-opacity-secondary);
-}
-body::after{ /* principal: inferior derecha, firma visual */
-  right:24px;bottom:24px;width:340px;height:340px;opacity:var(--ingenio-watermark-opacity);
-}
-@media (max-width:640px){
-  :root{
-    /* Opacidad de las marcas de agua SOLO en móvil. */
-    --ingenio-watermark-opacity:.18;
-    --ingenio-watermark-opacity-secondary:.10;
-  }
-  body::before{left:12px;top:12px;width:64px;height:64px}
-  body::after{right:8px;bottom:8px;width:150px;height:150px}
-}
-h1,h2,h3{margin:0;line-height:1.2;letter-spacing:-.015em}
-h1{font-size:1.55rem;font-weight:800;color:var(--ink)}
-h2{font-size:1.05rem;font-weight:700;color:var(--ink)}
-h3{font-size:.98rem;font-weight:700;color:var(--ink)}
+
+h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.02em;color:var(--ink)}
+h1{font-size:28px;font-weight:700}
+h2{font-size:17px;font-weight:700}
+h3{font-size:15px;font-weight:700}
 p{margin:0 0 12px}
 p:last-child{margin-bottom:0}
-a{color:var(--green-dark);text-decoration:none}
-a:hover{text-decoration:underline}
+a{color:var(--blue-600);text-decoration:none;transition:color var(--t-fast)}
+a:hover{color:var(--navy-700);text-decoration:underline}
+:focus-visible{outline:0;box-shadow:var(--ring)}
+img{max-width:100%}
 
+.mut{color:var(--muted);font-size:14px}
+.grad-text{
+  background:linear-gradient(120deg,var(--blue-600),var(--teal-500));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+
+/* Fondo decorativo: burbujas suaves azul claro en las esquinas, siempre
+   detrás del contenido. La marca de agua de Ingenio Digital queda casi
+   imperceptible y tampoco interfiere con el pie de página. */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(circle at 5% 3%, rgba(29,111,224,.20) 0 88px, rgba(29,111,224,.08) 118px, transparent 172px),
+    radial-gradient(circle at 96% 2%, rgba(18,181,160,.18) 0 64px, rgba(18,181,160,.07) 96px, transparent 150px),
+    radial-gradient(circle at 100% 48%, rgba(29,111,224,.11) 0 76px, transparent 150px),
+    radial-gradient(circle at 0% 58%, rgba(62,224,200,.12) 0 68px, transparent 142px),
+    radial-gradient(circle at 10% 100%, rgba(29,111,224,.10) 0 96px, transparent 188px),
+    radial-gradient(circle at 90% 100%, rgba(18,181,160,.10) 0 84px, transparent 168px);
+  opacity:.62;
+}
+body::after{
+  content:"";position:fixed;z-index:0;pointer-events:none;
+  right:18px;bottom:18px;width:230px;height:230px;
+  background:url('/ingenio.jpg') no-repeat center/contain;
+  mix-blend-mode:multiply;opacity:.035;
+}
+
+h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.02em;color:var(--ink)}
+h1{font-size:28px;font-weight:700}
+h2{font-size:17px;font-weight:700}
+h3{font-size:15px;font-weight:700}
+p{margin:0 0 12px}
+p:last-child{margin-bottom:0}
+a{color:var(--blue-600);text-decoration:none;transition:color var(--t-fast)}
+a:hover{color:var(--navy-700);text-decoration:underline}
+:focus-visible{outline:0;box-shadow:var(--ring)}
+img{max-width:100%}
+
+.mut{color:var(--muted);font-size:14px}
+.grad-text{
+  background:linear-gradient(120deg,var(--blue-600),var(--teal-500));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+
+/* ------------------------- 3. Header ------------------------- */
 .app-header{
-  display:flex;align-items:center;gap:16px;
-  padding:0 0 28px;margin-bottom:28px;
-  border-bottom:1px solid var(--line);
+  display:block;width:100%;
+  padding:calc(var(--header-gap) * 2) 0 var(--header-gap);
+  margin-bottom:calc(var(--gap) * 1.5);
+  border-bottom:0;text-align:center;
 }
-.app-header .logo,.app-header .logo-utch{
-  height:82px;width:auto;flex-shrink:0;display:block;
-  object-fit:contain;
-}
-.app-header .hdr-sep{
-  width:1px;height:56px;flex-shrink:0;
-  background:#CBD5E1;
-}
-.app-header .titulos{flex:1;min-width:0}
+.app-header .titulos{width:100%;text-align:center}
 .app-header h1{
-  font-size:1.5rem;font-weight:800;color:var(--ink);
-  letter-spacing:-.02em;line-height:1.15;
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  font-size:clamp(28px,4.2vh+10px,44px);font-weight:800;letter-spacing:-.02em;line-height:1.12;
+  color:var(--navy-800);margin:0;
 }
+.app-header .hdr-word{display:inline-block;white-space:nowrap}
+.app-header .hdr-line{
+  display:block;height:2px;width:clamp(48px,5vh,70px);flex:0 0 auto;border-radius:2px;
+}
+.app-header .hdr-line:first-child{background:linear-gradient(to right,transparent,rgba(29,111,224,.55))}
+.app-header .hdr-line:last-child{background:linear-gradient(to left,transparent,rgba(18,181,160,.55))}
 .app-header p{
-  margin:4px 0 0;color:var(--mut);font-size:.88rem;
-  font-weight:500;line-height:1.35;
-}
-@media (max-width:640px){
-  main{padding:20px 16px 56px}
-  .app-header{
-    flex-wrap:wrap;
-    align-items:center;
-    text-align:left;
-    gap:16px;
-    padding-bottom:24px;
-    margin-bottom:24px;
-  }
-  .app-header .logo,.app-header .logo-utch{height:64px}
-  .app-header .hdr-sep{height:44px}
-  .app-header .titulos{flex:100%;display:flex;flex-direction:column;align-items:flex-start}
-  .app-header h1{font-size:1.25rem}
-  .app-header p{font-size:.85rem}
-  /* Secciones alineadas a la izquierda en móvil */
-  .card{text-align:left}
-  .card h2{text-align:left}
-  .card p{text-align:left}
-  .aviso{text-align:left}
-  .aviso span{text-align:left}
+  margin:6px 0 0;color:#5b6b8c;font-size:clamp(14px,1.8vh+6px,17px);
+  font-weight:400;line-height:1.5;
 }
 
+/* ------------------------- 4. Cards -------------------------- */
 .card{
-  background:var(--card);
+  background:var(--surface);
   border:1px solid var(--line);
-  border-radius:var(--radius);
+  border-radius:var(--radius-card);
   padding:24px;
-  margin-bottom:18px;
-  box-shadow:var(--shadow-xs);
+  margin-bottom:20px;
+  box-shadow:var(--shadow-card);
 }
-.card>h2{
+.card>h2,.card h2.card-title{
   display:flex;align-items:center;gap:10px;
-  margin:0 0 16px;padding-bottom:12px;
-  font-size:1.02rem;font-weight:700;color:var(--ink);
+  margin:0 0 16px;padding-bottom:14px;
+  font-size:16px;font-weight:700;color:var(--navy-800);
   border-bottom:1px solid var(--line-2);
 }
-.card>h2 svg{width:18px;height:18px;color:var(--green);flex-shrink:0}
+.card>h2 svg,.card h2.card-title svg{width:19px;height:19px;color:var(--blue-600);flex-shrink:0}
 
-button{
+/* ------------------------ 5. Botones ------------------------- */
+button,.btn{
   font:inherit;cursor:pointer;
-  border:1.5px solid var(--green);
-  background:var(--green);color:#fff;
-  font-weight:600;font-size:.94rem;
-  padding:11px 20px;border-radius:var(--radius-sm);
+  border:0;background:var(--grad-primary);color:#fff;
+  font-weight:600;font-size:14px;
+  min-height:44px;padding:0 20px;border-radius:var(--radius-control);
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  transition:all .16s ease;
-  line-height:1.15;white-space:nowrap;
-  letter-spacing:-.005em;
+  transition:transform var(--t-fast),box-shadow var(--t-fast),filter var(--t-fast),background var(--t-fast),border-color var(--t-fast),color var(--t-fast);
+  line-height:1.15;white-space:nowrap;letter-spacing:-.005em;
+  box-shadow:var(--shadow-btn);
 }
-button svg{width:17px;height:17px;flex-shrink:0}
-button:hover:not(:disabled){
-  background:var(--green-dark);border-color:var(--green-dark);
+button svg,.btn svg{width:17px;height:17px;flex-shrink:0}
+button:hover:not(:disabled),.btn:hover:not(:disabled){
+  filter:brightness(1.05);
   transform:translateY(-1px);
-  box-shadow:0 6px 16px rgba(0,166,81,.22);
+  box-shadow:0 11px 24px rgba(29,111,224,.34);
 }
-button:active:not(:disabled){transform:translateY(0);box-shadow:none}
-button:focus-visible{outline:2px solid var(--green);outline-offset:2px}
-button:disabled{opacity:.4;cursor:not-allowed}
-button.s{background:#fff;color:var(--ink-2);border-color:var(--line)}
-button.s:hover:not(:disabled){
-  background:var(--green-softer);border-color:var(--green);
-  color:var(--green-dark);box-shadow:0 4px 12px rgba(0,166,81,.10);
-}
-button.d{background:#fff;color:var(--bad);border-color:var(--line)}
-button.d:hover:not(:disabled){background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
-button.back-button{padding:10px 16px;font-weight:600}
+button:active:not(:disabled),.btn:active:not(:disabled){transform:translateY(0);box-shadow:var(--shadow-btn)}
+button:focus-visible,.btn:focus-visible{outline:0;box-shadow:var(--ring)}
+button:disabled,.btn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none;transform:none;filter:none}
 
+button.s,.btn-secondary{
+  background:#fff;color:var(--ink-2);
+  border:1px solid var(--line);box-shadow:none;
+}
+button.s:hover:not(:disabled),.btn-secondary:hover:not(:disabled){
+  background:#f7faff;border-color:var(--blue-600);color:var(--blue-600);
+  box-shadow:0 4px 12px rgba(29,111,224,.1);
+}
+button.d,.btn-danger-soft{
+  background:var(--danger-bg);color:var(--danger);
+  border:1px solid var(--danger-line);box-shadow:none;
+}
+button.d:hover:not(:disabled),.btn-danger-soft:hover:not(:disabled){
+  background:#fdeceb;border-color:#e3aea6;color:#a52f22;
+  box-shadow:0 4px 12px rgba(192,57,43,.12);
+}
+.btn-ok-soft{
+  background:var(--ok-bg);color:var(--ok);
+  border:1px solid #c6ecd9;box-shadow:none;
+}
+.btn-ok-soft:hover:not(:disabled){background:#d6f3e6;border-color:#9edcbf;color:#0b7a53;box-shadow:none}
+.btn-danger-solid{
+  background:linear-gradient(135deg,#c0392b,#a52f22);color:#fff;
+  border:1px solid #a52f22;box-shadow:0 8px 18px rgba(192,57,43,.25);
+}
+.btn-danger-solid:hover:not(:disabled){filter:brightness(1.04);box-shadow:0 10px 22px rgba(192,57,43,.32)}
+button.back-button{padding:0 16px;font-weight:600;background:#fff;color:var(--ink-2);border:1px solid var(--line);box-shadow:none}
+button.back-button:hover:not(:disabled){border-color:var(--blue-600);color:var(--blue-600);background:#f7faff;box-shadow:none}
+
+/* ------------------------ 6. Formularios --------------------- */
 label{
-  display:block;font-size:.83rem;color:var(--mut);
-  margin:16px 0 6px;font-weight:600;letter-spacing:.01em;
+  display:block;font-size:11px;color:var(--muted);
+  margin:16px 0 7px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
 }
 label:first-child{margin-top:0}
 input,select,textarea{
-  width:100%;font:inherit;color:var(--ink);background:#fff;
-  border:1.5px solid var(--line);border-radius:var(--radius-sm);
-  padding:11px 14px;transition:border-color .15s, box-shadow .15s;
+  width:100%;font:inherit;font-size:14px;color:var(--ink);
+  background-color:#f7f9fd;
+  border:1px solid #d5deee;border-radius:var(--radius-control);
+  height:44px;min-height:44px;padding:10px 14px;
+  transition:border-color var(--t-fast),box-shadow var(--t-fast),background var(--t-fast);
 }
-input::placeholder,textarea::placeholder{color:#A8B8AE}
-input:hover,select:hover,textarea:hover{border-color:#CFE0D5}
+input::placeholder,textarea::placeholder{color:#94a3bd}
+input:hover,select:hover,textarea:hover{border-color:#c2d1e8;background-color:#f9fbff}
 input:focus,select:focus,textarea:focus{
-  outline:none;border-color:var(--green);
-  box-shadow:0 0 0 4px rgba(0,166,81,.12);
+  outline:none;border-color:var(--blue-600);background-color:#fff;
+  box-shadow:0 0 0 3px rgba(29,111,224,.18);
 }
-textarea{resize:vertical;min-height:70px;font-family:inherit}
-input[readonly]{background:var(--green-softer);color:var(--green-darker);font-weight:600;letter-spacing:.06em}
+textarea{resize:vertical;height:auto;min-height:76px;font-family:inherit;line-height:1.5}
+input[readonly]{background:var(--green-soft);color:var(--navy-700);font-weight:600;letter-spacing:.06em}
+input[type="search"]{
+  padding-left:42px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235b6b8c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:14px center;
+}
+select{
+  appearance:none;-webkit-appearance:none;
+  padding-right:40px;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235b6b8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;
+}
+input[type="date"],input[type="time"]{font-variant-numeric:tabular-nums}
+input[type="checkbox"],input[type="radio"]{min-height:0;width:17px;height:17px;accent-color:var(--blue-600)}
+input[type="file"]{padding:9px 12px;background:#f7f9fd}
 
 .row{display:flex;gap:14px;flex-wrap:wrap;align-items:end}
 .row>*{flex:1 1 220px;min-width:0}
 .row>button{flex:0 0 auto}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 16px}
+.row.login-row{flex-wrap:nowrap}
+.row.login-row>input{flex:1 1 0;min-width:0}
+.row.login-row>button{flex:0 0 auto;min-width:96px;padding:0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 18px}
 .grid .w{grid-column:1/-1}
 
+/* -------------------- 7. Badges y avisos --------------------- */
 .badge{
   display:inline-flex;align-items:center;gap:8px;
-  padding:8px 16px;border-radius:99px;
-  font-size:.85rem;font-weight:700;line-height:1;
-  background:var(--line-2);color:var(--mut);
+  padding:7px 14px;border-radius:999px;
+  font-size:12px;font-weight:700;line-height:1;letter-spacing:.03em;
+  background:var(--off-bg);color:var(--off);
 }
-.badge svg{width:15px;height:15px}
-.badge.ok{background:var(--green-soft);color:var(--green-darker)}
-.badge.no{background:var(--bad-soft);color:var(--bad)}
+.badge svg{width:14px;height:14px}
+.badge.ok{background:var(--ok-bg);color:var(--ok)}
+.badge.no{background:var(--off-bg);color:var(--off)}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.badge:has(svg)::before{display:none}
 
 .aviso{
   background:var(--green-softer);
   border:1px solid var(--green-line);
-  border-left:4px solid var(--green);
-  border-radius:var(--radius-sm);
-  padding:14px 16px;font-size:.88rem;color:var(--ink-2);
+  border-left:4px solid var(--blue-600);
+  border-radius:var(--radius-control);
+  padding:14px 16px;font-size:14px;color:var(--ink-2);
   margin:16px 0;display:flex;gap:12px;align-items:flex-start;
-  line-height:1.5;
+  line-height:1.55;
 }
-.aviso svg{width:19px;height:19px;color:var(--green);flex-shrink:0;margin-top:1px}
-.aviso.ok{background:var(--green-soft);border-left-color:var(--green-dark)}
-.aviso.ok svg{color:var(--green-darker)}
-.aviso.warn{background:var(--warn-soft);border-color:#F0E4B8;border-left-color:var(--warn)}
+.aviso svg{width:19px;height:19px;color:var(--blue-600);flex-shrink:0;margin-top:1px}
+.aviso.ok{background:var(--ok-bg);border-color:#c6ecd9;border-left-color:var(--ok)}
+.aviso.ok svg{color:var(--ok)}
+.aviso.warn{background:var(--warn-soft);border-color:#efe2b5;border-left-color:var(--warn)}
 .aviso.warn svg{color:var(--warn)}
-.aviso.err{background:var(--bad-soft);border-color:#F2C6C0;border-left-color:var(--bad)}
-.aviso.err svg{color:var(--bad)}
+.aviso.err{background:var(--danger-bg);border-color:var(--danger-line);border-left-color:var(--danger)}
+.aviso.err svg{color:var(--danger)}
 .aviso b{color:var(--ink)}
-.mut{color:var(--mut);font-size:.89rem}
 
-.portal-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px}
-@media (max-width:600px){.portal-grid{grid-template-columns:1fr}}
-@media (max-width:768px){
-  .portal-grid[style*="1fr 1fr 1fr"]{
-    grid-template-columns:1fr !important;
-    gap:10px;
-    width:100%;
-    box-sizing:border-box;
-  }
-  /* Tarjeta horizontal: icono a la izquierda, texto a la derecha.
-     El HTML ya trae .portal-icon y .portal-text como columnas.
-     Se usa button.portal-card para superar la regla base en cascada. */
-  button.portal-card{
-    display:grid;
-    grid-template-columns:48px minmax(0,1fr);
-    column-gap:12px;
-    align-items:center;
-    padding:14px 16px;
-    min-height:84px;
-    text-align:left;
-    width:100%;
-    max-width:100%;
-    box-sizing:border-box;
-    min-width:0;
-  }
-  button.portal-card .portal-icon{
-    grid-column:1;
-    grid-row:1;
-    align-self:center;
-    width:48px;
-    height:48px;
-    border-radius:14px;
-    flex-shrink:0;
-  }
-  button.portal-card .portal-icon svg{width:24px;height:24px}
-  button.portal-card .portal-text{
-    grid-column:2;
-    grid-row:1;
-    display:flex;
-    flex-direction:column;
-    gap:2px;
-    justify-content:center;
-    min-width:0;
-    white-space:normal;
-  }
-  button.portal-card h3{
-    font-size:1.2rem;
-    margin:0;
-    text-align:left;
-    overflow-wrap:break-word;
-    word-wrap:break-word;
-  }
-  button.portal-card p{
-    font-size:.95rem;
-    margin:0;
-    line-height:1.4;
-    text-align:left;
-    white-space:normal;
-    overflow-wrap:break-word;
-    word-wrap:break-word;
-    min-width:0;
-  }
+/* ------------------- 8. Portal de acceso --------------------- */
+#app:has(> .portal-access) main{max-width:1100px}
+.portal-access{
+  position:relative;overflow:hidden;
+  background:rgba(255,255,255,.80);
+  border:1px solid rgba(227,234,245,.95);
+  border-radius:22px;
+  padding:var(--card-padding) var(--card-padding-inline);
+  margin-bottom:calc(var(--gap) * 1.5);
+  box-shadow:0 8px 30px rgba(15,50,112,.07);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
 }
-/* Privacidad compacta en móvil: resumen visible + "Ver más información".
-   En escritorio se muestra todo como siempre y el botón queda oculto. */
-.privacy-toggle{display:none}
-@media (max-width:640px){
-  .privacy-card .privacy-extra{display:none}
-  .privacy-card.open .privacy-extra{display:block}
-  .privacy-toggle{
-    display:inline-flex;align-items:center;gap:6px;
-    background:none;border:0;padding:0;
-    min-height:44px;min-width:44px;
-    color:var(--green-dark);font:inherit;font-weight:700;font-size:.9rem;
-    cursor:pointer;white-space:nowrap;
-  }
-  .privacy-toggle:hover{text-decoration:underline}
-  .privacy-toggle:focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:6px}
+/* Burbujas movidas al contenedor fixed de fondo (body::before), sin recorte. */
+.portal-access>*{position:relative;z-index:1}
+.portal-access>h2{
+  display:flex;align-items:center;gap:10px;
+  font-size:clamp(20px,2.5vh+8px,22px);font-weight:700;color:#0a2350;margin:0 0 4px;
 }
+.portal-sub{display:block;color:var(--muted);font-size:14px;line-height:1.4;margin:0 0 calc(var(--gap) * 0.8)}
+.portal-access>h2 svg{color:var(--blue-600);width:22px;height:22px;flex-shrink:0}
+.portal-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:calc(var(--gap) * 0.8)}
+
 .portal-card{
-  background:#fff;border:1.5px solid var(--line);
-  border-radius:var(--radius);padding:28px 24px;
-  text-align:left;display:flex;flex-direction:column;gap:14px;
-  cursor:pointer;transition:all .2s ease;color:var(--ink);
-  font-weight:400;box-shadow:var(--shadow-xs);font:inherit;
-  align-items:flex-start;
+  position:relative;overflow:hidden;
+  background:rgba(255,255,255,.92);border:1px solid var(--line);
+  border-radius:20px;padding:clamp(16px,2vh,22px) clamp(18px,2.2vw,24px);
+  text-align:left;display:flex;flex-direction:column;gap:12px;
+  align-items:flex-start;cursor:pointer;
+  color:var(--ink);font:inherit;font-weight:400;white-space:normal;
+  min-height:clamp(120px,17vh,170px);box-shadow:0 8px 30px rgba(15,50,112,.07);
+  transition:transform var(--t),box-shadow var(--t),border-color var(--t),background var(--t);
 }
-.portal-card:hover:not(:disabled){
-  border-color:var(--green);transform:translateY(-3px);
-  box-shadow:0 12px 32px rgba(0,166,81,.15);background:#fff;
+.portal-card:hover:not(:disabled),.portal-card:focus-visible{
+  transform:translateY(-4px);border-color:var(--accent,var(--blue-600));
+  box-shadow:0 16px 34px var(--accent-shadow,rgba(29,111,224,.16));
+  background:#fff;
 }
+.portal-card:focus-visible{outline:0;box-shadow:var(--ring),0 16px 34px var(--accent-shadow,rgba(29,111,224,.16))}
 .portal-icon{
-  width:56px;height:56px;border-radius:16px;
-  background:var(--green-soft);color:var(--green-dark);
+  width:clamp(48px,6.5vh,60px);height:clamp(48px,6.5vh,60px);border-radius:16px;
+  background:var(--accent-soft,#e8f1ff);color:var(--accent,var(--blue-600));
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  transition:all .2s ease;
+  transition:background var(--t),color var(--t),transform var(--t);
 }
-.portal-card:hover .portal-icon{background:var(--green);color:#fff;transform:scale(1.05)}
-.portal-icon svg{width:28px;height:28px}
-.portal-text{display:flex;flex-direction:column;gap:14px;flex:1 1 auto;min-width:0}
+.portal-card:hover .portal-icon{background:var(--accent,var(--blue-600));color:#fff;transform:scale(1.04)}
+.portal-icon svg{width:clamp(26px,3.5vh,32px);height:clamp(26px,3.5vh,32px)}
+.portal-text{display:flex;flex-direction:column;gap:5px;flex:1 1 auto;min-width:0;padding-right:40px}
 .portal-text h3{overflow-wrap:break-word;word-wrap:break-word}
-.portal-text p{overflow-wrap:break-word;word-wrap:break-word;min-width:0}
-.portal-card h3{margin:0;font-size:1.1rem;font-weight:700;color:var(--ink);letter-spacing:-.01em}
-.portal-card p{margin:0;color:var(--mut);font-size:.88rem;line-height:1.45}
+.portal-card h3{margin:0;font-size:clamp(17px,1.8vh+6px,19px);font-weight:700;color:var(--navy-800);letter-spacing:-.01em}
+.portal-card p{margin:0;color:var(--muted);font-size:clamp(13px,1.4vh+5px,14px);line-height:1.4;max-width:32ch}
+.portal-chevron{
+  position:absolute;right:clamp(12px,1.5vw,18px);top:50%;transform:translateY(-50%);
+  width:32px;height:32px;border-radius:50%;
+  background:#eaf2ff;color:var(--blue-600);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:inset 0 0 0 1px rgba(29,111,224,.07);
+  transition:background var(--t),color var(--t),transform var(--t),box-shadow var(--t);
+}
+.portal-chevron svg{width:16px;height:16px;display:block;transition:transform var(--t)}
+.portal-card:hover .portal-chevron{
+  background:var(--grad-primary);color:#fff;
+  transform:translateY(-50%);box-shadow:0 4px 10px rgba(29,111,224,.2);
+}
+.portal-card:hover .portal-chevron svg{transform:translateX(2px)}
 
-.adm-wrap{max-width:980px;margin:0 auto}
-.adm-sec{margin:0 0 26px}
-.adm-sec-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 4px}
-.adm-sec-head h3{margin:0;font-size:1rem;font-weight:700;color:var(--ink);letter-spacing:-.01em}
-.adm-sec-head .count{display:inline-flex;align-items:center;min-width:26px;height:26px;padding:0 9px;border-radius:99px;background:#EEF2F0;color:var(--ink-2);font-size:.78rem;font-weight:700}
-.adm-sec-sub{margin:0 0 14px;color:var(--mut);font-size:.86rem}
-.adm-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0 4px}
-.adm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:12px}
-@media (max-width:900px){.adm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:640px){.adm-grid{grid-template-columns:1fr}}
-.adm-card{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(15,42,27,.05);display:flex;flex-direction:column;gap:6px;min-width:0}
-.adm-card h4{margin:0;font-size:.98rem;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;justify-content:space-between}
-.adm-card .mut{margin:0}
-.adm-card.sel{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,166,81,.12)}
-.adm-card label.pick{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-weight:400}
-.adm-card input[type=checkbox]{margin-top:3px;accent-color:var(--green-dark);width:17px;height:17px;flex-shrink:0}
-.adm-of-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
-.adm-of-name{margin:0;font-size:.95rem;font-weight:700;color:var(--ink);line-height:1.3}
-.adm-code{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.04em;background:#F1F5F9;color:#334155;border:1px solid #E2E8F0;border-radius:6px;padding:2px 8px;white-space:nowrap}
-.adm-of-meta{margin:0;font-size:.83rem;color:var(--mut);line-height:1.45}
-.adm-of-id{font-size:.72rem;color:#94A3B8}
-.adm-badge{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.05em;padding:3px 10px;border-radius:99px;background:#F1F5F9;color:#64748B;white-space:nowrap}
-.adm-badge.on{background:var(--green-soft);color:var(--green-darker)}
-.adm-rep-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:12px}
-@media (max-width:720px){.adm-rep-grid{grid-template-columns:1fr}}
-.adm-rep-card{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:18px;box-shadow:0 1px 2px rgba(15,42,27,.05);display:flex;flex-direction:column;gap:8px;min-width:0}
-.adm-rep-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.adm-rep-name{margin:0;font-size:1rem;font-weight:700;color:var(--ink)}
-.adm-rep-user{margin:0;font-size:.84rem;color:var(--mut);word-break:break-all}
-.adm-rep-count{margin:2px 0 0;font-size:.85rem;font-weight:700;color:var(--ink-2)}
-.adm-rep-list{margin:0;font-size:.83rem;color:var(--mut);line-height:1.5}
-.adm-rep-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-.adm-grupo{margin:20px 0 4px;font-size:.82rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#475569;display:flex;align-items:center;gap:8px}
-.adm-grupo:first-child{margin-top:12px}
-.adm-grupo .n{font-weight:600;color:#94A3B8;letter-spacing:0;text-transform:none}
-.adm-filtros{display:grid;grid-template-columns:180px 180px 1fr;gap:10px;margin-top:12px}
-@media (max-width:640px){.adm-filtros{grid-template-columns:1fr 1fr}.adm-filtros>div:last-child{grid-column:1/-1}}
-.adm-filtros>div{min-width:0}
-.adm-sep{border:0;border-top:1px solid var(--line);margin:22px 0}
-.adm-modal{position:fixed;inset:0;background:rgba(15,42,27,.45);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50}
-.adm-modal .box{background:#fff;border-radius:var(--radius);max-width:640px;width:100%;max-height:88vh;overflow:auto;padding:22px}
-.adm-modal h2{margin:0 0 12px}
+#irEst{--accent:#1d6fe0;--accent-soft:#e8f1ff;--accent-shadow:rgba(29,111,224,.18)}
+#irDoc{--accent:#12b5a0;--accent-soft:#e4faf6;--accent-shadow:rgba(18,181,160,.18)}
+#irAdm{--accent:#0f9d8b;--accent-soft:#e2f7f1;--accent-shadow:rgba(15,157,139,.18)}
 
+/* --------------- 9. Privacidad / cómo funciona --------------- */
+.privacy-card{
+  display:grid;grid-template-columns:minmax(0,1fr) clamp(180px,20vw,230px);gap:clamp(16px,2vh,28px);align-items:center;
+  background:rgba(255,255,255,.82);border-radius:20px;
+  padding:var(--card-padding) var(--card-padding-inline);
+  box-shadow:0 8px 30px rgba(15,50,112,.07);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+}
+.privacy-copy{min-width:0}
+.privacy-card h2{
+  display:flex;align-items:center;gap:10px;
+  margin:0 0 10px;font-size:clamp(18px,2vh+6px,20px);color:var(--navy-800);
+}
+.privacy-card h2 svg{width:clamp(20px,2.5vh,22px);height:clamp(20px,2.5vh,22px);color:var(--teal-500);flex-shrink:0}
+.privacy-card p{font-size:clamp(13.5px,1.4vh+5px,15px);line-height:1.55;color:var(--ink-2);margin-bottom:10px}
+.privacy-card p.mut{color:var(--muted)}
+.privacy-art{color:#a9c8ee;display:flex;align-items:center;justify-content:center;min-height:clamp(90px,14vh,140px);position:relative}
+.privacy-art::before{
+  content:"";position:absolute;width:140px;height:140px;border-radius:50%;
+  background:radial-gradient(circle,rgba(18,181,160,.13),rgba(29,111,224,.05) 62%,transparent 72%);
+  pointer-events:none;
+}
+.privacy-art svg{position:relative;z-index:1;width:100%;max-width:180px;height:auto}
+.privacy-art .shield-accent{color:var(--teal-500)}
+.privacy-more{margin-top:2px}
+.privacy-more summary{
+  display:inline-flex;align-items:center;gap:7px;
+  min-height:44px;color:var(--blue-600);font-weight:700;font-size:14px;
+  cursor:pointer;list-style:none;
+}
+.privacy-more summary::-webkit-details-marker{display:none}
+.privacy-more summary::marker{content:""}
+.privacy-more summary svg{width:16px;height:16px;transition:transform var(--t)}
+.privacy-more[open] summary svg{transform:rotate(180deg)}
+.privacy-more p{margin:6px 0 0}
+
+/* ------------------ 10. Firma (pad) y tabs ------------------- */
 .sig-tabs{
   display:inline-flex;background:var(--bg-soft);
-  border:1px solid var(--line);border-radius:11px;
+  border:1px solid var(--line);border-radius:12px;
   padding:3px;gap:2px;margin:4px 0 12px;flex-wrap:wrap;
 }
 .sig-tabs button{
-  background:transparent;border:0;color:var(--mut);
-  padding:8px 14px;font-size:.85rem;font-weight:600;
-  border-radius:8px;box-shadow:none;
+  background:transparent;border:0;color:var(--muted);box-shadow:none;
+  padding:0 14px;min-height:38px;font-size:13px;font-weight:600;
+  border-radius:8px;
 }
 .sig-tabs button svg{width:15px;height:15px}
-.sig-tabs button:hover:not(:disabled){background:transparent;color:var(--green-dark);transform:none;box-shadow:none}
-.sig-tabs button.active{background:#fff;color:var(--green-dark);box-shadow:0 1px 4px rgba(15,42,27,.10)}
+.sig-tabs button:hover:not(:disabled){background:transparent;color:var(--blue-600);transform:none;box-shadow:none;filter:none}
+.sig-tabs button.active{background:#fff;color:var(--blue-600);box-shadow:0 1px 4px rgba(15,50,112,.1)}
 .sig canvas{
   width:100%;max-width:440px;aspect-ratio:3/1;
-  background:#fff;border:1.5px dashed var(--green-line);
+  background:#fff;border:1.5px dashed #bfd6f2;
   border-radius:12px;touch-action:none;display:block;cursor:crosshair;
 }
 .pane{margin:6px 0}
 
+/* -------------- 11. Formato oficial F-GCA-24 ----------------- */
+/* Hoja Oficio (8.5 x 14 in), una sola página. La tabla de estudiantes
+   ocupa todo el alto disponible: la hoja es una columna flexible y la
+   tabla estira sus filas para llenar el espacio restante. */
 .wrap{overflow-x:auto;padding:4px;-webkit-overflow-scrolling:touch}
 #hoja{
-  background:#fff;color:#000;width:816px;margin:0 auto;
-  padding:26px 30px;font:12px/1.3 Arial,Helvetica,sans-serif;
-  box-shadow:0 6px 28px rgba(15,42,27,.14);border-radius:8px;
-  border:1px solid #E3EDE7;
+  background:#fff;color:#000;width:8.5in;height:14in;box-sizing:border-box;
+  margin:0 auto;padding:.25in .65in .15in;
+  font-family:Calibri,Carlito,Arial,Helvetica,sans-serif;
+  font-size:12pt;line-height:1;
+  display:flex;flex-direction:column;
+  box-shadow:0 6px 28px rgba(15,50,112,.14);border-radius:8px;
+  border:1px solid var(--line);overflow:hidden;
 }
 #hoja table{width:100%;border-collapse:collapse;table-layout:fixed}
-#hoja td,#hoja th{border:1px solid #000;padding:2px 5px;vertical-align:middle;word-wrap:break-word}
-#hoja .tit{font-weight:700;text-align:center;font-size:13px;padding:0 6px 3px;text-transform:uppercase}
-#hoja .inst{text-align:center;font-weight:700;line-height:1.25;padding:0 4px}
-#hoja .inst .sub{font-weight:700;font-style:italic}
-#hoja .inst .pro{font-weight:700;font-size:11px;margin-top:2px}
-#hoja .meta{font-weight:700;font-size:9px;padding:0 2px}
-#hoja .lbl{font-weight:700;background:#fff;width:17%;font-size:10px;line-height:1.2}
-#hoja th{background:#fff;font-size:10px;text-align:center;font-weight:700;line-height:1.2}
-#hoja td.n{text-align:center;width:5%}
-#hoja td.id{width:22%}
-#hoja td.f{width:26%;height:44px;padding:2px 4px;text-align:center;vertical-align:middle}
-#hoja td.f img{max-height:40px;max-width:100%;width:auto;height:auto;object-fit:contain}
-#hoja .temas{font-size:11px;white-space:pre-wrap;height:26px}
-#hoja .pie{display:flex;justify-content:space-around;margin:16px 0 8px;text-align:center;font-weight:700;font-size:10px}
-#hoja .pie div{width:42%;border-top:1px solid #000;padding-top:3px;position:relative;min-height:96px}
-#hoja .pie img{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);max-height:88px;max-width:92%;object-fit:contain}
-#hoja .cc{font-weight:700;text-align:center;margin:8px 0 3px;font-size:11px}
-#hoja .ctl td{font-size:9px;vertical-align:top;line-height:1.2}
-#hoja .ctl .firma b{font-size:9px}
-#hoja .pie-inst{margin:8px 0 0;text-align:center}
-#hoja .pie-inst img{max-width:100%;height:auto}
-#hoja .del{border:0;background:none;color:#b3261e;padding:0 3px;cursor:pointer;vertical-align:middle;display:inline-flex;align-items:center}
+#hoja td,#hoja th{border:1px solid #000;padding:0 3px;vertical-align:middle;word-wrap:break-word}
+#hoja tr,#hoja .enc,#hoja .datos,#hoja .pie,#hoja .franja,#hoja .pie-inst{break-inside:avoid;page-break-inside:avoid}
+
+/* Encabezado institucional */
+#hoja .enc{flex:0 0 auto}
+#hoja .enc .enc-cab td{height:.50in;padding:1px 4px}
+#hoja .enc .enc-logo{width:16%;text-align:left;padding:1px 4px 1px 0}
+#hoja .enc .enc-logo img{display:block;max-height:.46in;max-width:100%;width:auto;height:auto;object-fit:contain}
+#hoja .enc .inst{text-align:center;font-weight:700;font-size:11pt;line-height:1.05;padding:0 3px}
+#hoja .enc .inst .sub{font-weight:700;font-style:italic}
+#hoja .enc .inst .pro{display:block;font-weight:700;font-size:8.5pt;margin-top:1px;line-height:1.05}
+#hoja .enc .meta{width:21%;text-align:right;font-weight:700;font-size:7.5pt;line-height:1.15;padding:0 2px}
+#hoja .enc .enc-tit td{height:.16in;font-weight:700;text-align:center;font-size:11pt;line-height:1;text-transform:uppercase;padding:0 4px}
+
+/* Bloque de datos de la clase (6 columnas) */
+#hoja .datos{flex:0 0 auto;margin-top:0}
+#hoja .datos td{font-size:9.5pt;line-height:1.1;height:.17in;padding:0 3px}
+#hoja .datos td.lbl{font-weight:700;background:#e9f4e0}
+#hoja .datos td.temas{padding:0;height:.26in;vertical-align:top;overflow:hidden}
+#hoja .datos .temas-txt{min-height:.26in;max-height:.5in;overflow:hidden;white-space:pre-wrap;font-size:10pt;line-height:1.15;padding:0 3px}
+
+/* Tabla de estudiantes: estira sus filas hasta llenar la hoja */
+#hoja .tabla-wrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+#hoja .tabla-est{height:100%}
+#hoja .tabla-est thead th{height:.26in;font-size:11pt;line-height:1.05;text-align:center;font-weight:700;background:#e9f4e0;padding:1px 2px}
+#hoja .tabla-est tbody td{height:.19in;font-size:12pt;line-height:1;white-space:nowrap;padding:0 3px;overflow:hidden}
+#hoja .tabla-est tbody td.n{width:4.5%;text-align:center;font-weight:700;padding:0 1px}
+#hoja .tabla-est tbody td.nom{width:48%;overflow:hidden}
+#hoja .tabla-est tbody td.id{width:26%}
+#hoja .tabla-est tbody td.f{width:21%;padding:0;text-align:center;vertical-align:middle;overflow:hidden;position:relative}
+#hoja .tabla-est tbody td.f .firma-celda{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:1px}
+#hoja .tabla-est tbody td.f img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;margin:0 auto}
+#hoja .nom-txt{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;vertical-align:middle}
+#hoja td.nom.con-del .nom-txt{max-width:calc(100% - 16px)}
+
+/* Tachado (zigzag) de las filas vacías cuando la asistencia está cerrada */
+#hoja .fila-anulada td:not(.n){background-size:100% 100%;background-repeat:no-repeat}
+#hoja .fila-anulada:nth-child(odd) td:not(.n){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M22 0L78 100' stroke='%23222' stroke-width='1.8' fill='none' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E")}
+#hoja .fila-anulada:nth-child(even) td:not(.n){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M78 0L22 100' stroke='%23222' stroke-width='1.8' fill='none' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E")}
+
+/* Firmas del docente y del representante */
+#hoja .pie{flex:0 0 .44in;display:flex;justify-content:space-around;align-items:stretch;gap:.2in;margin:.02in 0 0;text-align:center;font-weight:700;font-size:9pt;line-height:1.1}
+#hoja .pie>div{width:42%;display:flex;flex-direction:column;justify-content:flex-end;min-width:0}
+#hoja .pie .sig-img{height:.26in;display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+#hoja .pie .sig-img img{max-height:.26in;max-width:92%;width:auto;height:auto;object-fit:contain}
+#hoja .pie .sig-linea{border-top:1px solid #000;padding-top:1px}
+
+/* Franja inferior: control de cambios | elaboró / revisó / aprobó */
+#hoja .franja{flex:0 0 auto;display:grid;grid-template-columns:2.15in minmax(0,1fr);gap:.05in;margin-top:.03in;font-size:7pt;line-height:1.15}
+#hoja .franja .cc-tit{font-weight:700;text-align:center;font-size:7.5pt;line-height:1.15;border:1px solid #000;border-bottom:0;padding:0 2px}
+#hoja .franja table{margin-top:0}
+#hoja .franja th,#hoja .franja td{border:1px solid #000;padding:0 2px;font-size:7pt;line-height:1.15;vertical-align:top;font-weight:400}
+#hoja .franja th{font-weight:700;text-align:center}
+#hoja .franja .elaboro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.05in}
+#hoja .franja .elab{border:1px solid #000;padding:1px 3px;font-size:7pt;line-height:1.15;min-width:0}
+
+/* Pie institucional */
+#hoja .pie-inst{flex:0 0 .55in;display:flex;align-items:flex-end;justify-content:center;margin-top:.03in;overflow:hidden}
+#hoja .pie-inst img{max-width:100%;max-height:.55in;width:auto;height:auto;object-fit:contain}
+#hoja .del{border:0;background:none;color:#b3261e;padding:0 2px;cursor:pointer;vertical-align:middle;display:inline-flex;align-items:center;box-shadow:none;min-height:0}
 #hoja .del svg{width:12px;height:12px}
-#hoja tr,#hoja .cc,#hoja .pie,#hoja .ctl,#hoja .tit,#hoja .pie-inst{break-inside:avoid;page-break-inside:avoid}
 @media screen and (max-width:900px){#hoja{zoom:.82}}
 @media screen and (max-width:680px){#hoja{zoom:.55}}
 @media screen and (max-width:420px){#hoja{zoom:.42}}
 
+/* ------------------------ 12. Footer ------------------------ */
 .site-footer{
-  max-width:1040px;margin:0 auto;padding:14px 20px 26px;
-  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  border-top:1px solid var(--line);
-  color:var(--mut);font-size:.8rem;
+  max-width:none;margin:0;width:100%;
+  padding:var(--footer-padding) clamp(16px,3vw,40px);
+  background:linear-gradient(180deg,#fff,#f6f9fd);
+  border-top:1px solid #e3eaf5;
+  box-shadow:0 -8px 24px rgba(15,50,112,.04);
+  color:#5b6b8c;font-size:13px;position:relative;z-index:10;
+  margin-top:auto;flex-shrink:0;
 }
-.site-footer img{height:32px;width:auto;display:block}
-.site-footer .dev{font-weight:600;color:var(--ink-2)}
-.site-footer .fb{margin-left:auto;display:inline-flex;align-items:center;gap:8px;color:var(--green-dark);font-weight:600;min-height:44px}
-.site-footer .fb svg{width:16px;height:16px}
-@media (max-width:640px){
-  .site-footer{justify-content:center;text-align:center}
-  .site-footer .fb{margin-left:0}
+#site-footer:empty{display:none}
+.footer-grid{
+  max-width:1100px;margin:0 auto;
+  display:grid;grid-template-columns:1fr 1fr 1.4fr;align-items:center;gap:0;
 }
-
-/* =============================================================
-   RENOVACIÓN VISUAL — PORTADA: SOLO COLORES Y LOGO
-   Acotada a la portada con :has(...). NO se toca la geometría:
-   tamaños, espacios, distribución y orden de los componentes
-   son los originales. Únicamente se recolorean fondos, bordes,
-   textos, iconos y sombras existentes, y el logo se sustituye
-   por img/logo-v2.png sin deformarlo.
-   ============================================================= */
-:root{
-  /* Paleta acordada */
-  --nv-marino:#0B2854;   /* azul marino */
-  --nv-azul:#0866C6;     /* azul principal */
-  --nv-azul2:#1685E8;    /* azul secundario */
-  --nv-celeste:#DDF3FF;  /* celeste claro */
-  --nv-turquesa:#75E0DC; /* turquesa suave */
-  --nv-verde:#16A085;    /* verde */
-  --nv-fondo:#F3F9FE;    /* fondo claro */
-  --nv-texto2:#52647A;   /* texto secundario */
-}
-
-/* Fondo de la portada: mismas paradas que el original, otros colores */
-body:has(#app > .portal-access){
-  background:
-    radial-gradient(900px 480px at 8% -10%, rgba(117,224,220,.26), transparent 60%),
-    radial-gradient(860px 460px at 96% -6%, rgba(22,133,232,.16), transparent 62%),
-    linear-gradient(180deg,#FFFFFF 0%,var(--nv-fondo) 260px,var(--nv-fondo) 100%);
-  background-attachment:fixed;
-}
-
-/* Encabezado: mismas medidas exteriores que siempre (1000×110.9 en
-   escritorio). El doble logo, los separadores y la fila horizontal
-   los aporta cabecera() con los estilos base; aquí solo quedan los
-   colores propios de la portada (borde y título). */
-#app:has(> .portal-access) .app-header{border-bottom-color:rgba(11,40,84,.10)}
-#app:has(> .portal-access) .app-header h1{color:var(--nv-marino)}
-#app:has(> .portal-access) button:focus-visible{outline-color:var(--nv-azul)}
-
-/* Contenedor "Seleccione su acceso": mismas medidas; solo colores */
-#app:has(> .portal-access) .portal-access{
-  background:#FFFFFF;
-  border-color:rgba(11,40,84,.08);
-  box-shadow:0 8px 24px rgba(11,40,84,.07);
-}
-#app:has(> .portal-access) .portal-access > h2{color:var(--nv-marino)}
-#app:has(> .portal-access) .portal-access > h2 svg{color:var(--nv-azul)}
-#app:has(> .portal-access) .portal-access > p.mut{color:var(--nv-texto2)}
-
-/* Acentos por tarjeta (solo variables de color) */
-#irEst{--a:#0866C6;--a-soft:#DDF3FF;--a-shadow:rgba(8,102,198,.16)}
-#irDoc{--a:#16A085;--a-soft:#E4F7F1;--a-shadow:rgba(22,160,133,.16)}
-#irAdm{--a:#0E9E98;--a-soft:#E0FAF8;--a-shadow:rgba(14,158,152,.16)}
-
-/* Tarjetas de acceso: mismas medidas; la flecha es absoluta y no
-   altera el tamaño de la tarjeta (solo se muestra en escritorio). */
-#app:has(> .portal-access) .portal-card{
+.footer-zona{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:8px;padding:0 clamp(12px,3vw,40px);min-width:0;
   position:relative;
-  background:#FFFFFF;
-  border-color:rgba(11,40,84,.08);
-  box-shadow:0 4px 14px rgba(11,40,84,.06);
 }
-#app:has(> .portal-access) .portal-card::after{
-  content:"›";position:absolute;top:12px;right:18px;
-  font-size:28px;line-height:1;color:rgba(11,40,84,.20);
+.footer-zona + .footer-zona::before{
+  content:"";position:absolute;left:0;top:10%;height:80%;width:1px;background:#dbe5f3;
 }
-@media (max-width:768px){
-  #app:has(> .portal-access) .portal-card::after{content:none}
+/* Zona 1: Sistema */
+.foo-sistema img{
+  display:block;height:clamp(80px,9vh,90px);width:auto;max-width:100%;
+  object-fit:contain;
 }
-#app:has(> .portal-access) .portal-card:hover:not(:disabled){
-  border-color:var(--a);
-  box-shadow:0 12px 32px var(--a-shadow);
+/* Zona 2: Entidad aliada */
+.foo-eyebrow{
+  font-size:clamp(11px,1.2vh,12px);font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;color:#7a869f;line-height:1.3;
 }
-#app:has(> .portal-access) .portal-icon{background:var(--a-soft);color:var(--a)}
-#app:has(> .portal-access) .portal-card:hover .portal-icon{background:var(--a);color:#fff}
-#app:has(> .portal-access) .portal-card h3{color:var(--nv-marino)}
-#app:has(> .portal-access) .portal-card p{color:var(--nv-texto2)}
-
-/* "Cómo funciona y privacidad": mismas medidas; solo colores */
-#app:has(> .portal-access) .privacy-card{
-  background:#FFFFFF;
-  border-color:rgba(11,40,84,.07);
-  box-shadow:0 6px 18px rgba(11,40,84,.06);
+.foo-entidad img{display:block;height:56px;width:auto;max-width:100%;object-fit:contain}
+/* Zona 3: Desarrollado por Ingenio Digital */
+.foo-dev-txt{margin:0;color:#5b6b8c;font-size:13px;line-height:1.5}
+.foo-dev-txt b{color:var(--navy-800);font-weight:700}
+.foo-links{display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;gap:16px;margin-top:6px}
+.foo-link{
+  display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 12px;
+  color:#0a58b8;font-size:14px;font-weight:500;text-decoration:none;line-height:1;
+  transition:transform var(--t-fast),color var(--t-fast);
+  border-radius:8px;white-space:nowrap;
 }
-#app:has(> .portal-access) .privacy-card > h2{color:var(--nv-marino)}
-#app:has(> .portal-access) .privacy-card > h2 svg{color:var(--nv-azul)}
-#app:has(> .portal-access) .privacy-card .mut{color:var(--nv-texto2)}
-#app:has(> .portal-access) .privacy-toggle{color:var(--nv-azul)}
+.foo-link + .foo-link{border-left:1px solid #dbe5f3;border-radius:0 8px 8px 0}
+.foo-link svg{width:24px;height:24px;display:block;flex-shrink:0}
+.foo-link span{display:inline-block;line-height:1}
+.foo-link:hover{color:#0a58b8;text-decoration:underline;transform:translateY(-1px)}
+.foo-link:focus-visible{outline:0;box-shadow:var(--ring)}
 
-/* Pie de página: SIN franja azul marina. Fondo transparente (se ve
-   el fondo de la página) y texto con contraste suficiente sobre
-   fondo claro. Mismas medidas, mismo orden y misma estructura:
-   únicamente cambian colores. */
-body:has(#app > .portal-access) .site-footer{
-  background:transparent;
-  border-top-color:rgba(11,40,84,.10);
-  color:var(--nv-texto2);
-}
-body:has(#app > .portal-access) .site-footer .dev{color:var(--nv-marino)}
-body:has(#app > .portal-access) .site-footer .fb{color:var(--nv-azul)}
-body:has(#app > .portal-access) .site-footer .fb:hover{color:var(--nv-marino)}
+/* ------------- 13. Admin: base compartida heredada ----------- */
+.adm-wrap{max-width:1000px;margin:0 auto}
+.adm-sec{margin:0 0 26px}
+.adm-sec-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 4px}
+.adm-sec-head h3{margin:0;font-size:16px;font-weight:700;color:var(--navy-800)}
+.adm-sec-head .count{display:inline-flex;align-items:center;min-width:28px;height:26px;padding:0 10px;border-radius:999px;background:var(--green-soft);color:var(--blue-600);font-size:12px;font-weight:700}
+.adm-sec-sub{margin:0 0 16px;color:var(--muted);font-size:14px}
+.adm-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 18px;background:#fff;border:1px solid var(--line);border-radius:var(--radius-card);padding:14px 16px;box-shadow:var(--shadow-card)}
+.adm-toolbar button{min-height:44px}
+.adm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:14px}
+.adm-rep-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}
+.adm-card,.adm-rep-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow-xs);display:flex;flex-direction:column;gap:8px;min-width:0}
+.adm-card h4{margin:0;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;justify-content:space-between}
+.adm-card.sel{border-color:var(--blue-600);box-shadow:0 0 0 3px rgba(29,111,224,.12);background:#f4f8ff}
+.adm-card label.pick{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink);font-size:14px;margin:0}
+.adm-card input[type=checkbox]{margin-top:3px;accent-color:var(--blue-600)}
+.adm-of-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.adm-of-name{margin:0;font-size:15px;font-weight:700;color:var(--navy-800);line-height:1.35}
+.adm-code{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;background:#eaf2fb;color:var(--navy-700);border:1px solid #cbe0f5;border-radius:8px;padding:3px 9px;white-space:nowrap}
+.adm-of-meta{margin:0;font-size:13px;color:var(--muted);line-height:1.5}
+.adm-of-id{font-size:11px;color:#94a3b8}
+.adm-badge{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.07em;padding:5px 10px;border-radius:999px;background:var(--off-bg);color:var(--off);white-space:nowrap;flex-shrink:0}
+.adm-badge.on{background:var(--ok-bg);color:var(--ok)}
+.adm-rep-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.adm-rep-name{margin:0;font-size:16px;font-weight:700;color:var(--navy-800);overflow-wrap:break-word}
+.adm-rep-user{margin:0;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.adm-rep-count{margin:2px 0 0;font-size:13px;font-weight:700;color:var(--ink-2)}
+.adm-rep-list{margin:0;font-size:13px;color:var(--muted);line-height:1.55}
+.adm-rep-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.adm-grupo{margin:22px 0 12px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--navy-700);display:flex;align-items:center;gap:8px}
+.adm-grupo:first-child{margin-top:6px}
+.adm-grupo .n{font-weight:600;color:var(--muted);letter-spacing:0;text-transform:none}
+.adm-filtros{display:grid;grid-template-columns:180px 180px 1fr;gap:12px;margin-top:12px}
+.adm-sep{border:0;border-top:1px solid var(--line);margin:24px 0}
+.adm-modal{position:fixed;inset:0;background:rgba(7,26,61,.6);display:flex;align-items:center;justify-content:center;padding:18px;z-index:60}
+.adm-modal .box{background:#fff;border-radius:20px;max-width:640px;width:100%;max-height:90vh;overflow:auto;padding:24px;box-shadow:0 24px 64px rgba(7,26,61,.35)}
+.adm-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:38px 20px;color:var(--muted);font-size:14px;text-align:center}
+.adm-empty svg{width:40px;height:40px;color:#a9b8cd}
 
-/* =============================================================
-   RENOVACIÓN VISUAL — VISTA ESTUDIANTE (Fase 2)
-   Solo colores, acotados con :has(#zona): el id #zona existe
-   únicamente en la vista del estudiante, por lo que portada,
-   docente, representante y administración quedan intactas.
-   La geometría es la original: no se tocan tamaños, espacios,
-   ni distribución, ni el logo, ni la planilla F-GCA-24.
-   ============================================================= */
-body:has(#zona){
-  /* Paleta del Sistema de Asistencia aplicada a las variables
-     de color que usan los estilos compartidos de esta vista. */
-  --green:#0866C6;          /* azul principal: botones, focos, iconos */
-  --green-dark:#0757A8;     /* azul para hover y enlaces */
-  --green-darker:#0B2854;   /* marino sobre fondos celestes */
-  --green-soft:#DDF3FF;     /* celeste claro */
-  --green-softer:#F3F9FE;   /* fondo claro */
-  --green-line:#BFDCFA;     /* borde azulado suave */
-  --ink:#0B2854;            /* títulos: azul marino */
-  --ink-2:#274B7C;          /* texto oscuro secundario */
-  --mut:#52647A;            /* texto secundario */
-  --line:#DCE8F5;           /* bordes */
-  --line-2:#EDF4FC;         /* separadores */
-  --shadow-xs:0 1px 2px rgba(11,40,84,.05);
-  --shadow-sm:0 2px 6px rgba(11,40,84,.06);
-  /* Fondo de la pantalla (el original usa colores literales) */
-  background:linear-gradient(180deg,#FFFFFF 0%,#F3F9FE 260px,#F3F9FE 100%);
-  background-attachment:fixed;
-}
-
-/* Sombras y tonos literales que no usan variables */
-body:has(#zona) button:hover:not(:disabled){box-shadow:0 6px 16px rgba(8,102,198,.22)}
-body:has(#zona) button.s:hover:not(:disabled){box-shadow:0 4px 12px rgba(8,102,198,.10)}
-body:has(#zona) input::placeholder,body:has(#zona) textarea::placeholder{color:#97A7BC}
-body:has(#zona) input:hover,body:has(#zona) select:hover,body:has(#zona) textarea:hover{border-color:#9FC4EA}
-body:has(#zona) input:focus,body:has(#zona) select:focus,body:has(#zona) textarea:focus{box-shadow:0 0 0 4px rgba(8,102,198,.12)}
-
-/* Estados y detalles secundarios en turquesa */
-body:has(#zona) .badge.ok{background:#E0FAF8;color:#0F6B66}
-body:has(#zona) .aviso.ok{background:#E0FAF8;border-color:#A8E8E4;border-left-color:#16A085}
-body:has(#zona) .aviso.ok svg{color:#16A085}
-
-/* Pie de página de esta pantalla: mismo marino que la portada */
-body:has(#zona) .site-footer{background:#0B2854;border-top-color:#16335F;color:#DDF3FF}
-body:has(#zona) .site-footer .dev{color:#FFFFFF}
-body:has(#zona) .site-footer .fb{color:#DDF3FF}
-body:has(#zona) .site-footer .fb:hover{color:#FFFFFF}
-
-/* Encabezado de esta pantalla: el doble logo y los separadores los
-   aporta cabecera() + estilos base (igual en las cuatro vistas);
-   aquí solo se conserva el color de borde propio de la renovación. */
-body:has(#zona) .app-header{border-bottom-color:rgba(11,40,84,.10)}
-
-/* =============================================================
-   RENOVACIÓN VISUAL — DOCENTE Y REPRESENTANTE (Fase 3)
-   Solo colores y logo, con el mismo enfoque que la vista del
-   estudiante. Anclas exclusivas: #codigoDocente y #volverDoc2
-   (vista docente, en sus dos fases) y #repUser y #repSaludo
-   (panel del representante, login y panel). La ruta de
-   administración (/ruta-administrativa) no contiene ninguna de
-   estas anclas, así que queda intacta, igual que la portada,
-   el estudiante y la planilla F-GCA-24 (cuyos estilos de
-   impresión usan colores literales).
-   ============================================================= */
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo){
-  /* Paleta del Sistema de Asistencia */
-  --green:#0866C6;          /* azul principal: botones, focos, iconos */
-  --green-dark:#0757A8;     /* azul para hover y enlaces */
-  --green-darker:#0B2854;   /* marino sobre fondos celestes */
-  --green-soft:#DDF3FF;     /* celeste claro */
-  --green-softer:#F3F9FE;   /* fondo claro */
-  --green-line:#BFDCFA;     /* borde azulado suave */
-  --ink:#0B2854;            /* títulos: azul marino */
-  --ink-2:#274B7C;          /* texto oscuro secundario */
-  --mut:#52647A;            /* texto secundario */
-  --line:#DCE8F5;           /* bordes */
-  --line-2:#EDF4FC;         /* separadores */
-  --shadow-xs:0 1px 2px rgba(11,40,84,.05);
-  --shadow-sm:0 2px 6px rgba(11,40,84,.06);
-  /* Fondo de la pantalla (el original usa colores literales) */
-  background:linear-gradient(180deg,#FFFFFF 0%,#F3F9FE 260px,#F3F9FE 100%);
-  background-attachment:fixed;
-}
-
-/* Sombras y tonos literales que no usan variables */
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) button:hover:not(:disabled){box-shadow:0 6px 16px rgba(8,102,198,.22)}
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) button.s:hover:not(:disabled){box-shadow:0 4px 12px rgba(8,102,198,.10)}
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) input::placeholder,body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) textarea::placeholder{color:#97A7BC}
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) input:hover,body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) select:hover,body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) textarea:hover{border-color:#9FC4EA}
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) input:focus,body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) select:focus,body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) textarea:focus{box-shadow:0 0 0 4px rgba(8,102,198,.12)}
-
-/* Estados y detalles secundarios en turquesa */
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .badge.ok{background:#E0FAF8;color:#0F6B66}
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .aviso.ok{background:#E0FAF8;border-color:#A8E8E4;border-left-color:#16A085}
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .aviso.ok svg{color:#16A085}
-
-/* Pie de página de estas pantallas: mismo marino que la portada */
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .site-footer{background:#0B2854;border-top-color:#16335F;color:#DDF3FF}
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .site-footer .dev{color:#FFFFFF}
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .site-footer .fb{color:#DDF3FF}
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .site-footer .fb:hover{color:#FFFFFF}
-
-/* Encabezado de estas pantallas: el doble logo y los separadores los
-   aporta cabecera() + estilos base (igual en las cuatro vistas);
-   aquí solo se conserva el color de borde propio de la renovación. */
-body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .app-header{border-bottom-color:rgba(11,40,84,.10)}
-
-@media print{
-  body::before,body::after{display:none!important}
-  @page{size:8.5in 14in;margin:6mm 8mm}
-  html,body{background:#fff!important}
-  main{padding:0;max-width:none}
-  .np,#avisoHoja{display:none!important}
-  .wrap{overflow:visible;padding:0}
-  #hoja{
-    width:auto;box-shadow:none;padding:0;border:0;border-radius:0;
-  }
-  /* El alto de fila lo calcula la impresión: una sola hoja solo si cabe
-     con altura legible; si no, altura cómoda fija y paginación natural
-     en varias páginas (las firmas nunca se comprimen hasta lo ilegible). */
-  #hoja tbody.filas td{height:var(--fila,38px);padding:0 2px;font-size:13px}
-  #hoja tbody.filas td.f img{width:auto;max-width:100%;height:calc(var(--fila,38px) - 6px);object-fit:contain}
-  #hoja thead{display:table-header-group}
-  /* Cada bloque de 20 filas de la planilla impresa abre su propia página. */
-  #hoja table.salto-pagina{break-before:page;page-break-before:always}
-  /* En impresión el pie se escala para que quepa junto a la tabla. */
-  #hoja .pie-inst img{max-height:110px;width:auto}
-  /* Margen justo para las firmas flotantes (máx. 88px): acerca el bloque
-     final a la tabla sin superponerlo. No toca la pantalla. */
-  #hoja .pie{margin-top:88px !important}
-  #hoja .del{display:none!important}
-  #hoja *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-}
-
-/* ---------- Modal propio (uiConfirm/uiAlert/uiPrompt) ---------- */
+/* ------------------ 14. Modal propio (ui*) ------------------- */
 .ui-overlay{
   position:fixed;inset:0;z-index:200;
-  background:rgba(0,0,0,.60);
+  background:rgba(7,26,61,.62);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
   display:flex;align-items:center;justify-content:center;
   padding:16px;box-sizing:border-box;
 }
 .ui-panel{
-  background:#fff;border-radius:16px;
-  border-top:5px solid var(--green);
-  box-shadow:0 24px 64px rgba(0,0,0,.35);
-  padding:24px;box-sizing:border-box;
+  background:#fff;border-radius:20px;
+  box-shadow:0 24px 64px rgba(7,26,61,.32);
+  padding:26px;box-sizing:border-box;
   width:100%;max-width:440px;max-height:calc(100vh - 32px);overflow:auto;
   animation:uiPop .18s ease-out;
 }
-.ui-panel.ui-success{border-top-color:var(--green-dark)}
-.ui-panel.ui-error,.ui-panel.ui-danger{border-top-color:var(--bad)}
-.ui-panel.ui-warn{border-top-color:var(--warn)}
-.ui-title{margin:0 0 10px;font-size:1.1rem;font-weight:700;color:var(--ink)}
-.ui-msg{margin:0 0 18px;color:var(--ink-2);font-size:.92rem;line-height:1.55;white-space:pre-wrap;overflow-wrap:break-word}
+.ui-icon{
+  width:48px;height:48px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--green-soft);color:var(--blue-600);
+  margin-bottom:14px;
+}
+.ui-icon svg{width:24px;height:24px}
+.ui-panel.ui-success .ui-icon{background:var(--ok-bg);color:var(--ok)}
+.ui-panel.ui-error .ui-icon,.ui-panel.ui-danger .ui-icon{background:var(--danger-bg);color:var(--danger)}
+.ui-panel.ui-warn .ui-icon{background:var(--warn-soft);color:var(--warn)}
+.ui-title{margin:0 0 8px;font-size:18px;font-weight:700;color:var(--navy-800)}
+.ui-msg{margin:0 0 20px;color:var(--ink-2);font-size:14px;line-height:1.6;white-space:pre-wrap;overflow-wrap:break-word}
 .ui-input{margin:0 0 18px}
 .ui-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
 .ui-actions button{min-height:44px}
@@ -698,11 +678,139 @@ body:has(#codigoDocente, #volverDoc2, #repUser, #repSaludo) .app-header{border-b
   from{transform:scale(.96) translateY(8px);opacity:0}
   to{transform:scale(1) translateY(0);opacity:1}
 }
-@media (max-width:640px){
+
+/* --------------------- 15. Responsive ------------------------ */
+@media (max-width:1024px){
+  main{padding:calc(var(--header-gap) * 2) var(--card-padding-inline) calc(var(--footer-padding) * 2)}
+  .portal-card{min-height:clamp(120px,17vh,170px)}
+  .privacy-card{grid-template-columns:minmax(0,1fr) clamp(180px,20vw,200px);gap:clamp(14px,2vh,22px)}
+}
+@media (max-width:1180px) and (min-width:1024px){
+  .footer-zona{padding-left:clamp(8px,2vw,16px);padding-right:clamp(8px,2vw,16px)}
+  .foo-link{padding:0 9px;font-size:13px;gap:5px}
+  .foo-link svg{width:22px;height:22px}
+}
+@media (max-width:1023px){
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .footer-zona:last-child{grid-column:1/-1;border-left:0!important;border-top:1px solid #dbe5f3;margin-top:0;padding-top:18px}
+  .footer-zona:last-child::before{display:none}
+}
+@media (max-width:768px){
+  .app-header{padding:calc(var(--header-gap) * 1.5) 0 var(--header-gap);margin-bottom:var(--gap)}
+  .app-header h1{font-size:clamp(23px,5.8vw,30px);gap:12px}
+  .app-header .hdr-line{width:46px}
+  .app-header p{font-size:14.5px;margin-top:6px}
+  .portal-grid{grid-template-columns:1fr}
+  .portal-access{padding:var(--card-padding) var(--card-padding-inline);border-radius:20px}
+  .portal-card{
+    display:grid;grid-template-columns:56px minmax(0,1fr);column-gap:14px;
+    align-items:center;padding:16px;min-height:clamp(84px,12vh,96px);gap:0;
+  }
+  .portal-card .portal-icon{grid-column:1;grid-row:1;width:56px;height:56px;border-radius:16px}
+  .portal-card .portal-icon svg{width:27px;height:27px}
+  .portal-card .portal-text{grid-column:2;grid-row:1;padding-right:40px}
+  .portal-card h3{font-size:18px}
+  .portal-card p{font-size:13px;max-width:none}
+  .portal-chevron{right:14px;width:32px;height:32px}
+  .portal-chevron svg{width:16px;height:16px}
+  .privacy-card{grid-template-columns:1fr;gap:14px;padding:var(--card-padding) var(--card-padding-inline)}
+  .privacy-art{display:none}
+  .adm-modal .box{max-height:92vh}
+}
+@media (max-width:767px){
+  .site-footer{padding:var(--footer-padding) 16px}
+  .footer-grid{grid-template-columns:1fr}
+  .footer-zona{height:auto;min-height:0;padding:16px 0}
+  .footer-zona + .footer-zona{border-left:0;border-top:1px solid #e3eaf5}
+  .footer-zona + .footer-zona::before{display:none}
+  .foo-sistema img{height:clamp(60px,8vh,72px)}
+  .foo-entidad img{height:clamp(48px,7vh,56px)}
+  .foo-links{gap:10px;flex-wrap:wrap}
+  .foo-link{padding:0 10px;font-size:13.5px}
+  .foo-link svg{width:22px;height:22px}
+}
+@media (max-width:480px){
+  body{font-size:14px}
+  main{padding:calc(var(--header-gap) * 2) 16px calc(var(--footer-padding) * 2)}
+  .app-header h1{font-size:26px;gap:0}
+  .app-header .hdr-line{display:none}
+  .app-header p{font-size:14px}
+  .portal-access{padding:clamp(12px,2vh,16px) clamp(14px,2vw,18px);border-radius:18px}
+  .portal-access>h2{font-size:clamp(18px,2.5vh+5px,19px)}
+  .card{padding:clamp(14px,2vh,18px);border-radius:16px}
+  .foo-link{padding:0 8px;gap:5px;font-size:13px}
+  .foo-link svg{width:20px;height:20px}
   .ui-panel{max-width:calc(100vw - 32px);padding:20px 18px}
   .ui-actions{flex-direction:column;align-items:stretch}
   .ui-actions button{width:100%}
+  .adm-filtros{grid-template-columns:1fr 1fr}
+  .adm-filtros>div:last-child{grid-column:1/-1}
 }
+
+/* Modo compacto por altura (escritorio) */
+@media (max-height:820px) and (min-width:900px){
+  :root{
+    --gap:clamp(8px,1.5vh,16px);
+    --header-gap:clamp(4px,1vh,10px);
+    --card-padding:clamp(12px,1.8vh,20px);
+    --footer-padding:clamp(10px,1.8vh,20px);
+  }
+  .portal-card{min-height:clamp(110px,15vh,150px)}
+  .portal-icon{width:clamp(44px,5.5vh,52px);height:clamp(44px,5.5vh,52px)}
+  .portal-icon svg{width:clamp(24px,3vh,28px);height:clamp(24px,3vh,28px)}
+  .portal-card h3{font-size:clamp(16px,1.6vh+5px,18px)}
+  .portal-card p{font-size:clamp(12.5px,1.2vh+4px,13.5px)}
+  .privacy-card p{font-size:clamp(13px,1.2vh+4px,14px)}
+  .privacy-art{min-height:clamp(80px,12vh,120px)}
+  .privacy-art svg{max-width:150px}
+}
+@media (max-height:700px) and (min-width:900px){
+  :root{
+    --gap:clamp(6px,1vh,12px);
+    --header-gap:clamp(3px,0.8vh,8px);
+    --card-padding:clamp(10px,1.5vh,16px);
+    --footer-padding:clamp(8px,1.5vh,16px);
+  }
+  .portal-card{min-height:clamp(96px,13vh,130px)}
+  .privacy-art{display:none}
+  .privacy-card p:first-of-type{margin-bottom:6px}
+  .privacy-more summary{font-size:13.5px}
+}
+@media (max-width:360px){
+  .foo-link{padding:0 6px;font-size:12.5px;gap:4px}
+  .foo-link svg{width:20px;height:20px}
+}
+@media (max-height:480px) and (max-width:844px) and (orientation:landscape){
+  .site-footer{padding:var(--footer-padding) 16px}
+  .footer-grid{grid-template-columns:1fr 1fr 1.4fr}
+  .footer-zona{padding:0 10px}
+  .foo-sistema img{height:clamp(48px,6vh,56px)}
+  .foo-entidad img{height:clamp(40px,5vh,48px)}
+  .foo-dev-txt{font-size:12px}
+  .foo-links{gap:8px}
+  .foo-link{padding:0 8px;font-size:13px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+
+/* ------------------------ 16. Impresión ---------------------- */
 @media print{
+  body::before,body::after{display:none!important}
+  @page{size:8.5in 14in;margin:0}
+  html,body{background:#fff!important;margin:0!important;padding:0!important;width:8.5in}
+  body{display:block;min-height:0}
+  main{flex:none;width:auto;padding:0;max-width:none}
+  .np,#avisoHoja,.site-footer{display:none!important}
+  .wrap{overflow:visible;padding:0}
+  #hoja{
+    width:8.5in!important;height:14in!important;margin:0!important;padding:.25in .65in .15in!important;
+    box-shadow:none!important;border:0!important;border-radius:0!important;overflow:hidden!important;
+  }
+  #hoja .tabla-est{height:100%}
+  #hoja thead{display:table-header-group}
+  #hoja .del{display:none!important}
+  #hoja *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #uiModal{display:none!important}
 }

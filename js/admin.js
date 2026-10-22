@@ -21,8 +21,44 @@ const I = {
   plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
   out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
   menu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>',
-  hist:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+  hist:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>',
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+  calendar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  refresh:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+  eye:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  eyeOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
 };
+
+/* Iniciales y presentación (solo visual; no modifican los datos). */
+function inicialesA(valor){
+  const partes=String(valor||'').trim().split(/\s+/).filter(Boolean);
+  if(!partes.length) return '?';
+  const a=partes[0].charAt(0);
+  const b=partes.length>1?partes[partes.length-1].charAt(0):'';
+  return (a+b).toLocaleUpperCase('es');
+}
+function tituloCasoA(valor){
+  return String(valor||'').toLocaleLowerCase('es')
+    .replace(/(^|[\s'’.-])([a-záéíóúüñ])/g,(m,p,c)=>p+c.toLocaleUpperCase('es'));
+}
+function vacioA(texto){
+  return '<div class="adm-empty">'+I.info+'<span class="adm-empty-t">'+escA(texto)+'</span></div>';
+}
+/* Cierre visual de modales (botón X). No interviene en la lógica de guardado. */
+document.addEventListener('click',e=>{
+  const x=e.target&&e.target.closest?e.target.closest('#admModal [data-close]'):null;
+  if(!x) return;
+  const m=document.getElementById('admModal');
+  if(m) m.innerHTML='';
+});
 
 /* ------------- Modal propio (copia autocontenida) ------------- */
 const UI_TITULOS_A={info:'Información',success:'Éxito',error:'Error',warn:'Advertencia',danger:'Confirmación'};
@@ -34,9 +70,11 @@ function uiMostrarA(sig){
   const raiz=$a('#uiModal');
   const esConfirm=(sig.tipo==='confirm'||sig.tipo==='prompt');
   const titulo=sig.title||UI_TITULOS_A[sig.kind]||UI_TITULOS_A.info;
+  const uiIco=sig.kind==='success'?I.check:(sig.kind==='error'||sig.kind==='danger'||sig.kind==='warn')?I.alert:I.info;
   raiz.innerHTML=
     '<div class="ui-overlay" data-ui="overlay">'+
       '<div class="ui-panel ui-'+sig.kind+'" role="dialog" aria-modal="true" aria-label="'+escA(titulo)+'">'+
+        '<div class="ui-icon" aria-hidden="true">'+uiIco+'</div>'+
         '<h3 class="ui-title">'+escA(titulo)+'</h3>'+
         (sig.message?'<p class="ui-msg">'+escA(sig.message)+'</p>':'')+
         (sig.tipo==='prompt'?'<input class="ui-input" id="uiInputA" maxlength="40" autocomplete="off" placeholder="'+escA(sig.placeholder||'')+'">':'')+
@@ -148,12 +186,27 @@ function renderLogin(mensaje){
     '<div class="adm-login"><div class="card">'+
       '<img class="adm-login-logo" src="img/logo-v2.png" alt="Sistema de Asistencia">'+
       '<h2>'+I.lock+'Administración</h2>'+
-      '<p class="mut">Representantes y ofertas académicas.</p>'+
+      '<p class="adm-login-sub">Representantes y ofertas académicas.</p>'+
       '<label for="admSecret">Clave administrativa</label>'+
-      '<div class="row"><input id="admSecret" type="password" maxlength="256" autocomplete="off">'+
-      '<button id="admEntrar">'+I.key+'Entrar</button></div>'+
-      '<p class="mut" id="admMsg" role="status" style="margin-top:10px">'+escA(mensaje||'')+'</p>'+
+      '<div class="adm-pass"><input id="admSecret" type="password" maxlength="256" autocomplete="off" aria-label="Clave administrativa">'+
+        '<button type="button" class="adm-pass-toggle" id="admTogglePass" aria-label="Mostrar clave" aria-pressed="false">'+I.eye+'</button></div>'+
+      '<button id="admEntrar" class="adm-login-btn">'+I.key+'Entrar</button>'+
+      '<div class="adm-msg-row'+(mensaje?' is-info':'')+'" id="admMsgRow"><span class="adm-msg-ico" aria-hidden="true">'+I.info+'</span>'+
+        '<p class="adm-msg" id="admMsg" role="status">'+escA(mensaje||'')+'</p></div>'+
+      '<p class="adm-login-foot">Acceso exclusivo para la administración del sistema.</p>'+
     '</div></div>';
+  const cab=$a('#adminHeader'), pie=$a('#site-footer');
+  if(cab) cab.hidden=false;
+  if(typeof montarFooter==='function') montarFooter('#site-footer');
+  const pass=$a('#admSecret'), ver=$a('#admTogglePass');
+  ver.onclick=()=>{
+    const mostrar=pass.type==='password';
+    pass.type=mostrar?'text':'password';
+    ver.innerHTML=mostrar?I.eyeOff:I.eye;
+    ver.setAttribute('aria-label',mostrar?'Ocultar clave':'Mostrar clave');
+    ver.setAttribute('aria-pressed',mostrar?'true':'false');
+    pass.focus();
+  };
   const entrar=async()=>{
     adminSecret=$a('#admSecret').value.trim();
     $a('#admSecret').value='';
@@ -164,6 +217,10 @@ function renderLogin(mensaje){
       renderApp();
     }catch(e){
       adminSecret='';
+      const fila=$a('#admMsgRow');
+      if(fila){ fila.classList.remove('is-info'); fila.classList.add('is-error'); }
+      const ico=$a('#admMsgRow .adm-msg-ico');
+      if(ico) ico.innerHTML=I.alert;
       $a('#admMsg').textContent=(e&&e.code==='UNAUTHORIZED')?'Clave incorrecta.':'Sin conexión con el servidor.';
     }
   };
@@ -174,27 +231,40 @@ function renderLogin(mensaje){
 
 /* ---------------- Layout ---------------- */
 const VISTAS=[['resumen','Resumen'],['reps','Representantes'],['docentes','Docentes'],['ofertas','Ofertas académicas'],['historial','Historial'],['nueva','Nueva oferta']];
-const VDESC={resumen:'Estado general del sistema',reps:'Gestiona las cuentas de acceso y sus ofertas académicas.',docentes:'Gestiona el catálogo de docentes utilizado en las ofertas académicas.',ofertas:'Catálogo en PostgreSQL (período → nivel → ofertas).',historial:'Consulta, descarga y elimina asistencias registradas.',nueva:'Crear una oferta académica en PostgreSQL.'};
 function iconoVista(v){
-  return v==='resumen'?I.home:(v==='reps'?I.users:(v==='docentes'?I.plus:(v==='historial'?I.hist:(v==='ofertas'?I.grid:I.plus))));
+  return v==='resumen'?I.home:(v==='reps'?I.users:(v==='docentes'?I.doc:(v==='historial'?I.hist:(v==='ofertas'?I.book:I.plus))));
 }
 function renderApp(){
   if(histTic){ clearInterval(histTic); histTic=null; }
+  /* El panel con sidebar no lleva el pie público del login. */
+  const cab=$a('#adminHeader'), pie=$a('#site-footer');
+  if(cab) cab.hidden=true;
+  if(pie){ pie.innerHTML=''; pie.hidden=true; }
   const tit=(VISTAS.find(v=>v[0]===vista)||['',''])[1];
+  const navBtn=v=>'<button data-v="'+v[0]+'" class="'+(vista===v[0]?'active':'')+'">'+iconoVista(v[0])+escA(v[1])+'</button>';
   $a('#adminApp').innerHTML=
     '<div class="adm-layout" id="admLayout">'+
       '<div class="adm-scrim" id="admScrim"></div>'+
-      '<aside class="adm-side">'+
-        '<div class="adm-brand"><img src="img/logo-v2.png" alt="Sistema de Asistencia"><div><b>Sistema de Asistencia</b><span>Administración · UTCH</span></div></div>'+
+      '<aside class="adm-side" aria-label="Menú de administración">'+
+        '<div class="adm-brand"><div class="adm-brand-logo"><img src="img/logo-v2.png" alt="Sistema de Asistencia"></div>'+
+          '<div class="adm-brand-txt"><b>Sistema de Asistencia</b><span>Administración · UTCH</span></div></div>'+
         '<nav class="adm-nav">'+
-          VISTAS.map(v=>'<button data-v="'+v[0]+'" class="'+(vista===v[0]?'active':'')+'">'+iconoVista(v[0])+escA(v[1])+'</button>').join('')+
+          '<p class="adm-nav-title">General</p>'+
+          VISTAS.slice(0,3).map(navBtn).join('')+
+          '<p class="adm-nav-title">Académico</p>'+
+          VISTAS.slice(3).map(navBtn).join('')+
           '<div class="sep"></div>'+
           '<button data-v="__salir" class="danger">'+I.out+'Cerrar sesión</button>'+
         '</nav>'+
       '</aside>'+
       '<div class="adm-main">'+
-        '<div class="adm-top"><button class="s adm-burger" id="admBurger" aria-label="Abrir menú">'+I.menu+'</button>'+
-          '<div><div class="crumb">Administración / '+escA(tit)+'</div><h1>'+escA(tit)+'</h1><p class="adm-head-desc">'+escA(VDESC[vista]||'')+'</p></div></div>'+
+        '<header class="adm-top">'+
+          '<button class="s adm-burger" id="admBurger" aria-label="Abrir menú">'+I.menu+'</button>'+
+          '<div class="adm-top-txt"><div class="crumb">Administración / <span>'+escA(tit)+'</span></div>'+
+            '<h1>'+escA(tit)+'</h1></div>'+
+          '<div class="adm-user"><span class="adm-avatar" aria-hidden="true">AD</span>'+
+            '<span class="adm-user-txt"><small>Rol</small><b>Administrador</b></span></div>'+
+        '</header>'+
         '<div class="adm-body" id="admBody"></div>'+
       '</div>'+
     '</div>';
@@ -222,19 +292,22 @@ function vistaResumen(){
   const asignaciones=listaReps.reduce((n,r)=>n+((r.courseOfferingIds||[]).length),0);
   const porPeriodo={};
   ofs.forEach(o=>{ const k=o.periodo||'—'; porPeriodo[k]=(porPeriodo[k]||0)+1; });
+  const maxPer=Math.max(1,...Object.keys(porPeriodo).map(k=>porPeriodo[k]));
   $a('#admBody').innerHTML=
     '<p class="adm-sec-sub">Estado actual del sistema, calculado con datos reales de PostgreSQL.</p>'+
     '<div class="adm-stats">'+
-      '<div class="adm-stat"><div class="n">'+activos+'</div><div class="l">Representantes activos</div></div>'+
-      '<div class="adm-stat"><div class="n">'+listaReps.length+'</div><div class="l">Representantes totales</div></div>'+
-      '<div class="adm-stat"><div class="n">'+ofs.length+'</div><div class="l">Ofertas académicas</div></div>'+
-      '<div class="adm-stat"><div class="n">'+asignaciones+'</div><div class="l">Asignaciones</div></div>'+
+      '<div class="adm-stat kpi-blue"><span class="adm-stat-ico" aria-hidden="true">'+I.users+'</span><div class="n">'+activos+'</div><div class="l">Representantes activos</div></div>'+
+      '<div class="adm-stat kpi-teal"><span class="adm-stat-ico" aria-hidden="true">'+I.doc+'</span><div class="n">'+listaReps.length+'</div><div class="l">Representantes totales</div></div>'+
+      '<div class="adm-stat kpi-navy"><span class="adm-stat-ico" aria-hidden="true">'+I.book+'</span><div class="n">'+ofs.length+'</div><div class="l">Ofertas académicas</div></div>'+
+      '<div class="adm-stat kpi-green"><span class="adm-stat-ico" aria-hidden="true">'+I.link+'</span><div class="n">'+asignaciones+'</div><div class="l">Asignaciones</div></div>'+
     '</div>'+
-    '<div class="adm-cols"><div class="adm-panel"><h3>Ofertas por período</h3>'+
-      (Object.keys(porPeriodo).sort().map(k=>'<div class="adm-kv"><b>'+escA(k)+'</b><span>'+porPeriodo[k]+' oferta(s)</span></div>').join('')||'<p class="mut">Sin ofertas.</p>')+
+    '<div class="adm-cols"><div class="adm-panel"><h3>'+I.calendar+'Ofertas por período</h3>'+
+      (Object.keys(porPeriodo).sort().map(k=>'<div class="adm-kv"><div class="adm-kv-main"><b>'+escA(k)+'</b><span>'+porPeriodo[k]+' oferta(s)</span></div>'+
+        '<div class="adm-kv-right"><span class="adm-mini" aria-hidden="true"><span style="width:'+Math.max(12,Math.round(porPeriodo[k]/maxPer*100))+'%"></span></span></div></div>').join('')||vacioA('Sin ofertas registradas.'))+
     '</div>'+
-    '<div class="adm-panel"><h3>Representantes</h3>'+
-      (listaReps.map(r=>'<div class="adm-kv"><b>'+escA(r.name)+'</b><span>'+((r.courseOfferingIds||[]).length)+' oferta(s) · '+(r.active?'activo':'inactivo')+'</span></div>').join('')||'<p class="mut">Sin representantes.</p>')+
+    '<div class="adm-panel"><h3>'+I.users+'Representantes</h3>'+
+      (listaReps.map(r=>'<div class="adm-kv"><div class="adm-kv-main"><b>'+escA(r.name)+'</b><span>'+((r.courseOfferingIds||[]).length)+' oferta(s)</span></div>'+
+        '<div class="adm-kv-right"><span class="adm-badge'+(r.active?' on':'')+'"><span class="dot"></span>'+(r.active?'ACTIVO':'INACTIVO')+'</span></div></div>').join('')||vacioA('Sin representantes registrados.'))+
     '</div></div>';
 }
 
@@ -247,25 +320,40 @@ function repsFiltrados(){
 function vistaReps(){
   const mapa=porId();
   const lista=repsFiltrados();
+  const nActivos=listaReps.filter(r=>r.active).length;
+  const nInactivos=listaReps.length-nActivos;
   $a('#admBody').innerHTML=
     '<p class="adm-sec-sub">Cuentas con acceso de representante y sus ofertas asignadas.</p>'+
     '<div class="adm-toolbar"><button id="admNuevoRep">'+I.plus+' Nuevo representante</button>'+
-      '<input type="search" id="admBusRep" maxlength="60" placeholder="Buscar por nombre o usuario" value="'+escA(busRep)+'" autocomplete="off"></div>'+
+      '<input type="search" id="admBusRep" maxlength="60" placeholder="Buscar por nombre o usuario" value="'+escA(busRep)+'" autocomplete="off">'+
+      '<div class="adm-seg" role="group" aria-label="Filtrar por estado">'+
+        '<input type="radio" name="admRepFiltro" id="admRepTodos" checked><label for="admRepTodos">Todos <span>'+listaReps.length+'</span></label>'+
+        '<input type="radio" name="admRepFiltro" id="admRepActivos"><label for="admRepActivos">Activos <span>'+nActivos+'</span></label>'+
+        '<input type="radio" name="admRepFiltro" id="admRepInactivos"><label for="admRepInactivos">Inactivos <span>'+nInactivos+'</span></label>'+
+      '</div></div>'+
     '<div class="adm-rep-grid">'+
       (lista.map(p=>{
         const ids=(p.courseOfferingIds||[]);
-        const det=ids.map(id=>mapa[id]?mapa[id].asignatura+' ('+mapa[id].codigo+')':('Oferta '+id));
-        const resumen=det.slice(0,3).join(' · ')+(det.length>3?' <b>+'+(det.length-3)+' más</b>':'');
-        return '<div class="adm-rep-card">'+
-          '<div class="adm-rep-head"><p class="adm-rep-name">'+escA(p.name)+'</p>'+
-          '<span class="adm-badge'+(p.active?' on':'')+'">'+(p.active?'ACTIVO':'INACTIVO')+'</span></div>'+
-          '<p class="adm-rep-user">'+escA(p.username)+'</p>'+
-          '<p class="adm-rep-count">'+ids.length+' oferta(s) asignada(s)</p>'+
-          (det.length?'<p class="adm-rep-list">'+resumen+'</p>':'<p class="adm-rep-list">Sin ofertas asignadas.</p>')+
-          '<div class="adm-rep-actions"><button class="s" data-edit="'+escA(p.id)+'">Editar</button> '+
-          '<button class="s" data-act="'+escA(p.id)+'">'+(p.active?'Desactivar':'Activar')+'</button></div>'+
-        '</div>';
-      }).join('')||'<p class="adm-empty">Sin representantes para esta búsqueda.</p>')+
+        const det=ids.map(id=>mapa[id]?(mapa[id].asignatura+' ('+mapa[id].codigo+')'):('Oferta '+id));
+        return '<article class="adm-rep-card '+(p.active?'is-active':'is-inactive')+'" data-active="'+(p.active?'1':'0')+'">'+
+          '<div class="adm-rep-head"><div class="adm-rep-id">'+
+            '<span class="adm-avatar" aria-hidden="true">'+escA(inicialesA(p.name))+'</span>'+
+            '<div class="adm-rep-idt"><p class="adm-rep-name">'+escA(p.name)+'</p>'+
+              '<p class="adm-rep-user">'+escA(p.username)+'</p></div>'+
+          '</div></div>'+
+          '<div class="adm-rep-meta"><p class="adm-rep-count"><b>'+ids.length+'</b> oferta(s) asignada(s)</p>'+
+            '<span class="adm-badge'+(p.active?' on':'')+'"><span class="dot"></span>'+(p.active?'ACTIVO':'INACTIVO')+'</span></div>'+
+          '<div class="adm-chips">'+
+            (det.length
+              ? det.slice(0,3).map(d=>'<span class="adm-chip" title="'+escA(d)+'">'+escA(d)+'</span>').join('')+
+                (det.length>3?'<span class="adm-chip more">+'+(det.length-3)+' más</span>':'')
+              : '<span class="adm-chip empty">Sin ofertas asignadas.</span>')+
+          '</div>'+
+          '<hr class="adm-dash">'+
+          '<div class="adm-rep-actions"><button class="s" data-edit="'+escA(p.id)+'">'+I.edit+'Editar</button> '+
+          '<button class="'+(p.active?'d':'btn-ok-soft')+'" data-act="'+escA(p.id)+'">'+(p.active?I.lock:I.check)+(p.active?'Desactivar':'Activar')+'</button></div>'+
+        '</article>';
+      }).join('')||vacioA('Sin representantes para esta búsqueda.'))+
     '</div><div id="admModal"></div>';
   $a('#admNuevoRep').onclick=()=>abrirModalRep(null);
   $a('#admBusRep').oninput=e=>{ busRep=e.target.value; vistaReps(); const b=$a('#admBusRep'); b.focus(); b.setSelectionRange(b.value.length,b.value.length); };
@@ -313,7 +401,7 @@ function abrirModalRep(rep){
       : (a.numero-b.numero));
   const idNivelGr=o=>(o&&o.nivelId!=null)?o.nivelId:'';
   $a('#admModal').innerHTML=
-    '<div class="adm-modal"><div class="box"><h2>'+(rep?'Editar representante':'Nuevo representante')+'</h2>'+
+    '<div class="adm-modal"><div class="box"><button type="button" class="adm-modal-x" data-close aria-label="Cerrar">'+I.x+'</button><h2>'+(rep?'Editar representante':'Nuevo representante')+'</h2>'+
       '<div class="grid">'+
       '<div><label>Nombre *</label><input id="mRepName" maxlength="120" value="'+escA(rep?rep.name:'')+'"></div>'+
       '<div><label>Usuario *</label><input id="mRepUser" maxlength="160" autocomplete="off" value="'+escA(rep?rep.username:'')+'"'+(rep?' disabled':'')+'></div>'+
@@ -331,8 +419,8 @@ function abrirModalRep(rep){
         ).join('')+'</div>'
       ).join('')||'<p class="mut">Sin ofertas.</p>')+
       '</div>'+
-      '<p style="margin-top:14px"><button id="admMOk">Guardar</button> <button class="s" id="admMCancel">Cancelar</button> '+
-      '<span id="admMMsg" class="mut" role="status"></span></p></div></div>';
+      '<div class="adm-modal-foot"><span id="admMMsg" class="adm-msg" role="status"></span>'+
+      '<div class="adm-modal-actions"><button class="s" id="admMCancel">Cancelar</button><button id="admMOk">Guardar</button></div></div></div></div>';
   $a('#admModal').querySelector('.adm-modal').onclick=e=>{ if(e.target.classList.contains('adm-modal')) $a('#admModal').innerHTML=''; };
   $a('#admMCancel').onclick=()=>{ $a('#admModal').innerHTML=''; };
   $a('#mRepSem').onchange=e=>{
@@ -399,41 +487,64 @@ function vistaDocentes(){
   $a('#admBody').innerHTML=
     '<p class="adm-sec-sub">Gestiona el catálogo de docentes utilizado en las ofertas académicas.</p>'+
     '<div class="adm-stats">'+
-      '<div class="adm-stat"><div class="n">'+total+'</div><div class="l">Docentes totales</div></div>'+
-      '<div class="adm-stat"><div class="n">'+activos+'</div><div class="l">Activos</div></div>'+
-      '<div class="adm-stat"><div class="n">'+inactivos+'</div><div class="l">Inactivos</div></div>'+
-      '<div class="adm-stat"><div class="n">'+sinOfertas+'</div><div class="l">Sin ofertas</div></div>'+
+      '<div class="adm-stat kpi-blue"><span class="adm-stat-ico" aria-hidden="true">'+I.doc+'</span><div class="n">'+total+'</div><div class="l">Docentes totales</div></div>'+
+      '<div class="adm-stat kpi-green"><span class="adm-stat-ico" aria-hidden="true">'+I.check+'</span><div class="n">'+activos+'</div><div class="l">Activos</div></div>'+
+      '<div class="adm-stat kpi-teal"><span class="adm-stat-ico" aria-hidden="true">'+I.users+'</span><div class="n">'+inactivos+'</div><div class="l">Inactivos</div></div>'+
+      '<div class="adm-stat kpi-navy"><span class="adm-stat-ico" aria-hidden="true">'+I.book+'</span><div class="n">'+sinOfertas+'</div><div class="l">Sin ofertas</div></div>'+
     '</div>'+
-    '<div class="adm-toolbar"><button id="admNuevoDoc">'+I.plus+' Nuevo docente</button>'+
-      '<input type="search" id="admBusDoc" maxlength="60" placeholder="Buscar por nombre o correo..." value="'+escA(busDoc)+'" autocomplete="off">'+
-      '<select id="admFDocEstado" aria-label="Filtrar por estado"><option value="">Estado: todos</option>'+
-        '<option value="ACTIVE"'+(filtDocEstado==='ACTIVE'?' selected':'')+'>Activos</option>'+
-        '<option value="INACTIVE"'+(filtDocEstado==='INACTIVE'?' selected':'')+'>Inactivos</option></select>'+
-      '<select id="admFDocAsig" aria-label="Filtrar por asignación"><option value="">Asignación: todas</option>'+
-        '<option value="con"'+(filtDocAsig==='con'?' selected':'')+'>Con ofertas</option>'+
-        '<option value="sin"'+(filtDocAsig==='sin'?' selected':'')+'>Sin ofertas</option></select>'+
-      '<input type="search" id="admFDocAsigQ" maxlength="60" placeholder="Asignatura..." value="'+escA(filtDocAsigQ)+'" autocomplete="off">'+
-      '<select id="admFDocNiv" aria-label="Filtrar por nivel"><option value="">Nivel: todos</option>'+cats.niveles.map(n=>'<option value="'+n.id+'"'+(String(filtDocNivel)===String(n.id)?' selected':'')+'>'+escA(n.nombre)+'</option>').join('')+'</select>'+
-      '<select id="admFDocGru" aria-label="Filtrar por grupo"><option value="">Grupo: todos</option>'+cats.grupos.map(g=>'<option value="'+g.id+'"'+(String(filtDocGrupo)===String(g.id)?' selected':'')+'>'+escA(g.nombre)+'</option>').join('')+'</select>'+
-      '<select id="admFDocOrd" aria-label="Ordenar"><option value="nombre"'+(filtDocOrden==='nombre'?' selected':'')+'>A–Z</option>'+
-        '<option value="estado"'+(filtDocOrden==='estado'?' selected':'')+'>Por estado</option>'+
-        '<option value="ofertas"'+(filtDocOrden==='ofertas'?' selected':'')+'>Por n.º ofertas</option></select>'+
-      '<button class="s" id="admFLimpiar">Limpiar filtros</button></div>'+
-    '<p class="mut" style="margin:0 0 12px">'+lista.length+' resultado(s).</p>'+
+    '<div class="adm-filters adm-filters-doc">'+
+      '<div class="adm-filter-row">'+
+        '<div class="adm-field adm-field-btn"><button id="admNuevoDoc">'+I.plus+' Nuevo docente</button></div>'+
+        '<div class="adm-field adm-field-search"><label for="admBusDoc">Buscar</label>'+
+          '<input type="search" id="admBusDoc" maxlength="60" placeholder="Buscar por nombre o correo..." value="'+escA(busDoc)+'" autocomplete="off"></div>'+
+        '<div class="adm-field"><label for="admFDocEstado">Estado</label>'+
+          '<select id="admFDocEstado" aria-label="Filtrar por estado"><option value="">Estado: todos</option>'+
+          '<option value="ACTIVE"'+(filtDocEstado==='ACTIVE'?' selected':'')+'>Activos</option>'+
+          '<option value="INACTIVE"'+(filtDocEstado==='INACTIVE'?' selected':'')+'>Inactivos</option></select></div>'+
+        '<div class="adm-field"><label for="admFDocAsig">Asignación</label>'+
+          '<select id="admFDocAsig" aria-label="Filtrar por asignación"><option value="">Asignación: todas</option>'+
+          '<option value="con"'+(filtDocAsig==='con'?' selected':'')+'>Con ofertas</option>'+
+          '<option value="sin"'+(filtDocAsig==='sin'?' selected':'')+'>Sin ofertas</option></select></div>'+
+        '<div class="adm-field"><label for="admFDocAsigQ">Asignatura</label>'+
+          '<input type="search" id="admFDocAsigQ" maxlength="60" placeholder="Asignatura..." value="'+escA(filtDocAsigQ)+'" autocomplete="off"></div>'+
+        '<div class="adm-field"><label for="admFDocNiv">Nivel</label>'+
+          '<select id="admFDocNiv" aria-label="Filtrar por nivel"><option value="">Nivel: todos</option>'+cats.niveles.map(n=>'<option value="'+n.id+'"'+(String(filtDocNivel)===String(n.id)?' selected':'')+'>'+escA(n.nombre)+'</option>').join('')+'</select></div>'+
+      '</div>'+
+      '<div class="adm-filter-row">'+
+        '<div class="adm-field"><label for="admFDocGru">Grupo</label>'+
+          '<select id="admFDocGru" aria-label="Filtrar por grupo"><option value="">Grupo: todos</option>'+cats.grupos.map(g=>'<option value="'+g.id+'"'+(String(filtDocGrupo)===String(g.id)?' selected':'')+'>'+escA(g.nombre)+'</option>').join('')+'</select></div>'+
+        '<div class="adm-field"><label for="admFDocOrd">Orden</label>'+
+          '<select id="admFDocOrd" aria-label="Ordenar"><option value="nombre"'+(filtDocOrden==='nombre'?' selected':'')+'>A–Z</option>'+
+          '<option value="estado"'+(filtDocOrden==='estado'?' selected':'')+'>Por estado</option>'+
+          '<option value="ofertas"'+(filtDocOrden==='ofertas'?' selected':'')+'>Por n.º ofertas</option></select></div>'+
+        '<div class="adm-field adm-f-clear"><button class="s" id="admFLimpiar">'+I.refresh+'Limpiar filtros</button></div>'+
+      '</div>'+
+    '</div>'+
+    '<p class="adm-result">'+lista.length+' resultado(s).</p>'+
     '<div class="adm-rep-grid">'+
       (pagina.map(d=>{
-        const det=(d.ofertas||[]).slice(0,3).join(' · ')+((d.ofertas||[]).length>3?' <b>+'+((d.ofertas||[]).length-3)+' más</b>':'');
-        return '<div class="adm-rep-card">'+
-          '<div class="adm-rep-head"><p class="adm-rep-name">'+escA(d.nombre)+'</p>'+
-          '<span class="adm-badge'+(d.estado==='ACTIVE'?' on':'')+'">'+escA(d.estado||'—')+'</span></div>'+
-          '<p class="adm-rep-user">'+escA(d.correo||'Sin correo')+'</p>'+
-          '<p class="adm-rep-count">'+(d.ofertasCount||0)+' oferta(s) asignada(s)</p>'+
-          ((d.ofertas||[]).length?'<p class="adm-rep-list">'+det+'</p>':'<p class="adm-rep-list">Sin ofertas asignadas.</p>')+
-          '<div class="adm-rep-actions"><button class="s" data-edit-doc="'+d.userId+'">Editar</button> '+
-          '<button class="s" data-act-doc="'+d.userId+'">'+(d.estado==='ACTIVE'?'Desactivar':'Activar')+'</button> '+
-          '<button class="s" data-del-doc="'+d.userId+'">Eliminar</button></div>'+
-        '</div>';
-      }).join('')||'<p class="adm-empty">Sin docentes para estos filtros.</p>')+
+        const activo=d.estado==='ACTIVE';
+        const det=(d.ofertas||[]).slice(0,3);
+        return '<article class="adm-rep-card '+(activo?'is-active':'is-inactive')+'">'+
+          '<div class="adm-rep-head"><div class="adm-rep-id">'+
+            '<span class="adm-avatar" aria-hidden="true">'+escA(inicialesA(d.nombre))+'</span>'+
+            '<div class="adm-rep-idt"><p class="adm-rep-name">'+escA(tituloCasoA(d.nombre))+'</p>'+
+              '<p class="adm-rep-user">'+escA(d.correo||'Sin correo')+'</p></div>'+
+          '</div></div>'+
+          '<div class="adm-rep-meta"><p class="adm-rep-count"><b>'+(d.ofertasCount||0)+'</b> oferta(s) asignada(s)</p>'+
+            '<span class="adm-badge'+(activo?' on':'')+'"><span class="dot"></span>'+(activo?'ACTIVO':'INACTIVO')+'</span></div>'+
+          '<div class="adm-chips">'+
+            (det.length
+              ? det.map(o=>'<span class="adm-chip" title="'+escA(o)+'">'+escA(o)+'</span>').join('')+
+                ((d.ofertas||[]).length>3?'<span class="adm-chip more">+'+((d.ofertas||[]).length-3)+' más</span>':'')
+              : '<span class="adm-chip empty">Sin ofertas asignadas.</span>')+
+          '</div>'+
+          '<hr class="adm-dash">'+
+          '<div class="adm-rep-actions"><button class="s" data-edit-doc="'+d.userId+'">'+I.edit+'Editar</button> '+
+          '<button class="'+(activo?'d':'btn-ok-soft')+'" data-act-doc="'+d.userId+'">'+(activo?I.lock:I.check)+(activo?'Desactivar':'Activar')+'</button> '+
+          '<button class="d" data-del-doc="'+d.userId+'">'+I.trash+'Eliminar</button></div>'+
+        '</article>';
+      }).join('')||vacioA('Sin docentes para estos filtros.'))+
     '</div>'+
     '<div class="adm-pag"><button class="s" id="docPrev"'+(docPage<=1?' disabled':'')+'>← Anterior</button>'+
     '<span class="mut">Página <b>'+docPage+'</b> de <b>'+pages+'</b></span>'+
@@ -459,15 +570,15 @@ function abrirModalEditarDoc(userId){
   const d=listaDoc.find(x=>Number(x.userId)===Number(userId));
   if(!d) return;
   $a('#admModal').innerHTML=
-    '<div class="adm-modal"><div class="box"><h2>Editar docente</h2>'+
+    '<div class="adm-modal"><div class="box"><button type="button" class="adm-modal-x" data-close aria-label="Cerrar">'+I.x+'</button><h2>Editar docente</h2>'+
       '<div class="grid">'+
       '<div><label>Nombre completo *</label><input id="mDocNameE" maxlength="160" value="'+escA(d.nombre||'')+'" autocomplete="off"></div>'+
       '<div><label>Correo institucional *</label><input id="mDocMailE" maxlength="160" value="'+escA(d.correo||'')+'" autocomplete="off"></div>'+
       '<div><label>Estado</label><select id="mDocEstadoE"><option value="ACTIVE"'+(d.estado==='ACTIVE'?' selected':'')+'>Activo</option><option value="INACTIVE"'+(d.estado!=='ACTIVE'?' selected':'')+'>Inactivo</option></select></div>'+
       '</div>'+
       '<p class="mut" style="margin-top:10px">No se modifican asignaciones, usuario de acceso ni contraseña.</p>'+
-      '<p style="margin-top:14px"><button id="admMOk">Guardar docente</button> <button class="s" id="admMCancel">Cancelar</button> '+
-      '<span id="admMMsg" class="mut" role="status"></span></p></div></div>';
+      '<div class="adm-modal-foot"><span id="admMMsg" class="adm-msg" role="status"></span>'+
+      '<div class="adm-modal-actions"><button class="s" id="admMCancel">Cancelar</button><button id="admMOk">Guardar docente</button></div></div></div></div>';
   $a('#admModal').querySelector('.adm-modal').onclick=e=>{ if(e.target.classList.contains('adm-modal')) $a('#admModal').innerHTML=''; };
   $a('#admMCancel').onclick=()=>{ $a('#admModal').innerHTML=''; };
   $a('#admMOk').onclick=async e=>{
@@ -543,14 +654,14 @@ async function eliminarDoc(userId, btn){
 }
 function abrirModalDoc(){
   $a('#admModal').innerHTML=
-    '<div class="adm-modal"><div class="box"><h2>Nuevo docente</h2>'+
+    '<div class="adm-modal"><div class="box"><button type="button" class="adm-modal-x" data-close aria-label="Cerrar">'+I.x+'</button><h2>Nuevo docente</h2>'+
       '<p class="mut">El docente queda como registro académico interno, sin acceso a la aplicación.</p>'+
       '<div class="grid">'+
       '<div><label>Nombre completo *</label><input id="mDocName" maxlength="160" placeholder="Ej. ARISLEYDA RENTERIA CASTRO" autocomplete="off"></div>'+
       '<div><label>Correo institucional *</label><input id="mDocMail" maxlength="160" placeholder="Ej. nombre@utch.edu.co" autocomplete="off"></div>'+
       '</div>'+
-      '<p style="margin-top:14px"><button id="admMOk">Crear docente</button> <button class="s" id="admMCancel">Cancelar</button> '+
-      '<span id="admMMsg" class="mut" role="status"></span></p></div></div>';
+      '<div class="adm-modal-foot"><span id="admMMsg" class="adm-msg" role="status"></span>'+
+      '<div class="adm-modal-actions"><button class="s" id="admMCancel">Cancelar</button><button id="admMOk">Crear docente</button></div></div></div></div>';
   $a('#admModal').querySelector('.adm-modal').onclick=e=>{ if(e.target.classList.contains('adm-modal')) $a('#admModal').innerHTML=''; };
   $a('#admMCancel').onclick=()=>{ $a('#admModal').innerHTML=''; };
   $a('#admMOk').onclick=async()=>{
@@ -602,30 +713,43 @@ function vistaOfertas(){
   const nSel=Array.from(selDel).filter(id=>lista.some(o=>o.courseOfferingId===id)).length;
   $a('#admBody').innerHTML=
     '<p class="adm-sec-sub">Catálogo en PostgreSQL (período → nivel → ofertas). Marque ofertas para eliminarlas de forma selectiva.</p>'+
-    '<div class="adm-toolbar"><button id="admIrNueva">'+I.plus+' Crear oferta académica</button>'+
-      '<select id="admFPer" aria-label="Filtrar por período"><option value="">Período: todos</option>'+cats.periodos.map(p=>'<option value="'+p.id+'"'+(String(filtPer)===String(p.id)?' selected':'')+'>'+escA(p.nombre)+'</option>').join('')+'</select>'+
-      '<select id="admFNiv" aria-label="Filtrar por nivel"><option value="">Nivel: todos</option>'+cats.niveles.map(p=>'<option value="'+p.id+'"'+(String(filtNiv)===String(p.id)?' selected':'')+'>'+escA(p.nombre)+'</option>').join('')+'</select>'+
-      '<select id="admFGru" aria-label="Filtrar por grupo"><option value="">Grupo: todos</option>'+gruposFiltro.map(g=>'<option value="'+g.id+'"'+(String(filtGrupo)===String(g.id)?' selected':'')+'>'+escA(g.nombre)+'</option>').join('')+'</select>'+
-      '<input type="search" id="admFQ" maxlength="60" placeholder="Buscar nombre o código" value="'+escA(busOf)+'" autocomplete="off">'+
-      '<button class="s" id="admLimpiar">Limpiar filtros</button></div>'+
-    '<div class="adm-selbar" id="admSelBar"'+(nSel?'':' hidden')+'><span id="admSelCount"><b>'+nSel+'</b> seleccionada(s)</span>'+
-      '<button class="s" id="admSelVis">Seleccionar visibles</button>'+
+    '<div class="adm-filters adm-filters-offers"><div class="adm-filter-row">'+
+      '<div class="adm-field adm-field-btn"><button id="admIrNueva">'+I.plus+' Crear oferta académica</button></div>'+
+      '<div class="adm-field"><label for="admFPer">Período</label>'+
+        '<select id="admFPer" aria-label="Filtrar por período"><option value="">Período: todos</option>'+cats.periodos.map(p=>'<option value="'+p.id+'"'+(String(filtPer)===String(p.id)?' selected':'')+'>'+escA(p.nombre)+'</option>').join('')+'</select></div>'+
+      '<div class="adm-field"><label for="admFNiv">Nivel</label>'+
+        '<select id="admFNiv" aria-label="Filtrar por nivel"><option value="">Nivel: todos</option>'+cats.niveles.map(p=>'<option value="'+p.id+'"'+(String(filtNiv)===String(p.id)?' selected':'')+'>'+escA(p.nombre)+'</option>').join('')+'</select></div>'+
+      '<div class="adm-field"><label for="admFGru">Grupo</label>'+
+        '<select id="admFGru" aria-label="Filtrar por grupo"><option value="">Grupo: todos</option>'+gruposFiltro.map(g=>'<option value="'+g.id+'"'+(String(filtGrupo)===String(g.id)?' selected':'')+'>'+escA(g.nombre)+'</option>').join('')+'</select></div>'+
+      '<div class="adm-field adm-field-search"><label for="admFQ">Buscar</label>'+
+        '<input type="search" id="admFQ" maxlength="60" placeholder="Buscar nombre o código" value="'+escA(busOf)+'" autocomplete="off"></div>'+
+      '<div class="adm-field adm-f-clear"><button class="s" id="admLimpiar">'+I.refresh+'Limpiar filtros</button></div>'+
+    '</div></div>'+
+    '<div class="adm-selbar" id="admSelBar"><span id="admSelCount"><b>'+nSel+'</b> seleccionada(s)</span>'+
+      '<button class="s" id="admSelVis">'+I.check+'Seleccionar visibles</button>'+
       '<button class="s" id="admDesel">Deseleccionar</button>'+
-      '<button class="adm-btn-danger" id="admEliminar">Eliminar seleccionadas</button></div>'+
+      '<button class="adm-btn-danger" id="admEliminar"'+(nSel?'':' disabled')+'>'+I.trash+'Eliminar seleccionadas</button></div>'+
     (grupos.map(gr=>
-      '<div class="adm-grupo">'+escA(gr.titulo[0])+' <span class="n">· '+escA(gr.titulo[1]?gr.titulo[1]+' SEMESTRE':'—')+' · '+gr.items.length+' oferta(s)</span></div>'+
+      '<div class="adm-grupo"><span class="adm-grupo-t">'+escA(gr.titulo[0])+'</span>'+
+        '<span class="adm-grupo-sub">· '+escA(gr.titulo[1]?gr.titulo[1]+' SEMESTRE':'—')+'</span>'+
+        '<span class="adm-grupo-line" aria-hidden="true"></span>'+
+        '<span class="adm-pill">'+gr.items.length+' oferta(s)</span></div>'+
       '<div class="adm-of-grid">'+gr.items.map(o=>{
         const marcada=selDel.has(o.courseOfferingId);
-        return '<div class="adm-of-card'+(marcada?' sel':'')+'">'+
-          '<div class="adm-of-check"><label><input type="checkbox" data-del value="'+o.courseOfferingId+'"'+(marcada?' checked':'')+' aria-label="Seleccionar '+escA(nombreOf(o))+'"> Seleccionar</label></div>'+
+        const reps=mapaRep[o.courseOfferingId]||[];
+        return '<article class="adm-of-card'+(marcada?' sel':'')+'">'+
+          '<label class="adm-of-check"><input type="checkbox" data-del value="'+o.courseOfferingId+'"'+(marcada?' checked':'')+' aria-label="Seleccionar '+escA(nombreOf(o))+'">'+
+            '<span class="adm-check-ui" aria-hidden="true"></span><span class="adm-check-txt">Seleccionar</span></label>'+
           '<div class="adm-of-top"><p class="adm-of-name">'+escA(nombreOf(o))+'</p><span class="adm-code">'+escA(o.codigo||'—')+'</span></div>'+
-          '<p class="adm-of-meta">'+(o.docente?escA(o.docente):'Sin docente asignado')+'</p>'+
+          '<p class="adm-of-meta adm-of-docente">'+(o.docente?escA(o.docente):'Sin docente asignado')+'</p>'+
           '<p class="adm-of-meta">'+escA([o.grupo?('Grupo '+o.grupo):null,o.programa].filter(Boolean).join(' · ')||'—')+'</p>'+
           '<p class="adm-of-id">Oferta #'+o.courseOfferingId+'</p>'+
-          '<p class="adm-of-meta">Representantes: '+escA((mapaRep[o.courseOfferingId]||[]).join(', ')||'—')+'</p>'+
-        '</div>';
+          '<div class="adm-of-reps"><span class="adm-of-reps-lbl">Representantes:</span>'+
+            (reps.length?reps.map(n=>'<span class="adm-chip" title="'+escA(n)+'">'+escA(n)+'</span>').join(''):'<span class="adm-chip empty">—</span>')+
+          '</div>'+
+        '</article>';
       }).join('')+'</div>'
-    ).join('')||'<p class="adm-empty">Sin ofertas para este filtro.</p>');
+    ).join('')||vacioA('Sin ofertas para este filtro.'));
   $a('#admIrNueva').onclick=()=>{ vista='nueva'; renderApp(); };
   $a('#admFPer').onchange=e=>{ filtPer=e.target.value; vistaOfertas(); };
   $a('#admFNiv').onchange=e=>{ filtNiv=e.target.value; vistaOfertas(); };
@@ -642,8 +766,10 @@ function vistaOfertas(){
   });
   const refrescarSelBar=()=>{
     const n=Array.from(selDel).filter(id=>lista.some(o=>o.courseOfferingId===id)).length;
-    $a('#admSelBar').hidden=n===0;
+    $a('#admSelBar').hidden=false;
     $a('#admSelCount').innerHTML='<b>'+n+'</b> seleccionada(s)';
+    const btnEli=$a('#admEliminar');
+    if(btnEli) btnEli.disabled=n===0;
   };
   $a('#admSelVis').onclick=()=>{ lista.forEach(o=>selDel.add(o.courseOfferingId)); vistaOfertas(); };
   $a('#admDesel').onclick=()=>{ selDel.clear(); vistaOfertas(); };
@@ -730,7 +856,7 @@ function fmtSoloFechaBogota(iso){
   }catch(e){ return 'clase'; }
 }
 function badgeEstado(st){
-  return '<span class="adm-badge'+(st==='OPEN'?' on':'')+'">'+(st==='OPEN'?'ABIERTA':'CERRADA')+'</span>';
+  return '<span class="adm-badge'+(st==='OPEN'?' on':'')+'"><span class="dot"></span>'+(st==='OPEN'?'ABIERTA':'CERRADA')+'</span>';
 }
 async function cargarHistorial(){
   const pg0=$a('#histPag');
@@ -778,15 +904,15 @@ function filaHist(s){
     '<td data-label="Representante">'+escA(s.representante||'—')+'</td>'+
     '<td data-label="Estado">'+badgeEstado(s.status)+'</td>'+
     '<td data-label="Est.">'+s.recordCount+'</td>'+
-    '<td data-label="Acciones" class="nowrap"><button class="s" data-ver="'+escA(s.sessionId)+'">Ver</button> '+
-    '<button class="adm-btn-danger" data-borrar="'+escA(s.sessionId)+'">Eliminar</button></td>'+
+    '<td data-label="Acciones" class="nowrap"><button class="s" data-ver="'+escA(s.sessionId)+'">'+I.eye+'Ver</button> '+
+    '<button class="d" data-borrar="'+escA(s.sessionId)+'">'+I.trash+'Eliminar</button></td>'+
   '</tr>';
 }
 function pintarHistorial(){
   const ini=(hist.page-1)*hist.pageSize+1;
   const fin=Math.min(hist.total,ini+hist.data.length-1);
   const tb=$a('#histBody');
-  if(tb) tb.innerHTML=hist.data.length?hist.data.map(filaHist).join(''):'<tr><td colspan="8"><p class="adm-empty">Sin resultados para estos filtros.</p></td></tr>';
+  if(tb) tb.innerHTML=hist.data.length?hist.data.map(filaHist).join(''):'<tr><td colspan="8">'+vacioA('Sin resultados para estos filtros.')+'</td></tr>';
   tb.querySelectorAll('[data-ver]').forEach(b=>{ b.onclick=()=>verDetalleHist(b.dataset.ver,b); });
   tb.querySelectorAll('[data-borrar]').forEach(b=>{ b.onclick=()=>eliminarSesionHist(b.dataset.borrar,b); });
   const pg=$a('#histPag');
@@ -800,18 +926,27 @@ function pintarHistorial(){
 function vistaHistorial(){
   $a('#admBody').innerHTML=
     '<p class="adm-sec-sub">Sesiones de asistencia registradas en el servidor, de la más reciente a la más antigua.</p>'+
-    '<div class="adm-toolbar">'+
-      '<input type="date" id="hDesde" aria-label="Fecha inicial" value="'+escA(hist.desde)+'">'+
-      '<input type="date" id="hHasta" aria-label="Fecha final" value="'+escA(hist.hasta)+'">'+
-      '<input type="search" id="hQ" maxlength="60" placeholder="Asignatura o código" value="'+escA(hist.q)+'" autocomplete="off">'+
-      '<select id="hNivel" aria-label="Filtrar por nivel"><option value="">Nivel: todos</option>'+cats.niveles.map(n=>'<option value="'+n.id+'"'+(String(hist.nivelId)===String(n.id)?' selected':'')+'>'+escA(n.nombre)+'</option>').join('')+'</select>'+
-      '<select id="hGrupo" aria-label="Filtrar por grupo"><option value="">Grupo: todos</option>'+cats.grupos.map(g=>'<option value="'+g.id+'"'+(String(hist.grupoId)===String(g.id)?' selected':'')+'>'+escA(g.nombre)+'</option>').join('')+'</select>'+
-      '<select id="hRep" aria-label="Filtrar por representante"><option value="">Representante: todos</option>'+listaReps.map(r=>'<option value="'+r.id+'"'+(String(hist.repId)===String(r.id)?' selected':'')+'>'+escA(r.name)+'</option>').join('')+'</select>'+
-      '<select id="hStatus" aria-label="Filtrar por estado"><option value="">Estado: todas</option>'+
+    '<div class="adm-filters adm-filters-hist"><div class="adm-filter-row">'+
+      '<div class="adm-field adm-f-date"><label for="hDesde">Desde</label>'+
+        '<input type="date" id="hDesde" aria-label="Fecha inicial" value="'+escA(hist.desde)+'"></div>'+
+      '<div class="adm-field adm-f-date"><label for="hHasta">Hasta</label>'+
+        '<input type="date" id="hHasta" aria-label="Fecha final" value="'+escA(hist.hasta)+'"></div>'+
+      '<div class="adm-field adm-f-q"><label for="hQ">Asignatura o código</label>'+
+        '<input type="search" id="hQ" maxlength="60" placeholder="Asignatura o código" value="'+escA(hist.q)+'" autocomplete="off"></div>'+
+      '<div class="adm-field adm-f-select"><label for="hNivel">Nivel</label>'+
+        '<select id="hNivel" aria-label="Filtrar por nivel"><option value="">Nivel: todos</option>'+cats.niveles.map(n=>'<option value="'+n.id+'"'+(String(hist.nivelId)===String(n.id)?' selected':'')+'>'+escA(n.nombre)+'</option>').join('')+'</select></div>'+
+      '<div class="adm-field adm-f-select"><label for="hGrupo">Grupo</label>'+
+        '<select id="hGrupo" aria-label="Filtrar por grupo"><option value="">Grupo: todos</option>'+cats.grupos.map(g=>'<option value="'+g.id+'"'+(String(hist.grupoId)===String(g.id)?' selected':'')+'>'+escA(g.nombre)+'</option>').join('')+'</select></div>'+
+      '<div class="adm-field adm-f-select"><label for="hRep">Representante</label>'+
+        '<select id="hRep" aria-label="Filtrar por representante"><option value="">Representante: todos</option>'+listaReps.map(r=>'<option value="'+r.id+'"'+(String(hist.repId)===String(r.id)?' selected':'')+'>'+escA(r.name)+'</option>').join('')+'</select></div>'+
+      '<div class="adm-field adm-f-select"><label for="hStatus">Estado</label>'+
+        '<select id="hStatus" aria-label="Filtrar por estado"><option value="">Estado: todas</option>'+
         '<option value="OPEN"'+(hist.status==='OPEN'?' selected':'')+'>Abiertas</option>'+
-        '<option value="CLOSED"'+(hist.status==='CLOSED'?' selected':'')+'>Cerradas</option></select>'+
-      '<select id="hPageSize" aria-label="Resultados por página">'+[10,25,50].map(n=>'<option value="'+n+'"'+(hist.pageSize===n?' selected':'')+'>'+n+' / pág.</option>').join('')+'</select>'+
-      '<button class="s" id="hLimpiar">Limpiar filtros</button></div>'+
+        '<option value="CLOSED"'+(hist.status==='CLOSED'?' selected':'')+'>Cerradas</option></select></div>'+
+      '<div class="adm-field adm-f-page"><label for="hPageSize">Registros por página</label>'+
+        '<select id="hPageSize" aria-label="Resultados por página">'+[10,25,50].map(n=>'<option value="'+n+'"'+(hist.pageSize===n?' selected':'')+'>'+n+' / pág.</option>').join('')+'</select></div>'+
+      '<div class="adm-field adm-f-clear"><button class="s" id="hLimpiar">'+I.refresh+'Limpiar filtros</button></div>'+
+    '</div></div>'+
     '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'+
       '<th>Apertura</th><th>Tiempo</th><th>Asignatura</th><th>Nivel/Grupo</th><th>Representante</th><th>Estado</th><th>Est.</th><th>Acciones</th>'+
     '</tr></thead><tbody id="histBody"></tbody></table></div>'+
@@ -839,64 +974,88 @@ function vistaHistorial(){
 }
 /* Planilla con el mismo formato institucional de la vista del
    representante/docente (hojaHTML): mismos bloques, estilos de #hoja
-   y pie institucional. Sin botones de borrado; solo lectura. */
+   y pie institucional. Sin botones de borrado; solo lectura.
+   Siempre 30 filas (hasta 40 si hay más registros) y, si la sesión
+   está cerrada, las filas vacías se anulan con un zigzag por columna. */
+const FILAS_MIN_ADMIN=30, FILAS_MAX_ADMIN=40;
+function ajustarNombresHojaAdmin(root){
+  const celdas=root?root.querySelectorAll('.nom-txt'):document.querySelectorAll('#hoja .nom-txt');
+  celdas.forEach(tx=>{
+    tx.style.fontSize='';
+    const pasos=[12,11,10.5,10,9.5,9,8.5,8,7.5,7,6.5,6];
+    for(let i=0;i<pasos.length;i++){
+      tx.style.fontSize=pasos[i]+'pt';
+      if(tx.scrollWidth<=tx.clientWidth+1) break;
+    }
+  });
+}
 function hojaAdmin(s, regs){
-  const etiqueta=(t,v)=>'<td class="lbl">'+t+'</td><td>'+escA(v)+'</td>';
+  const lbl=t=>'<td class="lbl">'+t+'</td>';
   const fecha=fmtBogota(s.createdAt)+(s.closedAt?' · '+fmtBogota(s.closedAt,true):'');
+  const total=regs.length<=FILAS_MIN_ADMIN?FILAS_MIN_ADMIN:Math.min(regs.length,FILAS_MAX_ADMIN);
+  const cerrada=String(s.status||'').toUpperCase()==='CLOSED';
   let filas='';
-  for(let i=0;i<regs.length;i++){
-    const f=regs[i];
-    filas+='<tr>' +
+  for(let i=0;i<total;i++){
+    const f=regs[i]||null;
+    const anulada=cerrada&&!f;
+    filas+='<tr'+(anulada?' class="fila-anulada"':'')+'>' +
       '<td class="n">'+(i+1)+'.</td>' +
-      '<td>'+escA(f.fullName||'')+'</td>' +
-      '<td class="id">'+escA(f.identification||'')+'</td>' +
-      '<td class="f">'+(f.studentSignature?'<img src="'+escA(f.studentSignature)+'" alt="Firma">':'')+'</td>' +
+      '<td class="nom"><span class="nom-txt">'+(f?escA(f.fullName||''):'')+'</span></td>' +
+      '<td class="id">'+(f?escA(f.identification||''):'')+'</td>' +
+      '<td class="f">'+(f&&f.studentSignature?'<div class="firma-celda"><img src="'+escA(f.studentSignature)+'" alt="Firma"></div>':'')+'</td>' +
     '</tr>';
   }
-  if(!regs.length) filas='<tr><td class="n">—</td><td>Sin registros.</td><td class="id"></td><td class="f"></td></tr>';
   return '' +
-  '<table class="enc"><tr>' +
-    '<td style="width:16%;padding:0 4px 0 0"><img src="logo.png" alt="Universidad Tecnológica del Chocó" style="max-height:52px;width:auto"></td>' +
-    '<td class="inst">' +
-      'UNIVERSIDAD TECNOLÓGICA DEL CHOCÓ<br>' +
-      '<span class="sub">Diego Luis Córdoba</span><br>' +
-      '<span class="pro">PROCESO GESTIÓN CURRICULAR Y ACADÉMICA</span>' +
-    '</td>' +
-    '<td class="meta" style="width:16%;text-align:right">Código: F-GCA-24<br>Versión: 1<br>Fecha: 14-01-2023</td>' +
-  '</tr></table>' +
-  '<div class="tit">Formato de Registro de Asistencia a Clases</div>' +
-  '<table>' +
-    '<tr><td class="lbl">FACULTAD</td><td style="width:16%">'+escA(s.facultad||'')+'</td><td class="lbl">PROGRAMA</td><td colspan="3">'+escA(s.programa||'')+'</td></tr>' +
-    '<tr>'+etiqueta('NIVEL',s.nivel||'')+etiqueta('ASIGNATURA',s.asignatura||'')+etiqueta('CÓDIGO DE ASIGNATURA',s.codigo||'')+'</tr>' +
-    '<tr>'+etiqueta('PERIODO ACADÉMICO',s.periodo||'')+etiqueta('CDS','')+etiqueta('FECHA',fecha)+'</tr>' +
-    '<tr><td class="lbl">NOMBRE Y APELLIDOS DEL DOCENTE</td><td colspan="5">'+escA(s.docente||'')+'</td></tr>' +
-    '<tr><td class="lbl">TEMAS TRATADOS</td><td colspan="5" class="temas">—</td></tr>' +
+  '<table class="enc">' +
+    '<tr class="enc-cab">' +
+      '<td class="enc-logo"><img src="logo.png" alt="Universidad Tecnológica del Chocó"></td>' +
+      '<td class="inst">' +
+        'UNIVERSIDAD TECNOLÓGICA DEL CHOCÓ<br>' +
+        '<span class="sub">Diego Luis Córdoba</span>' +
+        '<span class="pro">PROCESO GESTIÓN CURRICULAR Y ACADÉMICA</span>' +
+      '</td>' +
+      '<td class="meta">Código: F-GCA-24<br>Versión: 1<br>Fecha: 14-01-2023</td>' +
+    '</tr>' +
+    '<tr class="enc-tit"><td colspan="3">FORMATO DE REGISTRO DE ASISTENCIA A CLASES</td></tr>' +
   '</table>' +
-  '<table style="margin-top:4px">' +
+  '<table class="datos">' +
+    '<colgroup><col style="width:20%"><col style="width:14%"><col style="width:15%"><col style="width:24%"><col style="width:14%"><col style="width:13%"></colgroup>' +
+    '<tr>'+lbl('FACULTAD')+'<td>'+escA(s.facultad||'')+'</td>'+lbl('PROGRAMA')+'<td colspan="3">'+escA(s.programa||'')+'</td></tr>' +
+    '<tr>'+lbl('NIVEL')+'<td>'+escA(s.nivel||'')+'</td>'+lbl('ASIGNATURA')+'<td>'+escA(s.asignatura||'')+'</td>'+lbl('CÓDIGO DE ASIGNATURA')+'<td>'+escA(s.codigo||'')+'</td></tr>' +
+    '<tr>'+lbl('PERIODO ACADÉMICO')+'<td>'+escA(s.periodo||'')+'</td>'+lbl('CDS')+'<td></td>'+lbl('FECHA')+'<td>'+escA(fecha)+'</td></tr>' +
+    '<tr>'+lbl('NOMBRE Y APELLIDOS DEL DOCENTE')+'<td colspan="5">'+escA(s.docente||'')+'</td></tr>' +
+    '<tr>'+lbl('TEMAS TRATADOS')+'<td colspan="5" class="temas"><div class="temas-txt">—</div></td></tr>' +
+  '</table>' +
+  '<div class="tabla-wrap"><table class="tabla-est">' +
+    '<colgroup><col style="width:4.5%"><col style="width:48%"><col style="width:26%"><col style="width:21%"></colgroup>' +
     '<thead><tr>' +
-      '<th style="width:5%">No.</th>' +
-      '<th style="width:47%">NOMBRES Y APELLIDOS DEL ESTUDIANTE</th>' +
-      '<th style="width:22%">NÚMERO DE IDENTIFICACIÓN</th>' +
-      '<th style="width:26%">FIRMA</th>' +
+      '<th style="width:4.5%">No.</th>' +
+      '<th style="width:48%">NOMBRES Y APELLIDOS DEL ESTUDIANTE</th>' +
+      '<th style="width:26%">NÚMERO DE IDENTIFICACIÓN</th>' +
+      '<th style="width:21%">FIRMA</th>' +
     '</tr></thead>' +
-    '<tbody class="filas">' +
-  filas +
-  '</tbody>' +
-  '</table>' +
-  '<div class="pie" style="margin-top:96px;break-inside:avoid;page-break-inside:avoid;">' +
-    '<div>'+(s.teacherSignature?'<img src="'+escA(s.teacherSignature)+'" alt="Firma del docente">':'')+'FIRMA DEL DOCENTE</div>' +
-    '<div>'+(s.representativeSignature?'<img src="'+escA(s.representativeSignature)+'" alt="Firma del representante">':'')+'FIRMA DEL REPRESENTANTE</div>' +
+    '<tbody class="filas">' + filas + '</tbody>' +
+  '</table></div>' +
+  '<div class="pie">' +
+    '<div><div class="sig-img">'+(s.teacherSignature?'<img src="'+escA(s.teacherSignature)+'" alt="Firma del docente">':'')+'</div>' +
+      '<div class="sig-linea">FIRMA DEL DOCENTE</div></div>' +
+    '<div><div class="sig-img">'+(s.representativeSignature?'<img src="'+escA(s.representativeSignature)+'" alt="Firma del representante">':'')+'</div>' +
+      '<div class="sig-linea">FIRMA DEL REPRESENTANTE</div></div>' +
   '</div>' +
-  '<div class="cc" style="margin-top:20px;break-inside:avoid;page-break-inside:avoid;">CONTROL DE CAMBIOS</div>' +
-  '<table class="ctl" style="break-inside:avoid;page-break-inside:avoid;">' +
-    '<tr><th style="width:20%">FECHA</th><th>CAMBIO</th><th style="width:15%">VERSIÓN</th></tr>' +
-    '<tr><td>14-01-2023</td><td>Lanzamiento del formato</td><td style="text-align:center">01</td></tr>' +
-  '</table>' +
-  '<table class="ctl" style="margin-top:3px;break-inside:avoid;page-break-inside:avoid;"><tr>' +
-    '<td class="firma"><b>Elaboró:</b> Leidy Lorena Cuesta Mena<br>Cargo: Profesional Universitario<br>Fecha: 14-01-2023</td>' +
-    '<td class="firma"><b>Revisó:</b> Ana Silvia Rentería<br>Cargo: Vicerrectora de Docencia<br>Fecha: 14-01-2023</td>' +
-    '<td class="firma"><b>Aprobó:</b> Tamara Mery Ketty<br>Cargo: Coordinadora de Calidad<br>Fecha: 14-01-2023</td>' +
-  '</tr></table>' +
+  '<div class="franja">' +
+    '<div class="cambios">' +
+      '<div class="cc-tit">CONTROL DE CAMBIOS</div>' +
+      '<table>' +
+        '<tr><th style="width:29%">FECHA</th><th>CAMBIO</th><th style="width:22%">VERSIÓN</th></tr>' +
+        '<tr><td>14-01-2023</td><td>Lanzamiento del formato</td><td style="text-align:center">01</td></tr>' +
+      '</table>' +
+    '</div>' +
+    '<div class="elaboro">' +
+      '<div class="elab"><b>Elaboró:</b> Leidy Lorena Cuesta Mena<br>Cargo: Profesional Universitario<br>Fecha: 14-01-2023</div>' +
+      '<div class="elab"><b>Revisó:</b> Ana Silvia Rentería<br>Cargo: Vicerrectora de Docencia<br>Fecha: 14-01-2023</div>' +
+      '<div class="elab"><b>Aprobó:</b> Tamara Mery Ketty<br>Cargo: Coordinadora de Calidad<br>Fecha: 14-01-2023</div>' +
+    '</div>' +
+  '</div>' +
   '<div class="pie-inst"><img src="pie-utch.jpg" alt="Universidad Tecnológica del Chocó Diego Luis Córdoba, Nit. 891.680.009-4, Quibdó, Chocó (Colombia)"></div>';
 }
 let hojaAdmActual='';
@@ -920,15 +1079,16 @@ async function verDetalleHist(id, btn){
   hojaAdmActual=hojaAdmin(s,regs);
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
   $a('#admModal').innerHTML=
-    '<div class="adm-modal"><div class="box box-wide"><h2>'+escA(s.asignatura||'Asistencia')+' '+badgeEstado(s.status)+'</h2>'+
+    '<div class="adm-modal"><div class="box box-wide"><button type="button" class="adm-modal-x" data-close aria-label="Cerrar">'+I.x+'</button><h2>'+escA(s.asignatura||'Asistencia')+' '+badgeEstado(s.status)+'</h2>'+
       '<p class="mut">'+escA([s.codigo,s.periodo,s.grupo?('Grupo '+s.grupo):null].filter(Boolean).join(' · '))+' · '+regs.length+' registro(s)</p>'+
       '<div class="wrap"><div id="hoja">'+hojaAdmActual+'</div></div>'+
-      '<p style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">'+
-      '<button class="s" id="admDPdf">Descargar PDF</button>'+
+      '<div class="adm-modal-foot"><div class="adm-modal-actions">'+
+      '<button class="s" id="admDPdf">'+I.download+'Descargar PDF</button>'+
       '<button class="s" id="admDCsv">Descargar CSV</button>'+
       '<button class="s" id="admDJson">Descargar JSON</button>'+
-      '<button class="adm-btn-danger" id="admDEli">Eliminar asistencia</button>'+
-      '<button class="s" id="admDCerrar">Cerrar</button></p></div></div>';
+      '<button class="d" id="admDEli">'+I.trash+'Eliminar asistencia</button>'+
+      '<button class="s" id="admDCerrar">Cerrar</button></div></div></div></div>';
+  ajustarNombresHojaAdmin($a('#admModal #hoja'));
   const descargar=(nombre,blob)=>{
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
@@ -944,6 +1104,7 @@ async function verDetalleHist(id, btn){
     const finBtn=botonCarga(btn,'Generando PDF…');
     try{
       hojaPrintSheet().innerHTML='<div id="hoja">'+hojaAdmActual+'</div>';
+      ajustarNombresHojaAdmin(hojaPrintSheet());
       const tituloOrig=document.title;
       document.title=nombreBase;
       document.body.classList.add('adm-print');

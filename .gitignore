@@ -3,3 +3,10 @@
 .env.local
 .env.*.local
 lib/localConfig.js
+node_modules/
+capturas/
+backup*/
+*.log
+*.pem
+*.key
+*.sql

@@ -551,37 +551,47 @@ function descargar(nombre, blob){
 }
 
 /* --------------------------- Header -------------------------- */
-function cabecera(sub){
-  /* Encabezado definitivo: [logo sistema] | [logo UTCH] | título,
-     en una sola fila horizontal alineada a la izquierda. Se conservan
-     las clases e identificadores que usa el CSS/JS existente
-     (.app-header .np, .logo, .titulos, h1) y se añaden .logo-utch y
-     .hdr-sep (solo estilo). El .np mantiene el encabezado fuera de
-     la impresión F-GCA-24. */
+function cabecera(){
+  /* Encabezado público centrado: solo el título y el subtítulo.
+     Los logos institucionales viven ahora en el pie de página.
+     El .np mantiene el encabezado fuera de la impresión F-GCA-24. */
   return '<header class="app-header np">' +
-    '<img class="logo" src="/img/logo-v2.png" alt="Sistema de Asistencia DSJB">' +
-    '<span class="hdr-sep" aria-hidden="true"></span>' +
-    '<img class="logo-utch" src="'+LOGO_SRC+'" alt="Universidad Tecnológica del Chocó">' +
-    '<span class="hdr-sep" aria-hidden="true"></span>' +
     '<div class="titulos">' +
-      '<h1>Registro de Asistencia</h1>' +
+      '<h1>' +
+        '<span class="hdr-line" aria-hidden="true"></span>' +
+        '<span class="hdr-word">Registro de <span class="grad-text">Asistencia</span></span>' +
+        '<span class="hdr-line" aria-hidden="true"></span>' +
+      '</h1>' +
+      '<p>Sistema institucional de registro de asistencia a clases.</p>' +
     '</div>' +
   '</header>';
 }
 
 const avisoLocal =
   '<div class="card np privacy-card">' +
-    '<h2>'+I.shield+'Cómo funciona y privacidad</h2>' +
-    '<p class="mut">El representante abre la asistencia y comparte un código temporal con la clase. ' +
-    'Cada estudiante escribe el código, completa su nombre, su identificación y su firma, ' +
-    'y queda registrado una sola vez.</p>' +
-    '<div class="privacy-extra">' +
-    '<p class="mut">Los registros viajan por una conexión segura y se guardan en el servidor de la plataforma, ' +
-    'junto con la firma del estudiante y la del docente. Solo pueden consultar la lista el representante ' +
-    'responsable, el docente con su código y la administración. La firma del representante se guarda ' +
-    'únicamente en el navegador donde se dibuja.</p>' +
+    '<div class="privacy-copy">' +
+      '<h2>'+I.shield+'Cómo funciona y privacidad</h2>' +
+      '<p class="mut">El representante abre la asistencia y comparte un código temporal con la clase. ' +
+      'Cada estudiante escribe el código, completa su nombre, su identificación y su firma, ' +
+      'y queda registrado una sola vez.</p>' +
+      '<p class="mut">Los registros viajan por una conexión segura y se guardan en el servidor de la plataforma, ' +
+      'junto con la firma del estudiante y la del docente.</p>' +
+      '<details class="privacy-more">' +
+        '<summary>Ver más información <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>' +
+        '<p class="mut">Solo pueden consultar la lista el representante responsable, el docente con su código ' +
+        'y la administración. La firma del representante se guarda únicamente en el navegador donde se dibuja.</p>' +
+      '</details>' +
     '</div>' +
-    '<button type="button" class="privacy-toggle" aria-expanded="false">Ver más información &gt;</button>' +
+    '<div class="privacy-art" aria-hidden="true">' +
+      '<svg viewBox="0 0 220 190" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+        '<rect x="38" y="18" width="110" height="150" rx="12" fill="rgba(255,255,255,.65)"/>' +
+        '<path d="M60 48h64M60 66h64M60 84h46M60 102h58M60 120h38"/>' +
+        '<circle class="shield-accent" cx="148" cy="126" r="34" fill="rgba(18,181,160,.10)" stroke="currentColor"/>' +
+        '<path class="shield-accent" d="M148 106l15 6v12c0 11-6.5 18.5-15 22-8.5-3.5-15-11-15-22v-12l15-6z"/>' +
+        '<polyline class="shield-accent" points="141 127 146 132 156 121"/>' +
+        '<path d="M28 32c-8 7-8 20 0 27M18 24c-12 11-12 32 0 43" opacity=".55"/>' +
+      '</svg>' +
+    '</div>' +
   '</div>';
 
 /* ---------------------------- Router ------------------------- */
@@ -636,18 +646,20 @@ function arrancarTic(){
 /* ---------------------------- PORTAL ------------------------- */
 function vistaPortal(app){
   adminMode=false;
+  const chevron = '<span class="portal-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>';
   app.innerHTML =
     cabecera() +
     '<div class="card portal-access">' +
       '<h2>'+I.users+'Seleccione su acceso</h2>' +
-      '<p class="mut" style="margin-bottom:18px">Sistema institucional de registro de asistencia a clases.</p>' +
-      '<div class="portal-grid" style="grid-template-columns:1fr 1fr 1fr;">' +
+      '<p class="mut portal-sub">Elija el tipo de usuario con el que desea ingresar.</p>' +
+      '<div class="portal-grid">' +
         '<button class="portal-card" id="irEst">' +
           '<span class="portal-icon" aria-hidden="true">'+I.student+'</span>' +
           '<span class="portal-text">' +
             '<h3>Estudiante</h3>' +
             '<p>Firmar la asistencia a la clase</p>' +
           '</span>' +
+          chevron +
         '</button>' +
         '<button class="portal-card" id="irDoc">' +
           '<span class="portal-icon" aria-hidden="true">'+I.teacher+'</span>' +
@@ -655,6 +667,7 @@ function vistaPortal(app){
             '<h3>Docente</h3>' +
             '<p>Consultar asistencia y firmar</p>' +
           '</span>' +
+          chevron +
         '</button>' +
         '<button class="portal-card" id="irAdm">' +
           '<span class="portal-icon" aria-hidden="true">'+I.shield+'</span>' +
@@ -662,6 +675,7 @@ function vistaPortal(app){
             '<h3>Representante</h3>' +
             '<p>Gestionar el registro y exportar el formato oficial</p>' +
           '</span>' +
+          chevron +
         '</button>' +
       '</div>' +
     '</div>' +
@@ -908,9 +922,9 @@ function pintarZonaEstudiante(){
         if(r.ok&&data&&data.ok){ mostrarExitoEstudiante(nombre,ident); return; }
         const codeErr=data&&(data.code||data.error);
         if(codeErr==='DUPLICATE_IDENTIFICATION'){ mostrarErrorEstudiante('Esa identificación ya tiene una asistencia registrada en esta clase.'); return; }
-        if(codeErr==='REGISTRATION_CLOSED'){ mostrarErrorEstudiante('Esta asistencia ya no permite nuevos registros.'); return; }
-        if(codeErr==='SESSION_NOT_AVAILABLE'){ S.sesion.abierta=false; mostrarErrorEstudiante('La asistencia ya no está disponible. Solicite un nuevo código al docente.'); pintarZonaEstudiante(); return; }
-        mostrarErrorEstudiante('No se pudo registrar la asistencia. Inténtelo nuevamente.');
+        if(codeErr==='REGISTRATION_CLOSED'){ mostrarErrorEstudiante('Los registros ya fueron cerrados para esta asistencia. No es posible registrar nuevos estudiantes.'); return; }
+        if(codeErr==='SESSION_NOT_AVAILABLE'){ S.sesion.abierta=false; mostrarErrorEstudiante('La asistencia ya no está disponible o fue cerrada. Solicite un nuevo código al docente.'); pintarZonaEstudiante(); return; }
+        mostrarErrorEstudiante('No se pudo registrar la asistencia. Verifique los datos e inténtelo nuevamente.');
         crearRetryBtn(boton.parentNode,()=>{ const b=$('#enviar'); if(b) b.click(); });
       }catch(e){
         clearTimeout(timeoutId);
@@ -1037,7 +1051,7 @@ function mostrarVistaDocente(){
         clearTimeout(timeoutId);
         const data=await r.json().catch(()=>null);
         if(r.ok&&data&&data.ok){
-          S.firmaDoc=firma;
+          S.firmaDoc=firmaSegura(firma)||firma;
           $('#msgFirmaDoc').textContent='Firma enviada correctamente.';
           actualizarListaDocente();
           return;
@@ -1050,7 +1064,7 @@ function mostrarVistaDocente(){
       }
       return;
     }
-    S.firmaDoc=firma;
+    S.firmaDoc=firmaSegura(firma)||firma;
     await guardar();
     $('#msgFirmaDoc').textContent='Firma guardada.';
   };
@@ -1072,7 +1086,8 @@ async function actualizarListaDocenteDesdeAPI(){
     const data=await r.json().catch(()=>null);
     if(!r.ok||!data||!data.ok||!Array.isArray(data.records)) return;
     if(docenteSessionId!==sid) return;
-    S.firmaDoc=firmaSegura(data.teacherSignature||'');
+    const srvFirmaDoc2 = firmaSegura(data.teacherSignature||'');
+    if(srvFirmaDoc2){ S.firmaDoc = srvFirmaDoc2; }
     S.estudiantes=data.records.map(f=>{
       let ts=Date.parse(f.createdAt);
       if(isNaN(ts)) ts=Date.now();
@@ -1208,8 +1223,10 @@ async function seleccionarAsistenciaRep(sessionId){
       S.cfg.hora=hAp;
       const fh=$('#f_hora'); if(fh) fh.value=hAp;
     }
-    S.firmaDoc=firmaSegura(data.session.teacherSignature||'');
-    S.firmaRep=firmaSegura(data.session.representativeSignature||'');
+    const srvFirmaDoc3 = firmaSegura(data.session.teacherSignature||'');
+    if(srvFirmaDoc3){ S.firmaDoc = srvFirmaDoc3; }
+    const srvFirmaRep3 = firmaSegura(data.session.representativeSignature||'');
+    if(srvFirmaRep3){ S.firmaRep = srvFirmaRep3; }
     S.estudiantes=(Array.isArray(data.records)?data.records:[]).map(f=>{
       let ts=Date.parse(f.createdAt);
       if(isNaN(ts)) ts=Date.now();
@@ -1652,7 +1669,7 @@ function vistaAdmin(app){
   pads.rep=sigPad($('#padRep'));
   if(S.firmaDoc) pads.doc.set(S.firmaDoc);
   if(S.firmaRep) pads.rep.set(S.firmaRep);
-  $('#saveDoc').onclick=async()=>{ const g=pads.doc.get(); if(g){ S.firmaDoc=g; await guardar(); pintarHoja(); } };
+  $('#saveDoc').onclick=async()=>{ const g=pads.doc.get(); if(g){ S.firmaDoc=firmaSegura(g)||g; await guardar(); pintarHoja(); } };
   $('#delDoc').onclick=async()=>{ S.firmaDoc=''; pads.doc.clear(); await guardar(); pintarHoja(); };
   $('#saveRep').onclick=async()=>{ const g=pads.rep.get(); if(g){ S.firmaRep=g; await guardar(); pintarHoja(); } };
   $('#delRep').onclick=async()=>{ S.firmaRep=''; pads.rep.clear(); await guardar(); pintarHoja(); };
@@ -1784,7 +1801,8 @@ async function actualizarListaDesdeAPI(){
     if(!r.ok||!data||!data.ok||!Array.isArray(data.records)) return;
     if(!adminMode||S.sesion.sessionId!==sid) return;
     if(typeof data.registrationOpen === 'boolean') repRegAbiertos=data.registrationOpen;
-    S.firmaDoc=firmaSegura(data.teacherSignature||'');
+    const srvFirmaDoc = firmaSegura(data.teacherSignature||'');
+    if(srvFirmaDoc){ S.firmaDoc = srvFirmaDoc; }
     S.estudiantes=data.records.map(f=>{
       let ts=Date.parse(f.createdAt);
       if(isNaN(ts)) ts=Date.now();
@@ -1867,7 +1885,7 @@ function vistaRutaAdmin(app){
       '<h2>'+I.lock+'Administración de representantes</h2>' +
       '<div id="admLogin">' +
         '<label for="admSecret">Clave administrativa</label>' +
-        '<div class="row">' +
+        '<div class="row login-row">' +
           '<input id="admSecret" type="password" maxlength="256" autocomplete="off">' +
           '<button id="admEntrar">'+I.key+'Entrar</button>' +
         '</div>' +
@@ -2144,7 +2162,7 @@ function loginAdmin(app){
       '<label for="repUser">Usuario del representante</label>' +
       '<input id="repUser" maxlength="64" autocomplete="username" style="margin-bottom:10px">' +
       '<label for="repPass">Contraseña</label>' +
-      '<div class="row">' +
+      '<div class="row login-row">' +
         '<input id="repPass" type="password" maxlength="128" autocomplete="current-password" style="letter-spacing:.1em">' +
         '<button id="entrar">'+I.key+'Entrar</button>' +
       '</div>' +
@@ -2199,46 +2217,44 @@ function loginAdmin(app){
 }
 
 /* ------------------- Hoja institucional ---------------------- */
-/* Réplica del formato oficial F-GCA-24 (Legal, una sola hoja). */
+/* Réplica del formato oficial F-GCA-24 (Oficio 8.5 x 14 in, una hoja). */
 const PIE_INSTITUCIONAL='pie-utch.jpg';
-/* Alto útil de una hoja Legal con los márgenes de impresión (8.5in x 14in) */
-const ALTO_HOJA_PX=(14*25.4-12)*96/25.4*0.99;   /* con margen de seguridad */
-const FILA_MAX=42;                               /* alto máximo de fila en impresión */
-const FILA_COMODA=38;                           /* altura usada cuando la planilla ocupa varias páginas */
-const FILAS_POR_PAGINA=20;                      /* filas de estudiantes por página impresa */
-/* Un solo bloque (hasta 20 filas): altura uniforme calculada para que la
-   tabla y el bloque final quepan juntos en una hoja, con mínimo 28px.
-   Varios bloques: altura cómoda fija; cada bloque abre su página vía CSS. */
+const FILAS_MINIMAS=28;   /* filas fijas de la plantilla oficial */
+const FILAS_MAXIMAS=40;   /* contingencia máxima en una sola hoja */
+
+/* Filas visibles: siempre 30; si hay más estudiantes se agrega una fila
+   por cada uno hasta el máximo de 40 (sin dejar espacio vacío). */
+function filasPlanilla(){
+  const n=S.estudiantes.length;
+  return n<=FILAS_MINIMAS ? FILAS_MINIMAS : Math.min(n,FILAS_MAXIMAS);
+}
+/* La asistencia está cerrada cuando la sesión existe y ya no admite
+   registros (mismo estado ABIERTA/CERRADA que usa el Historial). */
+function sesionCerrada(){
+  return !!S.sesion.sessionId && !S.sesion.abierta;
+}
+/* Ajuste solo visual del nombre: si no cabe a 12 pt se reduce esa celda
+   a 11 pt y luego a 10.5 pt. No toca los datos ni la identificación. */
+function ajustarNombresHoja(root){
+  const celdas=root?root.querySelectorAll('.nom-txt, .val-txt'):document.querySelectorAll('#hoja .nom-txt, #hoja .val-txt');
+  celdas.forEach(tx=>{
+    tx.style.fontSize='';
+    const esVal=tx.classList.contains('val-txt');
+    const pasos=esVal?[10,9.5,9,8.5]:[12,11,10.5,10,9.5,9,8.5,8,7.5,7,6.5,6];
+    for(let i=0;i<pasos.length;i++){
+      tx.style.fontSize=pasos[i]+'pt';
+      if(tx.scrollWidth<=tx.clientWidth+1) break;
+    }
+  });
+}
 function ajustarHojaUnaPagina(){
   const h=$('#hoja');
-  if(!h) return 1;
-  const limite=ALTO_HOJA_PX;
-  h.style.zoom='1';                              /* neutraliza el zoom de pantalla */
-  /* Planilla impresa paginada (varios tbody.filas): altura cómoda fija.
-     Cada bloque de 20 filas abre su propia página vía CSS; no se recalcula
-     para no romper la paginación. */
-  if($$('#hoja tbody.filas').length>1){
-    h.style.setProperty('--fila',FILA_COMODA+'px');
-    h.style.removeProperty('zoom');
-    return 1;
-  }
-  const cuerpo=$('#hoja tbody.filas');
-  const n=cuerpo?cuerpo.rows.length:0;
-  const alto=()=>h.getBoundingClientRect().height;
-  const fila=a=>h.style.setProperty('--fila',a+'px');
-  if(!n||!alto()){ h.style.removeProperty('--fila'); h.style.removeProperty('zoom'); return 1; }
-
-  fila(FILA_MAX);
-  if(alto()<=limite){ h.style.removeProperty('zoom'); return 1; }   /* cabe y queda fiel */
-
-  const fijo=alto()-n*FILA_MAX;                  /* parte que no depende de las filas */
-  const caben=Math.floor((limite-fijo)/n);
-  fila(Math.max(30,Math.min(FILA_MAX,caben)));       /* cierra todo en una hoja */
-  h.style.removeProperty('zoom');
+  if(h){ h.style.removeProperty('--fila'); h.style.removeProperty('zoom'); }
+  ajustarNombresHoja(h||document);
   return 1;
 }
-/* Las imágenes deben estar cargadas antes de medir: si el pie mide 0,
-   la hoja se calcularía corta y se imprimiría en dos páginas. */
+/* Las imágenes deben estar cargadas antes de medir: así las firmas y el
+   pie conservan su espacio y la hoja no se parte en dos páginas. */
 function esperarImagenes(){
   const ims=$$('#hoja img');
   return Promise.all(ims.map(im=>im.complete&&im.naturalWidth
@@ -2259,13 +2275,13 @@ function avisoHoja(){
   const el=$('#avisoHoja');
   if(!el) return;
   const n=S.estudiantes.length;
-  if(n>FILAS_POR_PAGINA){
-    el.innerHTML=I.alert+'<span>Hay <b>'+n+'</b> asistencias. La planilla ocupará más de una página ' +
-      '('+FILAS_POR_PAGINA+' filas por hoja) sin omitir registros. Si la legibilidad es prioridad, exporte además el CSV.</span>';
+  if(n>FILAS_MAXIMAS){
+    el.innerHTML=I.alert+'<span>Hay <b>'+n+'</b> asistencias. La hoja oficial admite hasta <b>'+
+      FILAS_MAXIMAS+' filas</b> en una sola página; use la exportación CSV para conservar el listado completo.</span>';
     el.className='aviso warn np';
   } else {
-    el.innerHTML=I.check+'<span>Todo el registro cabe en <b>una sola hoja</b> tamaño Legal, ' +
-      'igual que el formato oficial. Ya hay <b>'+n+'</b> asistencia(s) registrada(s).</span>';
+    el.innerHTML=I.check+'<span>La hoja oficial muestra <b>28 filas fijas</b> (hasta 40 si hay más estudiantes) ' +
+      'y ocupa una sola página. Ya hay <b>'+n+'</b> asistencia(s) registrada(s).</span>';
     el.className='aviso ok np';
   }
 }
@@ -2280,122 +2296,142 @@ function pintarHoja(){
       await guardar(); pintarHoja();
     };
   });
+  ajustarNombresHoja(h);
   avisoHoja();
 }
 
 function hojaHTML(){
   const c=S.cfg;
-  const logoSrc = LOGO_SRC;   /* 🔒 SIEMPRE logo.png */
-  const total=Math.max(12,S.estudiantes.length+1);
-  const etiqueta=(t,v)=>'<td class="lbl">'+t+'</td><td>'+esc(v)+'</td>';
+  const total=filasPlanilla();
+  const cerrada=sesionCerrada();
   let filas='';
   for(let i=0;i<total;i++){
-    filas+=filaEstudianteHTML(i,S.estudiantes[i],true);
+    const f=S.estudiantes[i]||null;
+    filas+=filaEstudianteHTML(i,f,true,cerrada&&!f);
   }
   return '' +
-  encabezadoPlanillaHTML(c,etiqueta) +
-  tablaEstudiantesHTML(filas,false) +
+  encabezadoPlanillaHTML(c) +
+  tablaEstudiantesHTML(filas) +
   piePlanillaHTML();
 }
 
-function filaEstudianteHTML(i,f,conDel){
+function filaEstudianteHTML(i,f,conDel,anulada){
   const del=(conDel&&adminMode&&f)?' <button class="del np" data-del="'+esc(f.id)+'" title="Eliminar registro">'+I.x+'</button>':'';
-  return '<tr>' +
-    '<td class="n">'+(i+1)+'.</td>' +
-    '<td>'+(f?esc(f.nombre)+del:'')+'</td>' +
-    '<td class="id">'+(f?esc(f.ident):'')+'</td>' +
-    '<td class="f">'+(f&&f.firma?'<img src="'+esc(f.firma)+'" alt="Firma">':'')+'</td>' +
-  '</tr>';
+  return '<div class="r'+(anulada?' fila-anulada':'')+'">' +
+    '<div class="c n">'+(i+1)+'.</div>' +
+    '<div class="c nom'+(del?' con-del':'')+'"><span class="nom-txt">'+(f?esc(f.nombre):'')+'</span>'+del+'</div>' +
+    '<div class="c id">'+(f?esc(f.ident):'')+'</div>' +
+    '<div class="c f">'+(f&&f.firma?'<div class="firma-celda"><img src="'+esc(f.firma)+'" alt="Firma"></div>':'')+'</div>' +
+  '</div>';
 }
 
 function theadEstudiantesHTML(){
   return '<thead><tr>' +
-    '<th style="width:5%">No.</th>' +
-    '<th style="width:47%">NOMBRES Y APELLIDOS DEL ESTUDIANTE</th>' +
-    '<th style="width:22%">NÚMERO DE IDENTIFICACIÓN</th>' +
-    '<th style="width:26%">FIRMA</th>' +
+    '<th style="width:4.5%">No.</th>' +
+    '<th style="width:43%">NOMBRES Y APELLIDOS DEL ESTUDIANTE</th>' +
+    '<th style="width:24%">NÚMERO DE IDENTIFICACIÓN</th>' +
+    '<th style="width:28.5%">FIRMA</th>' +
   '</tr></thead>';
 }
 
-function tablaEstudiantesHTML(filasHTML,salto){
-  return '<table'+(salto?' class="salto-pagina"':'')+' style="margin-top:4px">' +
-    theadEstudiantesHTML() +
-    '<tbody class="filas">' +
-    filasHTML +
-    '</tbody>' +
-  '</table>';
+function tablaEstudiantesHTML(filasHTML){
+  return '<div class="tabla">' +
+    '<div class="th"><div>No.</div><div>NOMBRES Y APELLIDOS DEL ESTUDIANTE</div><div>NÚMERO DE IDENTIFICACIÓN</div><div>FIRMA</div></div>' +
+    '<div class="filas">' + filasHTML + '</div>' +
+  '</div>';
 }
 
-function encabezadoPlanillaHTML(c,etiqueta){
+function claseFirma(total){
+  if(total>=35) return 'firma-35';
+  if(total>=31) return 'firma-31';
+  return 'firma-28';
+}
+function encabezadoPlanillaHTML(c){
   const logoSrc = LOGO_SRC;   /* 🔒 SIEMPRE logo.png */
+  const val=t=>'<div class="valor"><span class="val-txt">'+esc(t)+'</span></div>';
+  const rot=(t,two=false)=>'<div class="rotulo'+(two?' dos-lineas':'')+'">'+t+'</div>';
   return '' +
-  /* Encabezado institucional (idéntico al del documento Word) */
-  '<table class="enc"><tr>' +
-    '<td style="width:16%;padding:0 4px 0 0"><img src="'+esc(logoSrc)+'" alt="Universidad Tecnológica del Chocó" style="max-height:52px;width:auto"></td>' +
-    '<td class="inst">' +
-      'UNIVERSIDAD TECNOLÓGICA DEL CHOCÓ<br>' +
-      '<span class="sub">Diego Luis Córdoba</span><br>' +
-      '<span class="pro">PROCESO GESTIÓN CURRICULAR Y ACADÉMICA</span>' +
-    '</td>' +
-    '<td class="meta" style="width:16%;text-align:right">Código: F-GCA-24<br>Versión: 1<br>Fecha: 14-01-2023</td>' +
-  '</tr></table>' +
+  /* Encabezado institucional (mismos rótulos del documento Word) */
+  '<table class="enc">' +
+    '<tr class="enc-cab">' +
+      '<td class="enc-logo"><img src="'+esc(logoSrc)+'" alt="Universidad Tecnológica del Chocó"></td>' +
+      '<td class="inst">' +
+        'UNIVERSIDAD TECNOLÓGICA DEL CHOCÓ<br>' +
+        '<span class="sub">Diego Luis Córdoba</span>' +
+        '<span class="pro">PROCESO GESTIÓN CURRICULAR Y ACADÉMICA</span>' +
+      '</td>' +
+      '<td class="meta">Código: F-GCA-24<br>Versión: 1<br>Fecha: 14-01-2023</td>' +
+    '</tr>' +
+    '<tr class="enc-tit"><td colspan="3">FORMATO DE REGISTRO DE ASISTENCIA A CLASES</td></tr>' +
+  '</table>' +
 
-  '<div class="tit">Formato de Registro de Asistencia a Clases</div>' +
-
-  /* Datos de la clase */
-  '<table>' +
-    '<tr><td class="lbl">FACULTAD</td><td style="width:16%">'+esc(c.facultad)+'</td><td class="lbl">PROGRAMA</td><td colspan="3">'+esc(c.programa)+'</td></tr>' +
-    '<tr>'+etiqueta('NIVEL',c.nivel)+etiqueta('ASIGNATURA',c.asignatura)+etiqueta('CÓDIGO DE ASIGNATURA',c.codigo)+'</tr>' +
-    '<tr>'+etiqueta('PERIODO ACADÉMICO',c.periodo)+etiqueta('CDS',c.cds)+etiqueta('FECHA',fmtFecha(c.fecha)+(c.hora?' · '+c.hora:''))+'</tr>' +
-    '<tr><td class="lbl">NOMBRE Y APELLIDOS DEL DOCENTE</td><td colspan="5">'+esc(c.docente)+'</td></tr>' +
-    '<tr><td class="lbl">TEMAS TRATADOS</td><td colspan="5" class="temas">'+esc(c.temas)+'</td></tr>' +
-  '</table>';
+  /* Datos de la clase: rótulo al ancho de su texto, valor ocupa el resto */
+  '<div class="datos">' +
+    '<div class="fila-datos">' +
+      rot('FACULTAD')+val(c.facultad).replace('class="valor"','class="valor" style="flex:1 1 0"') +
+      rot('PROGRAMA')+val(c.programa).replace('class="valor"','class="valor" style="flex:1.25 1 0"') +
+    '</div>' +
+    '<div class="fila-datos">' +
+      rot('NIVEL')+val(c.nivel).replace('class="valor"','class="valor" style="flex:.25 1 0"') +
+      rot('ASIGNATURA')+val(c.asignatura).replace('class="valor"','class="valor" style="flex:1.2 1 0"') +
+      rot('CÓDIGO DE<br>ASIGNATURA',true).replace('class="rotulo dos-lineas"','class="rotulo dos-lineas" style="text-align:center"') +
+      val(c.codigo).replace('class="valor"','class="valor" style="flex:.45 1 0"') +
+    '</div>' +
+    '<div class="fila-datos">' +
+      rot('PERIODO ACADÉMICO')+val(c.periodo).replace('class="valor"','class="valor" style="flex:.35 1 0"') +
+      rot('CDS')+val(c.cds).replace('class="valor"','class="valor" style="flex:1 1 0"') +
+      rot('FECHA')+val(fmtFecha(c.fecha)).replace('class="valor"','class="valor" style="flex:.45 1 0"') +
+    '</div>' +
+    '<div class="fila-datos">' +
+      rot('NOMBRE Y APELLIDOS DEL DOCENTE',true)+val(c.docente).replace('class="valor"','class="valor" style="flex:1 1 0"') +
+    '</div>' +
+    '<div class="fila-datos temas-tit"><div class="rotulo temas-rotulo">TEMAS TRATADOS</div></div>' +
+    '<div class="temas-box"><div class="temas-txt">'+esc(c.temas)+'</div></div>' +
+  '</div>';
 }
-
 function piePlanillaHTML(){
   return '' +
-  /* Firmas - con espacio mínimo garantizado después de la tabla */
-  '<div class="pie" style="margin-top:96px;break-inside:avoid;page-break-inside:avoid;">' +
-    '<div>'+(S.firmaDoc?'<img src="'+esc(S.firmaDoc)+'" alt="Firma del docente">':'')+'FIRMA DEL DOCENTE</div>' +
-    '<div>'+(S.firmaRep?'<img src="'+esc(S.firmaRep)+'" alt="Firma del representante">':'')+'FIRMA DEL REPRESENTANTE</div>' +
+  /* Firmas del docente y del representante */
+  '<div class="pie '+claseFirma(filasPlanilla())+'">' +
+    '<div><div class="sig-img">'+(S.firmaDoc?'<img src="'+esc(S.firmaDoc)+'" alt="Firma del docente">':'')+'</div>' +
+      '<div class="sig-linea">FIRMA DEL DOCENTE</div></div>' +
+    '<div><div class="sig-img">'+(S.firmaRep?'<img src="'+esc(S.firmaRep)+'" alt="Firma del representante">':'')+'</div>' +
+      '<div class="sig-linea">FIRMA DEL REPRESENTANTE</div></div>' +
   '</div>' +
 
-  /* Control de cambios - con espacio y sin partirse entre páginas */
-  '<div class="cc" style="margin-top:20px;break-inside:avoid;page-break-inside:avoid;">CONTROL DE CAMBIOS</div>' +
-  '<table class="ctl" style="break-inside:avoid;page-break-inside:avoid;">' +
-    '<tr><th style="width:20%">FECHA</th><th>CAMBIO</th><th style="width:15%">VERSIÓN</th></tr>' +
-    '<tr><td>14-01-2023</td><td>Lanzamiento del formato</td><td style="text-align:center">01</td></tr>' +
-  '</table>' +
-  '<table class="ctl" style="margin-top:3px;break-inside:avoid;page-break-inside:avoid;"><tr>' +
-    '<td class="firma"><b>Elaboró:</b> Leidy Lorena Cuesta Mena<br>Cargo: Profesional Universitario<br>Fecha: 14-01-2023</td>' +
-    '<td class="firma"><b>Revisó:</b> Ana Silvia Rentería<br>Cargo: Vicerrectora de Docencia<br>Fecha: 14-01-2023</td>' +
-    '<td class="firma"><b>Aprobó:</b> Tamara Mery Ketty<br>Cargo: Coordinadora de Calidad<br>Fecha: 14-01-2023</td>' +
-  '</tr></table>' +
+  /* Franja inferior: control de cambios y elaboró/revisó/aprobó lado a lado */
+  '<div class="franja">' +
+    '<div class="cambios">' +
+      '<div class="cc-tit">CONTROL DE CAMBIOS</div>' +
+      '<table>' +
+        '<tr><th style="width:29%">FECHA</th><th>CAMBIO</th><th style="width:22%">VERSIÓN</th></tr>' +
+        '<tr><td>14-01-2023</td><td>Lanzamiento del formato</td><td style="text-align:center">01</td></tr>' +
+      '</table>' +
+    '</div>' +
+    '<div class="elaboro">' +
+      '<div class="elab"><b>Elaboró:</b> Leidy Lorena Cuesta Mena<br>Cargo: Profesional Universitario<br>Fecha: 14-01-2023</div>' +
+      '<div class="elab"><b>Revisó:</b> Ana Silvia Rentería<br>Cargo: Vicerrectora de Docencia<br>Fecha: 14-01-2023</div>' +
+      '<div class="elab"><b>Aprobó:</b> Tamara Mery Ketty<br>Cargo: Coordinadora de Calidad<br>Fecha: 14-01-2023</div>' +
+    '</div>' +
+  '</div>' +
 
   /* Pie institucional del documento oficial */
   '<div class="pie-inst"><img src="'+esc(PIE_INSTITUCIONAL)+'" alt="Universidad Tecnológica del Chocó Diego Luis Córdoba, Nit. 891.680.009-4, Quibdó, Chocó (Colombia)"></div>';
 }
 
-/* Planilla de impresión: misma información y formato, con la tabla de
-   estudiantes paginada en bloques de 20 filas numeradas en continuo
-   (21, 22, …) y filas vacías hasta completar cada página. */
+/* Versión de impresión: misma hoja de una página, sin botones de borrado. */
 function hojaHTMLImpresion(){
   const c=S.cfg;
-  const etiqueta=(t,v)=>'<td class="lbl">'+t+'</td><td>'+esc(v)+'</td>';
-  const total=S.estudiantes.length;
-  const paginas=Math.max(1,Math.ceil(total/FILAS_POR_PAGINA));
-  let tablas='';
-  for(let p=0;p<paginas;p++){
-    let filas='';
-    for(let k=0;k<FILAS_POR_PAGINA;k++){
-      const idx=p*FILAS_POR_PAGINA+k;
-      filas+=filaEstudianteHTML(idx,S.estudiantes[idx],false);
-    }
-    tablas+=tablaEstudiantesHTML(filas,p>0);
+  const total=filasPlanilla();
+  const cerrada=sesionCerrada();
+  let filas='';
+  for(let i=0;i<total;i++){
+    const f=S.estudiantes[i]||null;
+    filas+=filaEstudianteHTML(i,f,false,cerrada&&!f);
   }
   return '' +
-  encabezadoPlanillaHTML(c,etiqueta) +
-  tablas +
+  encabezadoPlanillaHTML(c) +
+  tablaEstudiantesHTML(filas) +
   piePlanillaHTML();
 }
 
@@ -2419,9 +2455,11 @@ function uiMostrar(sig){
   const raiz=uiRaiz();
   const esConfirm=(sig.tipo==='confirm'||sig.tipo==='prompt');
   const titulo=sig.title||UI_TITULOS[sig.kind]||UI_TITULOS.info;
+  const uiIco = sig.kind==='success'?I.check : (sig.kind==='error'||sig.kind==='danger'||sig.kind==='warn')?I.alert : I.info;
   raiz.innerHTML=
     '<div class="ui-overlay" data-ui="overlay">'+
       '<div class="ui-panel ui-'+sig.kind+'" role="dialog" aria-modal="true" aria-label="'+esc(titulo)+'">'+
+        '<div class="ui-icon" aria-hidden="true">'+uiIco+'</div>'+
         '<h3 class="ui-title">'+esc(titulo)+'</h3>'+
         (sig.message?'<p class="ui-msg">'+esc(sig.message)+'</p>':'')+
         (sig.tipo==='prompt'?'<input class="ui-input" id="uiInput" maxlength="40" autocomplete="off" placeholder="'+esc(sig.placeholder||'')+'">':'')+
@@ -2503,7 +2541,6 @@ function uiPrompt(o){
   render();
   if(!(globalThis.crypto && crypto.subtle)){
     document.body.insertAdjacentHTML('afterbegin',
-      '<p class="mut np" style="text-align:center;margin:8px">Este navegador no soporta Web Crypto; ' +
-      'el cifrado AES no está disponible. Use un navegador moderno.</p>');
+      '<p class="mut np" style="text-align:center;margin:8px">Abra el sistema desde la dirección segura (https).</p>');
   }
 })();

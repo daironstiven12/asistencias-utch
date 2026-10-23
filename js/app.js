@@ -922,9 +922,9 @@ function pintarZonaEstudiante(){
         if(r.ok&&data&&data.ok){ mostrarExitoEstudiante(nombre,ident); return; }
         const codeErr=data&&(data.code||data.error);
         if(codeErr==='DUPLICATE_IDENTIFICATION'){ mostrarErrorEstudiante('Esa identificación ya tiene una asistencia registrada en esta clase.'); return; }
-        if(codeErr==='REGISTRATION_CLOSED'){ mostrarErrorEstudiante('Esta asistencia ya no permite nuevos registros.'); return; }
-        if(codeErr==='SESSION_NOT_AVAILABLE'){ S.sesion.abierta=false; mostrarErrorEstudiante('La asistencia ya no está disponible. Solicite un nuevo código al docente.'); pintarZonaEstudiante(); return; }
-        mostrarErrorEstudiante('No se pudo registrar la asistencia. Inténtelo nuevamente.');
+        if(codeErr==='REGISTRATION_CLOSED'){ mostrarErrorEstudiante('Los registros ya fueron cerrados para esta asistencia. No es posible registrar nuevos estudiantes.'); return; }
+        if(codeErr==='SESSION_NOT_AVAILABLE'){ S.sesion.abierta=false; mostrarErrorEstudiante('La asistencia ya no está disponible o fue cerrada. Solicite un nuevo código al docente.'); pintarZonaEstudiante(); return; }
+        mostrarErrorEstudiante('No se pudo registrar la asistencia. Verifique los datos e inténtelo nuevamente.');
         crearRetryBtn(boton.parentNode,()=>{ const b=$('#enviar'); if(b) b.click(); });
       }catch(e){
         clearTimeout(timeoutId);
@@ -1051,7 +1051,7 @@ function mostrarVistaDocente(){
         clearTimeout(timeoutId);
         const data=await r.json().catch(()=>null);
         if(r.ok&&data&&data.ok){
-          S.firmaDoc=firma;
+          S.firmaDoc=firmaSegura(firma)||firma;
           $('#msgFirmaDoc').textContent='Firma enviada correctamente.';
           actualizarListaDocente();
           return;
@@ -1064,7 +1064,7 @@ function mostrarVistaDocente(){
       }
       return;
     }
-    S.firmaDoc=firma;
+    S.firmaDoc=firmaSegura(firma)||firma;
     await guardar();
     $('#msgFirmaDoc').textContent='Firma guardada.';
   };
@@ -1086,7 +1086,8 @@ async function actualizarListaDocenteDesdeAPI(){
     const data=await r.json().catch(()=>null);
     if(!r.ok||!data||!data.ok||!Array.isArray(data.records)) return;
     if(docenteSessionId!==sid) return;
-    S.firmaDoc=firmaSegura(data.teacherSignature||'');
+    const srvFirmaDoc2 = firmaSegura(data.teacherSignature||'');
+    if(srvFirmaDoc2){ S.firmaDoc = srvFirmaDoc2; }
     S.estudiantes=data.records.map(f=>{
       let ts=Date.parse(f.createdAt);
       if(isNaN(ts)) ts=Date.now();
@@ -1222,8 +1223,10 @@ async function seleccionarAsistenciaRep(sessionId){
       S.cfg.hora=hAp;
       const fh=$('#f_hora'); if(fh) fh.value=hAp;
     }
-    S.firmaDoc=firmaSegura(data.session.teacherSignature||'');
-    S.firmaRep=firmaSegura(data.session.representativeSignature||'');
+    const srvFirmaDoc3 = firmaSegura(data.session.teacherSignature||'');
+    if(srvFirmaDoc3){ S.firmaDoc = srvFirmaDoc3; }
+    const srvFirmaRep3 = firmaSegura(data.session.representativeSignature||'');
+    if(srvFirmaRep3){ S.firmaRep = srvFirmaRep3; }
     S.estudiantes=(Array.isArray(data.records)?data.records:[]).map(f=>{
       let ts=Date.parse(f.createdAt);
       if(isNaN(ts)) ts=Date.now();
@@ -1666,7 +1669,7 @@ function vistaAdmin(app){
   pads.rep=sigPad($('#padRep'));
   if(S.firmaDoc) pads.doc.set(S.firmaDoc);
   if(S.firmaRep) pads.rep.set(S.firmaRep);
-  $('#saveDoc').onclick=async()=>{ const g=pads.doc.get(); if(g){ S.firmaDoc=g; await guardar(); pintarHoja(); } };
+  $('#saveDoc').onclick=async()=>{ const g=pads.doc.get(); if(g){ S.firmaDoc=firmaSegura(g)||g; await guardar(); pintarHoja(); } };
   $('#delDoc').onclick=async()=>{ S.firmaDoc=''; pads.doc.clear(); await guardar(); pintarHoja(); };
   $('#saveRep').onclick=async()=>{ const g=pads.rep.get(); if(g){ S.firmaRep=g; await guardar(); pintarHoja(); } };
   $('#delRep').onclick=async()=>{ S.firmaRep=''; pads.rep.clear(); await guardar(); pintarHoja(); };
@@ -1798,7 +1801,8 @@ async function actualizarListaDesdeAPI(){
     if(!r.ok||!data||!data.ok||!Array.isArray(data.records)) return;
     if(!adminMode||S.sesion.sessionId!==sid) return;
     if(typeof data.registrationOpen === 'boolean') repRegAbiertos=data.registrationOpen;
-    S.firmaDoc=firmaSegura(data.teacherSignature||'');
+    const srvFirmaDoc = firmaSegura(data.teacherSignature||'');
+    if(srvFirmaDoc){ S.firmaDoc = srvFirmaDoc; }
     S.estudiantes=data.records.map(f=>{
       let ts=Date.parse(f.createdAt);
       if(isNaN(ts)) ts=Date.now();
@@ -2537,7 +2541,6 @@ function uiPrompt(o){
   render();
   if(!(globalThis.crypto && crypto.subtle)){
     document.body.insertAdjacentHTML('afterbegin',
-      '<p class="mut np" style="text-align:center;margin:8px">Este navegador no soporta Web Crypto; ' +
-      'el cifrado AES no está disponible. Use un navegador moderno.</p>');
+      '<p class="mut np" style="text-align:center;margin:8px">Abra el sistema desde la dirección segura (https).</p>');
   }
 })();

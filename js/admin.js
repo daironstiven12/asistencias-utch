@@ -34,7 +34,8 @@ const I = {
   info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
   eye:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
   eyeOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
-  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
 };
 
 /* Iniciales y presentación (solo visual; no modifican los datos). */
@@ -129,6 +130,7 @@ const ADM_KEY='utch.sesion.adminSecret';
 let adminSecret=sessionStorage.getItem(ADM_KEY)||'';
 let ofs=[], listaReps=[], listaDoc=[], cats={periodos:[],niveles:[],grupos:[],asignaturas:[],docentes:[]};
 let vista='resumen', busRep='', busOf='', filtPer='', filtNiv='', filtGrupo='';
+let repPage=1, repPageSize=9;
 const selDel=new Set();
 
 function motivoBaja(reason){
@@ -289,29 +291,105 @@ function renderApp(){
 /* ---------------- Resumen ---------------- */
 function vistaResumen(){
   const activos=listaReps.filter(r=>r.active).length;
+  const totalReps=listaReps.length;
+  const inactivos=totalReps-activos;
   const asignaciones=listaReps.reduce((n,r)=>n+((r.courseOfferingIds||[]).length),0);
   const porPeriodo={};
   ofs.forEach(o=>{ const k=o.periodo||'—'; porPeriodo[k]=(porPeriodo[k]||0)+1; });
   const maxPer=Math.max(1,...Object.keys(porPeriodo).map(k=>porPeriodo[k]));
+  const periodosOrdenados=Object.keys(porPeriodo).sort();
+  const periodoActual=periodosOrdenados.length?periodosOrdenados[periodosOrdenados.length-1]:'—';
+  const fechaHoy=new Date().toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const repsOrdenados=listaReps.slice().sort((a,b)=>((b.courseOfferingIds||[]).length)-((a.courseOfferingIds||[]).length));
+  const maxOfRep=Math.max(1,...listaReps.map(r=>(r.courseOfferingIds||[]).length));
+  const primeros7=listaReps.slice(0,7);
+  const ir=(v)=>{ vista=v; renderApp(); };
+  const irY=(v,sel)=>{ vista=v; renderApp(); setTimeout(()=>{ const b=$a(sel); if(b) b.click(); },0); };
   $a('#admBody').innerHTML=
-    '<p class="adm-sec-sub">Estado actual del sistema, calculado con datos reales de PostgreSQL.</p>'+
-    '<div class="adm-stats">'+
-      '<div class="adm-stat kpi-blue"><span class="adm-stat-ico" aria-hidden="true">'+I.users+'</span><div class="n">'+activos+'</div><div class="l">Representantes activos</div></div>'+
-      '<div class="adm-stat kpi-teal"><span class="adm-stat-ico" aria-hidden="true">'+I.doc+'</span><div class="n">'+listaReps.length+'</div><div class="l">Representantes totales</div></div>'+
-      '<div class="adm-stat kpi-navy"><span class="adm-stat-ico" aria-hidden="true">'+I.book+'</span><div class="n">'+ofs.length+'</div><div class="l">Ofertas académicas</div></div>'+
-      '<div class="adm-stat kpi-green"><span class="adm-stat-ico" aria-hidden="true">'+I.link+'</span><div class="n">'+asignaciones+'</div><div class="l">Asignaciones</div></div>'+
+    '<div class="adm-dash-banner">'+
+      '<div class="adm-dash-banner-deco" aria-hidden="true"></div>'+
+      '<div class="adm-dash-banner-txt"><h2>Bienvenido, Administrador</h2>'+
+        '<p>Período actual: <b>'+escA(periodoActual)+'</b> · '+escA(fechaHoy)+'</p></div>'+
     '</div>'+
-    '<div class="adm-cols"><div class="adm-panel"><h3>'+I.calendar+'Ofertas por período</h3>'+
-      (Object.keys(porPeriodo).sort().map(k=>'<div class="adm-kv"><div class="adm-kv-main"><b>'+escA(k)+'</b><span>'+porPeriodo[k]+' oferta(s)</span></div>'+
-        '<div class="adm-kv-right"><span class="adm-mini" aria-hidden="true"><span style="width:'+Math.max(12,Math.round(porPeriodo[k]/maxPer*100))+'%"></span></span></div></div>').join('')||vacioA('Sin ofertas registradas.'))+
+    '<div class="adm-stats adm-dash-kpis">'+
+      '<div class="adm-stat kpi-blue"><span class="adm-stat-ico" aria-hidden="true">'+I.users+'</span><div class="n">'+activos+'</div><div class="l">Representantes activos</div><div class="adm-stat-ctx">de '+totalReps+' en total</div></div>'+
+      '<div class="adm-stat kpi-teal"><span class="adm-stat-ico" aria-hidden="true">'+I.doc+'</span><div class="n">'+totalReps+'</div><div class="l">Representantes totales</div><div class="adm-stat-ctx">'+activos+' activos</div></div>'+
+      '<div class="adm-stat kpi-navy"><span class="adm-stat-ico" aria-hidden="true">'+I.book+'</span><div class="n">'+ofs.length+'</div><div class="l">Ofertas académicas</div><div class="adm-stat-ctx">en el período '+escA(periodoActual)+'</div></div>'+
+      '<div class="adm-stat kpi-green"><span class="adm-stat-ico" aria-hidden="true">'+I.link+'</span><div class="n">'+asignaciones+'</div><div class="l">Asignaciones</div><div class="adm-stat-ctx">'+(totalReps?Math.round(asignaciones/totalReps*10)/10:0)+' por representante</div></div>'+
     '</div>'+
-    '<div class="adm-panel"><h3>'+I.users+'Representantes</h3>'+
-      (listaReps.map(r=>'<div class="adm-kv"><div class="adm-kv-main"><b>'+escA(r.name)+'</b><span>'+((r.courseOfferingIds||[]).length)+' oferta(s)</span></div>'+
-        '<div class="adm-kv-right"><span class="adm-badge'+(r.active?' on':'')+'"><span class="dot"></span>'+(r.active?'ACTIVO':'INACTIVO')+'</span></div></div>').join('')||vacioA('Sin representantes registrados.'))+
-    '</div></div>';
+    '<div class="adm-dash-row adm-dash-row-3">'+
+      '<div class="adm-panel adm-dash-dona">'+
+        '<h3>'+I.users+'Estado de representantes</h3>'+
+        '<div class="adm-dona-wrap">'+
+          '<svg viewBox="0 0 120 120" class="adm-dona" role="img" aria-label="Representantes activos vs inactivos">'+
+            '<circle cx="60" cy="60" r="46" fill="none" stroke="#eef2f8" stroke-width="14"/>'+
+            '<circle cx="60" cy="60" r="46" fill="none" stroke="#0f9d6b" stroke-width="14" stroke-dasharray="'+Math.round(activos/Math.max(1,totalReps)*289)+' 289" stroke-dashoffset="0" transform="rotate(-90 60 60)"/>'+
+            '<circle cx="60" cy="60" r="46" fill="none" stroke="#7a869f" stroke-width="14" stroke-dasharray="'+Math.round(inactivos/Math.max(1,totalReps)*289)+' 289" stroke-dashoffset="-'+Math.round(activos/Math.max(1,totalReps)*289)+'" transform="rotate(-90 60 60)"/>'+
+            '<text x="60" y="56" text-anchor="middle" font-size="22" font-weight="700" fill="#0a2350">'+totalReps+'</text>'+
+            '<text x="60" y="74" text-anchor="middle" font-size="10" fill="#5b6b8c">total</text>'+
+          '</svg>'+
+          '<div class="adm-dona-legend">'+
+            '<div class="adm-dona-item"><span class="adm-dona-dot" style="background:#0f9d6b"></span>Activos <b>'+activos+'</b></div>'+
+            '<div class="adm-dona-item"><span class="adm-dona-dot" style="background:#7a869f"></span>Inactivos <b>'+inactivos+'</b></div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="adm-panel adm-dash-bars">'+
+        '<h3>'+I.link+'Ofertas por representante</h3>'+
+        '<div class="adm-hbars">'+
+          (repsOrdenados.length
+            ? repsOrdenados.map(r=>{
+                const n=(r.courseOfferingIds||[]).length;
+                const pct=Math.round(n/maxOfRep*100);
+                return '<div class="adm-hbar" title="'+n+' oferta(s)">'+
+                  '<span class="adm-hbar-nom">'+escA(r.name)+'</span>'+
+                  '<span class="adm-hbar-track"><span class="adm-hbar-fill" style="width:'+pct+'%;background:'+(r.active?'linear-gradient(90deg,#1d6fe0,#12b5a0)':'#7a869f')+'"></span></span>'+
+                  '<span class="adm-hbar-val">'+n+'</span>'+
+                '</div>';
+              }).join('')
+            : vacioA('Sin representantes.'))+
+        '</div>'+
+      '</div>'+
+      '<div class="adm-panel adm-dash-periodos">'+
+        '<h3>'+I.calendar+'Ofertas por período</h3>'+
+        (periodosOrdenados.length
+          ? periodosOrdenados.map(k=>'<div class="adm-kv"><div class="adm-kv-main"><b>'+escA(k)+'</b><span>'+porPeriodo[k]+' oferta(s)</span></div>'+
+              '<div class="adm-kv-right"><span class="adm-kv-num">'+porPeriodo[k]+'</span><span class="adm-mini" aria-hidden="true"><span style="width:'+Math.max(12,Math.round(porPeriodo[k]/maxPer*100))+'%"></span></span></div></div>').join('')
+          : '<div class="adm-empty adm-empty-amable"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="adm-empty-t">Sin períodos registrados</span><span class="mut">Aún no hay ofertas académicas.</span></div>')+
+      '</div>'+
+    '</div>'+
+    '<div class="adm-dash-row adm-dash-row-2">'+
+      '<div class="adm-panel adm-dash-reps">'+
+        '<h3>'+I.users+'Representantes</h3>'+
+        '<div class="adm-dash-reps-list">'+
+          (primeros7.map(r=>{
+            const n=(r.courseOfferingIds||[]).length;
+            return '<div class="adm-kv adm-dash-rep-row"><div class="adm-kv-main"><span class="adm-avatar sm" aria-hidden="true">'+escA(inicialesA(r.name))+'</span><div><b>'+escA(r.name)+'</b><span>'+n+' oferta(s)</span></div></div>'+
+              '<div class="adm-kv-right"><span class="adm-mini" aria-hidden="true"><span style="width:'+Math.round(n/maxOfRep*100)+'%"></span></span>'+
+              '<span class="adm-badge'+(r.active?' on':'')+'"><span class="dot"></span>'+(r.active?'ACTIVO':'INACTIVO')+'</span></div></div>';
+          }).join('')||vacioA('Sin representantes.'))+
+        '</div>'+
+        (listaReps.length>7?'<button class="s adm-dash-ver-todos" id="dashVerReps">'+I.users+'Ver todos ('+listaReps.length+')</button>':'')+
+      '</div>'+
+      '<div class="adm-panel adm-dash-accesos">'+
+        '<h3>'+I.link+'Accesos rápidos</h3>'+
+        '<div class="adm-dash-acc-grid">'+
+          '<button class="adm-acc-btn" id="accNuevoRep">'+I.plus+'<span>Nuevo representante</span></button>'+
+          '<button class="adm-acc-btn" id="accNuevaOferta">'+I.plus+'<span>Nueva oferta</span></button>'+
+          '<button class="adm-acc-btn" id="accHistorial">'+I.hist+'<span>Ver historial</span></button>'+
+          '<button class="adm-acc-btn" id="accDocentes">'+I.doc+'<span>Ver docentes</span></button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  const dashVer=$a('#dashVerReps');
+  if(dashVer) dashVer.onclick=()=>{ vista='reps'; renderApp(); };
+  const accNuevoRep=$a('#accNuevoRep'); if(accNuevoRep) accNuevoRep.onclick=()=>{ vista='reps'; renderApp(); setTimeout(()=>{ const b=$a('#admNuevoRep'); if(b) b.click(); },0); };
+  const accNueva=$a('#accNuevaOferta'); if(accNueva) accNueva.onclick=()=>{ vista='nueva'; renderApp(); };
+  const accHist=$a('#accHistorial'); if(accHist) accHist.onclick=()=>{ vista='historial'; renderApp(); };
+  const accDoc=$a('#accDocentes'); if(accDoc) accDoc.onclick=()=>{ vista='docentes'; renderApp(); };
 }
 
-/* ---------------- Representantes ---------------- */
+/* ---------------- Representantes ---------------- *//* ---------------- Representantes ---------------- */
 function repsFiltrados(){
   const q=busRep.trim().toLowerCase();
   if(!q) return listaReps;
@@ -320,6 +398,10 @@ function repsFiltrados(){
 function vistaReps(){
   const mapa=porId();
   const lista=repsFiltrados();
+  const pages=Math.max(1,Math.ceil(lista.length/repPageSize));
+  if(repPage>pages) repPage=pages;
+  const ini=(repPage-1)*repPageSize;
+  const pagina=lista.slice(ini,ini+repPageSize);
   const nActivos=listaReps.filter(r=>r.active).length;
   const nInactivos=listaReps.length-nActivos;
   $a('#admBody').innerHTML=
@@ -331,8 +413,9 @@ function vistaReps(){
         '<input type="radio" name="admRepFiltro" id="admRepActivos"><label for="admRepActivos">Activos <span>'+nActivos+'</span></label>'+
         '<input type="radio" name="admRepFiltro" id="admRepInactivos"><label for="admRepInactivos">Inactivos <span>'+nInactivos+'</span></label>'+
       '</div></div>'+
+    '<p class="adm-result">'+lista.length+' resultado(s).</p>'+
     '<div class="adm-rep-grid">'+
-      (lista.map(p=>{
+      (pagina.map(p=>{
         const ids=(p.courseOfferingIds||[]);
         const det=ids.map(id=>mapa[id]?(mapa[id].asignatura+' ('+mapa[id].codigo+')'):('Oferta '+id));
         return '<article class="adm-rep-card '+(p.active?'is-active':'is-inactive')+'" data-active="'+(p.active?'1':'0')+'">'+
@@ -354,9 +437,19 @@ function vistaReps(){
           '<button class="'+(p.active?'d':'btn-ok-soft')+'" data-act="'+escA(p.id)+'">'+(p.active?I.lock:I.check)+(p.active?'Desactivar':'Activar')+'</button></div>'+
         '</article>';
       }).join('')||vacioA('Sin representantes para esta búsqueda.'))+
-    '</div><div id="admModal"></div>';
+    '</div>'+
+    '<div class="adm-pag"><button class="s" id="repPrev"'+(repPage<=1?' disabled':'')+'>← Anterior</button>'+
+    '<span class="mut">Página <b>'+repPage+'</b> de <b>'+pages+'</b> · '+lista.length+' resultado(s)</span>'+
+    '<select id="repPageSize" aria-label="Resultados por página">'+[6,9,12].map(n=>'<option value="'+n+'"'+(repPageSize===n?' selected':'')+'>'+n+' / pág.</option>').join('')+'</select>'+
+    '<button class="s" id="repNext"'+(repPage>=pages?' disabled':'')+'>Siguiente →</button></div>'+
+    '<div id="admModal"></div>';
   $a('#admNuevoRep').onclick=()=>abrirModalRep(null);
-  $a('#admBusRep').oninput=e=>{ busRep=e.target.value; vistaReps(); const b=$a('#admBusRep'); b.focus(); b.setSelectionRange(b.value.length,b.value.length); };
+  $a('#admBusRep').oninput=e=>{ busRep=e.target.value; repPage=1; vistaReps(); const b=$a('#admBusRep'); b.focus(); b.setSelectionRange(b.value.length,b.value.length); };
+  const repPrev=$a('#repPrev'), repNext=$a('#repNext');
+  if(repPrev) repPrev.onclick=()=>{ if(repPage>1){ repPage--; vistaReps(); } };
+  if(repNext) repNext.onclick=()=>{ if(repPage<pages){ repPage++; vistaReps(); } };
+  const repSize=$a('#repPageSize');
+  if(repSize) repSize.onchange=e=>{ repPageSize=Number(e.target.value)||9; repPage=1; vistaReps(); };
   $a('#admBody').querySelectorAll('[data-edit],[data-act]').forEach(b=>{
     b.onclick=async()=>{
       if(b.dataset.edit){
@@ -455,7 +548,8 @@ function abrirModalRep(rep){
 
 /* ---------------- Docentes ---------------- */
 let busDoc='', filtDocEstado='', filtDocAsig='', filtDocAsigQ='', filtDocNivel='', filtDocGrupo='', filtDocOrden='nombre', docPage=1;
-const DOC_PAGE_SIZE=10;
+let ofPage=1, ofPageSize=12;
+let docPageSize=12;
 let guardandoDoc=false, cambiandoEstadoDoc=false, eliminandoDoc=false;
 function docentesFiltrados(){
   const q=busDoc.trim().toLowerCase();
@@ -480,10 +574,10 @@ function vistaDocentes(){
   const inactivos=total-activos;
   const sinOfertas=listaDoc.filter(d=>!(d.ofertasCount>0)).length;
   const lista=docentesFiltrados();
-  const pages=Math.max(1,Math.ceil(lista.length/DOC_PAGE_SIZE));
+  const pages=Math.max(1,Math.ceil(lista.length/docPageSize));
   if(docPage>pages) docPage=pages;
-  const ini=(docPage-1)*DOC_PAGE_SIZE;
-  const pagina=lista.slice(ini,ini+DOC_PAGE_SIZE);
+  const ini=(docPage-1)*docPageSize;
+  const pagina=lista.slice(ini,ini+docPageSize);
   $a('#admBody').innerHTML=
     '<p class="adm-sec-sub">Gestiona el catálogo de docentes utilizado en las ofertas académicas.</p>'+
     '<div class="adm-stats">'+
@@ -547,7 +641,8 @@ function vistaDocentes(){
       }).join('')||vacioA('Sin docentes para estos filtros.'))+
     '</div>'+
     '<div class="adm-pag"><button class="s" id="docPrev"'+(docPage<=1?' disabled':'')+'>← Anterior</button>'+
-    '<span class="mut">Página <b>'+docPage+'</b> de <b>'+pages+'</b></span>'+
+    '<span class="mut">Página <b>'+docPage+'</b> de <b>'+pages+'</b> · '+lista.length+' resultado(s)</span>'+
+    '<select id="docPageSize" aria-label="Resultados por página">'+[9,12,24].map(n=>'<option value="'+n+'"'+(docPageSize===n?' selected':'')+'>'+n+' / pág.</option>').join('')+'</select>'+
     '<button class="s" id="docNext"'+(docPage>=pages?' disabled':'')+'>Siguiente →</button></div>'+
     '<div id="admModal"></div>';
   $a('#admNuevoDoc').onclick=abrirModalDoc;
@@ -562,6 +657,8 @@ function vistaDocentes(){
   $a('#admFLimpiar').onclick=()=>{ busDoc=''; filtDocEstado=''; filtDocAsig=''; filtDocAsigQ=''; filtDocNivel=''; filtDocGrupo=''; filtDocOrden='nombre'; docPage=1; vistaDocentes(); };
   $a('#docPrev').onclick=()=>{ if(docPage>1){ docPage--; vistaDocentes(); } };
   $a('#docNext').onclick=()=>{ if(docPage<pages){ docPage++; vistaDocentes(); } };
+  const docSize=$a('#docPageSize');
+  if(docSize) docSize.onchange=e=>{ docPageSize=Number(e.target.value)||12; docPage=1; vistaDocentes(); };
   $a('#admBody').querySelectorAll('[data-edit-doc]').forEach(b=>{ b.onclick=()=>abrirModalEditarDoc(Number(b.dataset.editDoc)); });
   $a('#admBody').querySelectorAll('[data-act-doc]').forEach(b=>{ b.onclick=()=>cambiarEstadoDoc(Number(b.dataset.actDoc),b); });
   $a('#admBody').querySelectorAll('[data-del-doc]').forEach(b=>{ b.onclick=()=>eliminarDoc(Number(b.dataset.delDoc),b); });
@@ -706,9 +803,13 @@ function gruposDisponibles(){
 }
 function vistaOfertas(){
   const lista=ofsFiltradas();
+  const pages=Math.max(1,Math.ceil(lista.length/ofPageSize));
+  if(ofPage>pages) ofPage=pages;
+  const ini=(ofPage-1)*ofPageSize;
+  const pagina=lista.slice(ini,ini+ofPageSize);
   const mapaRep={};
   listaReps.forEach(r=>{ (r.courseOfferingIds||[]).forEach(id=>{ (mapaRep[id]=mapaRep[id]||[]).push(r.name); }); });
-  const grupos=gruposOfertas(lista);
+  const grupos=gruposOfertas(pagina);
   const gruposFiltro=gruposDisponibles();
   const nSel=Array.from(selDel).filter(id=>lista.some(o=>o.courseOfferingId===id)).length;
   $a('#admBody').innerHTML=
@@ -749,13 +850,22 @@ function vistaOfertas(){
           '</div>'+
         '</article>';
       }).join('')+'</div>'
-    ).join('')||vacioA('Sin ofertas para este filtro.'));
+    ).join('')||vacioA('Sin ofertas para este filtro.'))+
+    '<div class="adm-pag"><button class="s" id="ofPrev"'+(ofPage<=1?' disabled':'')+'>← Anterior</button>'+
+    '<span class="mut">Página <b>'+ofPage+'</b> de <b>'+pages+'</b> · '+lista.length+' resultado(s)</span>'+
+    '<select id="ofPageSize" aria-label="Resultados por página">'+[12,24,48].map(n=>'<option value="'+n+'"'+(ofPageSize===n?' selected':'')+'>'+n+' / pág.</option>').join('')+'</select>'+
+    '<button class="s" id="ofNext"'+(ofPage>=pages?' disabled':'')+'>Siguiente →</button></div>';
   $a('#admIrNueva').onclick=()=>{ vista='nueva'; renderApp(); };
-  $a('#admFPer').onchange=e=>{ filtPer=e.target.value; vistaOfertas(); };
-  $a('#admFNiv').onchange=e=>{ filtNiv=e.target.value; vistaOfertas(); };
-  $a('#admFGru').onchange=e=>{ filtGrupo=e.target.value; vistaOfertas(); };
-  $a('#admFQ').oninput=e=>{ busOf=e.target.value; vistaOfertas(); const b=$a('#admFQ'); b.focus(); b.setSelectionRange(b.value.length,b.value.length); };
-  $a('#admLimpiar').onclick=()=>{ filtPer=''; filtNiv=''; filtGrupo=''; busOf=''; vistaOfertas(); };
+  $a('#admFPer').onchange=e=>{ filtPer=e.target.value; ofPage=1; vistaOfertas(); };
+  $a('#admFNiv').onchange=e=>{ filtNiv=e.target.value; ofPage=1; vistaOfertas(); };
+  $a('#admFGru').onchange=e=>{ filtGrupo=e.target.value; ofPage=1; vistaOfertas(); };
+  $a('#admFQ').oninput=e=>{ busOf=e.target.value; ofPage=1; vistaOfertas(); const b=$a('#admFQ'); b.focus(); b.setSelectionRange(b.value.length,b.value.length); };
+  $a('#admLimpiar').onclick=()=>{ filtPer=''; filtNiv=''; filtGrupo=''; busOf=''; ofPage=1; vistaOfertas(); };
+  const ofPrev=$a('#ofPrev'), ofNext=$a('#ofNext');
+  if(ofPrev) ofPrev.onclick=()=>{ if(ofPage>1){ ofPage--; vistaOfertas(); } };
+  if(ofNext) ofNext.onclick=()=>{ if(ofPage<pages){ ofPage++; vistaOfertas(); } };
+  const ofSize=$a('#ofPageSize');
+  if(ofSize) ofSize.onchange=e=>{ ofPageSize=Number(e.target.value)||12; ofPage=1; vistaOfertas(); };
   $a('#admBody').querySelectorAll('input[data-del]').forEach(box=>{
     box.onchange=()=>{
       const id=Number(box.value);
@@ -771,7 +881,7 @@ function vistaOfertas(){
     const btnEli=$a('#admEliminar');
     if(btnEli) btnEli.disabled=n===0;
   };
-  $a('#admSelVis').onclick=()=>{ lista.forEach(o=>selDel.add(o.courseOfferingId)); vistaOfertas(); };
+  $a('#admSelVis').onclick=()=>{ pagina.forEach(o=>selDel.add(o.courseOfferingId)); vistaOfertas(); };
   $a('#admDesel').onclick=()=>{ selDel.clear(); vistaOfertas(); };
   $a('#admEliminar').onclick=eliminarSeleccionadas;
 }
@@ -977,33 +1087,40 @@ function vistaHistorial(){
    y pie institucional. Sin botones de borrado; solo lectura.
    Siempre 30 filas (hasta 40 si hay más registros) y, si la sesión
    está cerrada, las filas vacías se anulan con un zigzag por columna. */
-const FILAS_MIN_ADMIN=30, FILAS_MAX_ADMIN=40;
+const FILAS_MIN_ADMIN=28, FILAS_MAX_ADMIN=40;
 function ajustarNombresHojaAdmin(root){
-  const celdas=root?root.querySelectorAll('.nom-txt'):document.querySelectorAll('#hoja .nom-txt');
+  const celdas=root?root.querySelectorAll('.nom-txt, .val-txt'):document.querySelectorAll('#hoja .nom-txt, #hoja .val-txt');
   celdas.forEach(tx=>{
     tx.style.fontSize='';
-    const pasos=[12,11,10.5,10,9.5,9,8.5,8,7.5,7,6.5,6];
+    const esVal=tx.classList.contains('val-txt');
+    const pasos=esVal?[10,9.5,9,8.5]:[12,11,10.5,10,9.5,9,8.5,8,7.5,7,6.5,6];
     for(let i=0;i<pasos.length;i++){
       tx.style.fontSize=pasos[i]+'pt';
       if(tx.scrollWidth<=tx.clientWidth+1) break;
     }
   });
 }
+function claseFirmaAdmin(total){
+  if(total>=35) return 'firma-35';
+  if(total>=31) return 'firma-31';
+  return 'firma-28';
+}
 function hojaAdmin(s, regs){
-  const lbl=t=>'<td class="lbl">'+t+'</td>';
-  const fecha=fmtBogota(s.createdAt)+(s.closedAt?' · '+fmtBogota(s.closedAt,true):'');
+  const val=t=>'<div class="valor"><span class="val-txt">'+escA(t)+'</span></div>';
+  const rot=(t,two=false)=>'<div class="rotulo'+(two?' dos-lineas':'')+'">'+t+'</div>';
+  const fecha=fmtBogota(s.createdAt);
   const total=regs.length<=FILAS_MIN_ADMIN?FILAS_MIN_ADMIN:Math.min(regs.length,FILAS_MAX_ADMIN);
   const cerrada=String(s.status||'').toUpperCase()==='CLOSED';
   let filas='';
   for(let i=0;i<total;i++){
     const f=regs[i]||null;
     const anulada=cerrada&&!f;
-    filas+='<tr'+(anulada?' class="fila-anulada"':'')+'>' +
-      '<td class="n">'+(i+1)+'.</td>' +
-      '<td class="nom"><span class="nom-txt">'+(f?escA(f.fullName||''):'')+'</span></td>' +
-      '<td class="id">'+(f?escA(f.identification||''):'')+'</td>' +
-      '<td class="f">'+(f&&f.studentSignature?'<div class="firma-celda"><img src="'+escA(f.studentSignature)+'" alt="Firma"></div>':'')+'</td>' +
-    '</tr>';
+    filas+='<div class="r'+(anulada?' fila-anulada':'')+'">' +
+      '<div class="c n">'+(i+1)+'.</div>' +
+      '<div class="c nom"><span class="nom-txt">'+(f?escA(f.fullName||''):'')+'</span></div>' +
+      '<div class="c id">'+(f?escA(f.identification||''):'')+'</div>' +
+      '<div class="c f">'+(f&&f.studentSignature?'<div class="firma-celda"><img src="'+escA(f.studentSignature)+'" alt="Firma"></div>':'')+'</div>' +
+    '</div>';
   }
   return '' +
   '<table class="enc">' +
@@ -1018,25 +1135,33 @@ function hojaAdmin(s, regs){
     '</tr>' +
     '<tr class="enc-tit"><td colspan="3">FORMATO DE REGISTRO DE ASISTENCIA A CLASES</td></tr>' +
   '</table>' +
-  '<table class="datos">' +
-    '<colgroup><col style="width:20%"><col style="width:14%"><col style="width:15%"><col style="width:24%"><col style="width:14%"><col style="width:13%"></colgroup>' +
-    '<tr>'+lbl('FACULTAD')+'<td>'+escA(s.facultad||'')+'</td>'+lbl('PROGRAMA')+'<td colspan="3">'+escA(s.programa||'')+'</td></tr>' +
-    '<tr>'+lbl('NIVEL')+'<td>'+escA(s.nivel||'')+'</td>'+lbl('ASIGNATURA')+'<td>'+escA(s.asignatura||'')+'</td>'+lbl('CÓDIGO DE ASIGNATURA')+'<td>'+escA(s.codigo||'')+'</td></tr>' +
-    '<tr>'+lbl('PERIODO ACADÉMICO')+'<td>'+escA(s.periodo||'')+'</td>'+lbl('CDS')+'<td></td>'+lbl('FECHA')+'<td>'+escA(fecha)+'</td></tr>' +
-    '<tr>'+lbl('NOMBRE Y APELLIDOS DEL DOCENTE')+'<td colspan="5">'+escA(s.docente||'')+'</td></tr>' +
-    '<tr>'+lbl('TEMAS TRATADOS')+'<td colspan="5" class="temas"><div class="temas-txt">—</div></td></tr>' +
-  '</table>' +
-  '<div class="tabla-wrap"><table class="tabla-est">' +
-    '<colgroup><col style="width:4.5%"><col style="width:48%"><col style="width:26%"><col style="width:21%"></colgroup>' +
-    '<thead><tr>' +
-      '<th style="width:4.5%">No.</th>' +
-      '<th style="width:48%">NOMBRES Y APELLIDOS DEL ESTUDIANTE</th>' +
-      '<th style="width:26%">NÚMERO DE IDENTIFICACIÓN</th>' +
-      '<th style="width:21%">FIRMA</th>' +
-    '</tr></thead>' +
-    '<tbody class="filas">' + filas + '</tbody>' +
-  '</table></div>' +
-  '<div class="pie">' +
+  '<div class="datos">' +
+    '<div class="fila-datos">' +
+      rot('FACULTAD')+val(s.facultad||'').replace('class="valor"','class="valor" style="flex:1 1 0"') +
+      rot('PROGRAMA')+val(s.programa||'').replace('class="valor"','class="valor" style="flex:1.25 1 0"') +
+    '</div>' +
+    '<div class="fila-datos">' +
+      rot('NIVEL')+val(s.nivel||'').replace('class="valor"','class="valor" style="flex:.25 1 0"') +
+      rot('ASIGNATURA')+val(s.asignatura||'').replace('class="valor"','class="valor" style="flex:1.2 1 0"') +
+      rot('CÓDIGO DE<br>ASIGNATURA',true).replace('class="rotulo dos-lineas"','class="rotulo dos-lineas" style="text-align:center"') +
+      val(s.codigo||'').replace('class="valor"','class="valor" style="flex:.45 1 0"') +
+    '</div>' +
+    '<div class="fila-datos">' +
+      rot('PERIODO ACADÉMICO')+val(s.periodo||'').replace('class="valor"','class="valor" style="flex:.35 1 0"') +
+      rot('CDS')+val('').replace('class="valor"','class="valor" style="flex:1 1 0"') +
+      rot('FECHA')+val(fecha).replace('class="valor"','class="valor" style="flex:.45 1 0"') +
+    '</div>' +
+    '<div class="fila-datos">' +
+      rot('NOMBRE Y APELLIDOS DEL DOCENTE',true)+val(s.docente||'').replace('class="valor"','class="valor" style="flex:1 1 0"') +
+    '</div>' +
+    '<div class="fila-datos temas-tit"><div class="rotulo temas-rotulo">TEMAS TRATADOS</div></div>' +
+    '<div class="temas-box"><div class="temas-txt">—</div></div>' +
+  '</div>' +
+  '<div class="tabla">' +
+    '<div class="th"><div>No.</div><div>NOMBRES Y APELLIDOS DEL ESTUDIANTE</div><div>NÚMERO DE IDENTIFICACIÓN</div><div>FIRMA</div></div>' +
+    '<div class="filas">' + filas + '</div>' +
+  '</div>' +
+  '<div class="pie '+claseFirmaAdmin(total)+'">' +
     '<div><div class="sig-img">'+(s.teacherSignature?'<img src="'+escA(s.teacherSignature)+'" alt="Firma del docente">':'')+'</div>' +
       '<div class="sig-linea">FIRMA DEL DOCENTE</div></div>' +
     '<div><div class="sig-img">'+(s.representativeSignature?'<img src="'+escA(s.representativeSignature)+'" alt="Firma del representante">':'')+'</div>' +
@@ -1083,11 +1208,11 @@ async function verDetalleHist(id, btn){
       '<p class="mut">'+escA([s.codigo,s.periodo,s.grupo?('Grupo '+s.grupo):null].filter(Boolean).join(' · '))+' · '+regs.length+' registro(s)</p>'+
       '<div class="wrap"><div id="hoja">'+hojaAdmActual+'</div></div>'+
       '<div class="adm-modal-foot"><div class="adm-modal-actions">'+
-      '<button class="s" id="admDPdf">'+I.download+'Descargar PDF</button>'+
-      '<button class="s" id="admDCsv">Descargar CSV</button>'+
-      '<button class="s" id="admDJson">Descargar JSON</button>'+
+      '<button id="admDPdf">'+I.download+'Descargar PDF</button>'+
+      '<button class="s" id="admDCsv">'+I.download+'Descargar CSV</button>'+
+      '<button class="s" id="admDJson">'+I.download+'Descargar JSON</button>'+
       '<button class="d" id="admDEli">'+I.trash+'Eliminar asistencia</button>'+
-      '<button class="s" id="admDCerrar">Cerrar</button></div></div></div></div>';
+      '<button class="s" id="admDCerrar">'+I.x+'Cerrar</button></div></div></div></div>';
   ajustarNombresHojaAdmin($a('#admModal #hoja'));
   const descargar=(nombre,blob)=>{
     const url=URL.createObjectURL(blob);
@@ -1183,14 +1308,16 @@ function vistaNueva(){
       '<div><label>Grupo</label><select id="mGrupo"></select></div>'+
       '<div><label>Docente (opcional)</label><select id="mDocente"><option value="">— Sin asignar —</option>'+listaDoc.filter(d=>d.estado==='ACTIVE').map(d=>'<option value="'+d.userId+'">'+escA(d.nombre+(d.correo?' — '+d.correo:''))+'</option>').join('')+'</select></div>'+
     '</div>'+
-    '<p style="margin-top:14px"><button id="mCrear">Crear oferta</button> <span id="mMsg" class="mut" role="status"></span></p></div>'+
-    '<hr class="adm-sep"><h3>Importar asignaturas</h3>'+
-    '<p class="adm-sec-sub">Puedes cargar varias asignaturas mediante un archivo JSON. Se usa el período seleccionado arriba y grupo automático.</p>'+
-    '<div class="adm-toolbar"><button id="mSelJson">Seleccionar JSON</button>'+
-      '<button class="s" id="mPlantilla">Descargar plantilla JSON</button>'+
-      '<input type="file" id="mFileJson" accept=".json,application/json" hidden></div>'+
-    '<div id="mPreview"></div>'+
-    '<div id="mImportRow" hidden><p><button id="mImportar">Importar seleccionadas</button> <span id="mProg" class="mut" role="status"></span></p></div>';
+    '<p style="margin-top:8px"><button id="mCrear">Crear oferta</button> <span id="mMsg" class="mut" role="status"></span></p></div>'+
+    '<hr class="adm-sep"><div class="adm-import-card">'+
+      '<h3>Importar asignaturas</h3>'+
+      '<p class="adm-sec-sub">Puedes cargar varias asignaturas mediante un archivo JSON. Se usa el período seleccionado arriba y grupo automático.</p>'+
+      '<div class="adm-import-actions"><button id="mSelJson">Seleccionar JSON</button>'+
+        '<button class="s" id="mPlantilla">Descargar plantilla JSON</button>'+
+        '<input type="file" id="mFileJson" accept=".json,application/json" hidden></div>'+
+      '<div id="mPreview"></div>'+
+      '<div id="mImportRow" hidden><p><button id="mImportar">Importar seleccionadas</button> <span id="mProg" class="mut" role="status"></span></p></div>'+
+    '</div>';
   const gruposDe=(perId,nivId)=>cats.grupos.filter(g=>(!perId||String(g.periodoId)===String(perId))&&(!nivId||String(g.nivelId)===String(nivId)));
   const refrescarGrupos=()=>{
     const gs=gruposDe($a('#mPeriodo').value,$a('#mNivel').value);

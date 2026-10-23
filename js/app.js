@@ -2215,7 +2215,7 @@ function loginAdmin(app){
 /* ------------------- Hoja institucional ---------------------- */
 /* Réplica del formato oficial F-GCA-24 (Oficio 8.5 x 14 in, una hoja). */
 const PIE_INSTITUCIONAL='pie-utch.jpg';
-const FILAS_MINIMAS=30;   /* filas fijas de la plantilla oficial */
+const FILAS_MINIMAS=28;   /* filas fijas de la plantilla oficial */
 const FILAS_MAXIMAS=40;   /* contingencia máxima en una sola hoja */
 
 /* Filas visibles: siempre 30; si hay más estudiantes se agrega una fila
@@ -2232,10 +2232,11 @@ function sesionCerrada(){
 /* Ajuste solo visual del nombre: si no cabe a 12 pt se reduce esa celda
    a 11 pt y luego a 10.5 pt. No toca los datos ni la identificación. */
 function ajustarNombresHoja(root){
-  const celdas=root?root.querySelectorAll('.nom-txt'):document.querySelectorAll('#hoja .nom-txt');
+  const celdas=root?root.querySelectorAll('.nom-txt, .val-txt'):document.querySelectorAll('#hoja .nom-txt, #hoja .val-txt');
   celdas.forEach(tx=>{
     tx.style.fontSize='';
-    const pasos=[12,11,10.5,10,9.5,9,8.5,8,7.5,7,6.5,6];
+    const esVal=tx.classList.contains('val-txt');
+    const pasos=esVal?[10,9.5,9,8.5]:[12,11,10.5,10,9.5,9,8.5,8,7.5,7,6.5,6];
     for(let i=0;i<pasos.length;i++){
       tx.style.fontSize=pasos[i]+'pt';
       if(tx.scrollWidth<=tx.clientWidth+1) break;
@@ -2275,7 +2276,7 @@ function avisoHoja(){
       FILAS_MAXIMAS+' filas</b> en una sola página; use la exportación CSV para conservar el listado completo.</span>';
     el.className='aviso warn np';
   } else {
-    el.innerHTML=I.check+'<span>La hoja oficial muestra <b>30 filas fijas</b> (hasta 40 si hay más estudiantes) ' +
+    el.innerHTML=I.check+'<span>La hoja oficial muestra <b>28 filas fijas</b> (hasta 40 si hay más estudiantes) ' +
       'y ocupa una sola página. Ya hay <b>'+n+'</b> asistencia(s) registrada(s).</span>';
     el.className='aviso ok np';
   }
@@ -2312,36 +2313,39 @@ function hojaHTML(){
 
 function filaEstudianteHTML(i,f,conDel,anulada){
   const del=(conDel&&adminMode&&f)?' <button class="del np" data-del="'+esc(f.id)+'" title="Eliminar registro">'+I.x+'</button>':'';
-  return '<tr'+(anulada?' class="fila-anulada"':'')+'>' +
-    '<td class="n">'+(i+1)+'.</td>' +
-    '<td class="nom'+(del?' con-del':'')+'"><span class="nom-txt">'+(f?esc(f.nombre):'')+'</span>'+del+'</td>' +
-    '<td class="id">'+(f?esc(f.ident):'')+'</td>' +
-    '<td class="f">'+(f&&f.firma?'<div class="firma-celda"><img src="'+esc(f.firma)+'" alt="Firma"></div>':'')+'</td>' +
-  '</tr>';
+  return '<div class="r'+(anulada?' fila-anulada':'')+'">' +
+    '<div class="c n">'+(i+1)+'.</div>' +
+    '<div class="c nom'+(del?' con-del':'')+'"><span class="nom-txt">'+(f?esc(f.nombre):'')+'</span>'+del+'</div>' +
+    '<div class="c id">'+(f?esc(f.ident):'')+'</div>' +
+    '<div class="c f">'+(f&&f.firma?'<div class="firma-celda"><img src="'+esc(f.firma)+'" alt="Firma"></div>':'')+'</div>' +
+  '</div>';
 }
 
 function theadEstudiantesHTML(){
   return '<thead><tr>' +
     '<th style="width:4.5%">No.</th>' +
-    '<th style="width:48%">NOMBRES Y APELLIDOS DEL ESTUDIANTE</th>' +
-    '<th style="width:26%">NÚMERO DE IDENTIFICACIÓN</th>' +
-    '<th style="width:21%">FIRMA</th>' +
+    '<th style="width:43%">NOMBRES Y APELLIDOS DEL ESTUDIANTE</th>' +
+    '<th style="width:24%">NÚMERO DE IDENTIFICACIÓN</th>' +
+    '<th style="width:28.5%">FIRMA</th>' +
   '</tr></thead>';
 }
 
 function tablaEstudiantesHTML(filasHTML){
-  return '<div class="tabla-wrap"><table class="tabla-est">' +
-    '<colgroup><col style="width:4.5%"><col style="width:48%"><col style="width:26%"><col style="width:21%"></colgroup>' +
-    theadEstudiantesHTML() +
-    '<tbody class="filas">' +
-    filasHTML +
-    '</tbody>' +
-  '</table></div>';
+  return '<div class="tabla">' +
+    '<div class="th"><div>No.</div><div>NOMBRES Y APELLIDOS DEL ESTUDIANTE</div><div>NÚMERO DE IDENTIFICACIÓN</div><div>FIRMA</div></div>' +
+    '<div class="filas">' + filasHTML + '</div>' +
+  '</div>';
 }
 
+function claseFirma(total){
+  if(total>=35) return 'firma-35';
+  if(total>=31) return 'firma-31';
+  return 'firma-28';
+}
 function encabezadoPlanillaHTML(c){
   const logoSrc = LOGO_SRC;   /* 🔒 SIEMPRE logo.png */
-  const lbl=t=>'<td class="lbl">'+t+'</td>';
+  const val=t=>'<div class="valor"><span class="val-txt">'+esc(t)+'</span></div>';
+  const rot=(t,two=false)=>'<div class="rotulo'+(two?' dos-lineas':'')+'">'+t+'</div>';
   return '' +
   /* Encabezado institucional (mismos rótulos del documento Word) */
   '<table class="enc">' +
@@ -2357,21 +2361,34 @@ function encabezadoPlanillaHTML(c){
     '<tr class="enc-tit"><td colspan="3">FORMATO DE REGISTRO DE ASISTENCIA A CLASES</td></tr>' +
   '</table>' +
 
-  /* Datos de la clase: los mismos rótulos y orden, en 6 columnas */
-  '<table class="datos">' +
-    '<colgroup><col style="width:20%"><col style="width:14%"><col style="width:15%"><col style="width:24%"><col style="width:14%"><col style="width:13%"></colgroup>' +
-    '<tr>'+lbl('FACULTAD')+'<td>'+esc(c.facultad)+'</td>'+lbl('PROGRAMA')+'<td colspan="3">'+esc(c.programa)+'</td></tr>' +
-    '<tr>'+lbl('NIVEL')+'<td>'+esc(c.nivel)+'</td>'+lbl('ASIGNATURA')+'<td>'+esc(c.asignatura)+'</td>'+lbl('CÓDIGO DE ASIGNATURA')+'<td>'+esc(c.codigo)+'</td></tr>' +
-    '<tr>'+lbl('PERIODO ACADÉMICO')+'<td>'+esc(c.periodo)+'</td>'+lbl('CDS')+'<td>'+esc(c.cds)+'</td>'+lbl('FECHA')+'<td>'+esc(fmtFecha(c.fecha)+(c.hora?' · '+c.hora:''))+'</td></tr>' +
-    '<tr>'+lbl('NOMBRE Y APELLIDOS DEL DOCENTE')+'<td colspan="5">'+esc(c.docente)+'</td></tr>' +
-    '<tr>'+lbl('TEMAS TRATADOS')+'<td colspan="5" class="temas"><div class="temas-txt">'+esc(c.temas)+'</div></td></tr>' +
-  '</table>';
+  /* Datos de la clase: rótulo al ancho de su texto, valor ocupa el resto */
+  '<div class="datos">' +
+    '<div class="fila-datos">' +
+      rot('FACULTAD')+val(c.facultad).replace('class="valor"','class="valor" style="flex:1 1 0"') +
+      rot('PROGRAMA')+val(c.programa).replace('class="valor"','class="valor" style="flex:1.25 1 0"') +
+    '</div>' +
+    '<div class="fila-datos">' +
+      rot('NIVEL')+val(c.nivel).replace('class="valor"','class="valor" style="flex:.25 1 0"') +
+      rot('ASIGNATURA')+val(c.asignatura).replace('class="valor"','class="valor" style="flex:1.2 1 0"') +
+      rot('CÓDIGO DE<br>ASIGNATURA',true).replace('class="rotulo dos-lineas"','class="rotulo dos-lineas" style="text-align:center"') +
+      val(c.codigo).replace('class="valor"','class="valor" style="flex:.45 1 0"') +
+    '</div>' +
+    '<div class="fila-datos">' +
+      rot('PERIODO ACADÉMICO')+val(c.periodo).replace('class="valor"','class="valor" style="flex:.35 1 0"') +
+      rot('CDS')+val(c.cds).replace('class="valor"','class="valor" style="flex:1 1 0"') +
+      rot('FECHA')+val(fmtFecha(c.fecha)).replace('class="valor"','class="valor" style="flex:.45 1 0"') +
+    '</div>' +
+    '<div class="fila-datos">' +
+      rot('NOMBRE Y APELLIDOS DEL DOCENTE',true)+val(c.docente).replace('class="valor"','class="valor" style="flex:1 1 0"') +
+    '</div>' +
+    '<div class="fila-datos temas-tit"><div class="rotulo temas-rotulo">TEMAS TRATADOS</div></div>' +
+    '<div class="temas-box"><div class="temas-txt">'+esc(c.temas)+'</div></div>' +
+  '</div>';
 }
-
 function piePlanillaHTML(){
   return '' +
   /* Firmas del docente y del representante */
-  '<div class="pie">' +
+  '<div class="pie '+claseFirma(filasPlanilla())+'">' +
     '<div><div class="sig-img">'+(S.firmaDoc?'<img src="'+esc(S.firmaDoc)+'" alt="Firma del docente">':'')+'</div>' +
       '<div class="sig-linea">FIRMA DEL DOCENTE</div></div>' +
     '<div><div class="sig-img">'+(S.firmaRep?'<img src="'+esc(S.firmaRep)+'" alt="Firma del representante">':'')+'</div>' +

@@ -18,6 +18,17 @@ const cleanMulti = (s, max=800) => String(s ?? '')
   .slice(0,max);
 const firmaSegura = s =>
   /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(String(s||'')) ? String(s) : '';
+
+/* Normaliza una identificación para comparar (mismo criterio que el servidor).
+   Quita espacios, puntos, guiones, guiones bajos y comas; mayúsculas.
+   "1.234.567", "1234567", " 1234567 " → "1234567". */
+function normalizeIdent(value){
+  if(typeof value !== "string") return "";
+  return String(value)
+    .replace(/\s/g, "")
+    .replace(/[.\-_,]/g, "")
+    .toUpperCase();
+}
 /* Fecha académica por defecto en zona America/Bogota, sin depender de la
    zona del equipo. Formato YYYY-MM-DD (igual que <input type="date">). */
 const hoy = () => {
@@ -199,6 +210,9 @@ const DEFAULTS = () => ({
         periodo:'',cds:'',fecha:hoy(),hora:'',docente:'',temas:'' },
   materias:MATERIAS_SEMESTRE.map(materia=>({...materia,datos:{...materia.datos}})), materiaActiva:'',
   firmaDoc:'',firmaRep:'',logo:'',
+  /* Marca de borrado explícito: al cerrar se pide al servidor que elimine
+     esa firma para que no reaparezca al reabrir la asistencia. */
+  firmaDocQuitar:false,firmaRepQuitar:false,
   sesion:{ abierta:false,inicio:0,minutos:15,clave:'',sessionId:'' },
   clavesUsadas:[],
   estudiantes:[],
@@ -211,6 +225,9 @@ let tituloPDF=null;
 let repRegAbiertos=true;
 let pollApi=null, pollApiCtrl=null;
 let docenteSessionId=null, pollApiDocente=null, pollApiDocenteCtrl=null, docenteInfo=null;
+let docenteLastVersion='';
+const firmaCache={};
+function limpiarFirmaCache(){ for(const k in firmaCache) delete firmaCache[k]; }
 let cierreEnCurso=false;
 
 function normalizar(o){
@@ -246,6 +263,8 @@ function normalizar(o){
     materiaActiva:materias.some(materia=>materia.id===materiaActiva)?materiaActiva:'',
     firmaDoc:firmaSegura(src.firmaDoc),
     firmaRep:firmaSegura(src.firmaRep),
+    firmaDocQuitar:!!src.firmaDocQuitar,
+    firmaRepQuitar:!!src.firmaRepQuitar,
     logo:'',
     sesion:{
       abierta:!!ses.abierta,
@@ -295,6 +314,28 @@ function repIdSesion(){
 }
 function claveRespaldo(id){
   return DATA_STORE+':respaldo:'+String(id||'legado').slice(0,80);
+}
+/* Al cerrar sesión se elimina del navegador cualquier dato del usuario:
+   borrador cifrado, copia por representante y marcas de la asistencia.
+   Nunca toca la base de datos ni la asistencia del servidor. */
+function limpiarDatosSesionRep(){
+  const sid=repIdActual||repIdSesion();
+  try{ localStorage.removeItem(DATA_STORE); }catch(e){}
+  try{ if(sid) localStorage.removeItem(claveRespaldo(sid)); }catch(e){}
+  try{ localStorage.removeItem(claveRespaldo('legado')); }catch(e){}
+  try{
+    sessionStorage.removeItem(SESSION_EST);
+    sessionStorage.removeItem(SESSION_API);
+    sessionStorage.removeItem('utch.docente');
+    const borrar=[];
+    for(let i=0;i<sessionStorage.length;i++){
+      const k=sessionStorage.key(i);
+      if(k&&k.indexOf('utch.registro.')===0) borrar.push(k);
+    }
+    borrar.forEach(k=>{ try{ sessionStorage.removeItem(k); }catch(e){} });
+  }catch(e){}
+  S=DEFAULTS();
+  pads={};
 }
 function borradorEnUso(){
   if(S.estudiantes.length) return true;
@@ -434,7 +475,10 @@ function pintarRed(){
     (activo
       ? 'Registro abierto. Los estudiantes pueden conectarse desde cualquier dispositivo con el código <b>'+esc(S.sesion.clave)+'</b>.'
       : 'El registro está cerrado. Abra la asistencia para que los estudiantes puedan conectarse.')+
-    (redMensaje?' <b>'+esc(redMensaje)+'</b>':'')+'</span>';
+    (redMensaje?' <b>'+esc(redMensaje)+'</b>':'')+
+    (redMensaje&&contactoAdminDisponible()?enlaceContactoAdmin():'')+'</span>';
+  const link=el.querySelector('#contactarAdmin');
+  if(link) link.onclick=e=>{ e.preventDefault(); abrirModalContactoAdmin(); };
 }
 
 const espera=ms=>new Promise(r=>setTimeout(r,ms));
@@ -442,6 +486,12 @@ const espera=ms=>new Promise(r=>setTimeout(r,ms));
 /* -------------------- Estudiante: conexión ------------------- */
 function mostrarExitoEstudiante(nombre,ident){
   sessionStorage.setItem('utch.registro.'+S.sesion.clave,'1');
+  /* Marcador persistente (capa adicional, solo frena uso casual;
+     incógnito/otro navegador lo evade: la regla real está en el servidor). */
+  try{ localStorage.setItem('utch.reg.'+S.sesion.clave,'1'); }catch(e){}
+  try{
+    document.cookie='utch.reg.'+S.sesion.clave+'=1;path=/;SameSite=Lax;max-age=2592000';
+  }catch(e){}
   zonaFijada=true; zonaEstado='ya-registrado:'+S.sesion.clave;
   const zona=$('#zona');
   if(!zona) return;
@@ -461,6 +511,31 @@ function mostrarErrorEstudiante(texto){
 }
 
 /* --------------------------- Firma pad ----------------------- */
+function exportarFirmaCanvas(cv,maxW,maxH,dirty){
+  if(!dirty) return '';
+  const w=cv.width, h=cv.height;
+  // Si ya cabe, exportar tal cual (sin pasar por otro canvas).
+  if(w<=maxW && h<=maxH){
+    return cv.toDataURL('image/png');
+  }
+  // Solo reducir: escala para que quepa, con suavizado.
+  let scale = Math.min(maxW/w, maxH/h);
+  for(let attempt=0; attempt<3; attempt++){
+    const nw = Math.max(1, Math.round(w*scale));
+    const nh = Math.max(1, Math.round(h*scale));
+    const tmp=document.createElement('canvas');
+    tmp.width=nw; tmp.height=nh;
+    const ctx=tmp.getContext('2d');
+    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingQuality='high';
+    ctx.drawImage(cv,0,0,nw,nh);
+    const dataUrl=tmp.toDataURL('image/png');
+    const bytes=Math.round(dataUrl.length*3/4);
+    if(bytes <= 60*1024 || attempt===2) return dataUrl;
+    scale *= 0.85;
+  }
+  return cv.toDataURL('image/png');
+}
 function sigPad(el){
   el.classList.add('sig');
   el.innerHTML =
@@ -524,7 +599,7 @@ function sigPad(el){
     e.target.value='';
   };
   return {
-    get:()=>(dirty?cv.toDataURL('image/png'):''),
+    get:(maxW=600,maxH=200)=>(dirty?exportarFirmaCanvas(cv,maxW,maxH,dirty):''),
     clear,
     set(dataUrl){
       clear();
@@ -551,11 +626,18 @@ function descargar(nombre, blob){
 }
 
 /* --------------------------- Header -------------------------- */
-function cabecera(){
-  /* Encabezado público centrado: solo el título y el subtítulo.
-     Los logos institucionales viven ahora en el pie de página.
+function cabecera(sinLogos){
+  /* Encabezado público centrado: título, subtítulo y, solo en móvil (<768px),
+     los logos institucionales a los lados (DSJB izquierda, UTCH derecha).
+     En escritorio los logos permanecen en el pie de página.
      El .np mantiene el encabezado fuera de la impresión F-GCA-24. */
+  const logosMobile = sinLogos ? '' :
+    '<div class="header-logos-mobile">' +
+      '<img src="/img/logo-sistema-transparente.png" alt="Sistema de Asistencia DSJB">' +
+      '<img src="/img/logo-utch-transparente.png" alt="Universidad Tecnológica del Chocó Diego Luis Córdoba">' +
+    '</div>';
   return '<header class="app-header np">' +
+    logosMobile +
     '<div class="titulos">' +
       '<h1>' +
         '<span class="hdr-line" aria-hidden="true"></span>' +
@@ -742,6 +824,7 @@ function estadoZona(){
   if(!clave) return 'pedir-clave';
   if(sessionStorage.getItem(SESSION_EST)!==clave) return 'pedir-clave';
   if(sessionStorage.getItem('utch.registro.'+clave)==='1') return 'ya-registrado:'+clave;
+  if(localStorage.getItem('utch.reg.'+clave)==='1') return 'ya-registrado:'+clave;
   if(!estadoSesion().abierto) return 'cerrado:'+clave;
   return 'formulario:'+clave;
 }
@@ -899,10 +982,10 @@ function pintarZonaEstudiante(){
 
     const nombre=clean($('#nombres').value,80);
     const ident=clean($('#ident').value,20);
-    const firma=pads.est.get();
+    const firma=pads.est.get(600,200);
 
     if(nombre.length<5){ msg.textContent='Escriba sus nombres y apellidos completos.'; return; }
-    if(!/^[A-Za-z0-9-]{5,20}$/.test(ident)){ msg.textContent='Número de identificación no válido (5 a 20 caracteres).'; return; }
+    if(!/^[A-Za-z0-9.\s\-_,]{5,30}$/.test(ident)){ msg.textContent='Número de identificación no válido.'; return; }
     if(!firma){ msg.textContent='La firma es obligatoria.'; return; }
 
     boton.disabled=true;
@@ -921,7 +1004,7 @@ function pintarZonaEstudiante(){
         const data=await r.json().catch(()=>null);
         if(r.ok&&data&&data.ok){ mostrarExitoEstudiante(nombre,ident); return; }
         const codeErr=data&&(data.code||data.error);
-        if(codeErr==='DUPLICATE_IDENTIFICATION'){ mostrarErrorEstudiante('Esa identificación ya tiene una asistencia registrada en esta clase.'); return; }
+        if(codeErr==='DUPLICATE_IDENTIFICATION'){ mostrarErrorEstudiante('Esta identificación ya está registrada en esta asistencia.'); return; }
         if(codeErr==='REGISTRATION_CLOSED'){ mostrarErrorEstudiante('Los registros ya fueron cerrados para esta asistencia. No es posible registrar nuevos estudiantes.'); return; }
         if(codeErr==='SESSION_NOT_AVAILABLE'){ S.sesion.abierta=false; mostrarErrorEstudiante('La asistencia ya no está disponible o fue cerrada. Solicite un nuevo código al docente.'); pintarZonaEstudiante(); return; }
         mostrarErrorEstudiante('No se pudo registrar la asistencia. Verifique los datos e inténtelo nuevamente.');
@@ -935,7 +1018,7 @@ function pintarZonaEstudiante(){
       return;
     }
 
-    if(S.estudiantes.some(e=>e.ident===ident)){ mostrarErrorEstudiante('Esa identificación ya tiene una asistencia registrada en esta clase.'); return; }
+    if(S.estudiantes.some(e=>normalizeIdent(e.ident)===normalizeIdent(ident))){ mostrarErrorEstudiante('Esta identificación ya está registrada en esta asistencia.'); return; }
     S.estudiantes.push({
       id:'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
       nombre, ident, firma, ts:Date.now()
@@ -1040,7 +1123,7 @@ function mostrarVistaDocente(){
   pads.docente=sigPad($('#padDocente'));
   $('#limpiarFirmaDoc').onclick=()=>{ pads.docente.clear(); };
   $('#confirmarFirmaDoc').onclick=async()=>{
-    const firma=pads.docente.get();
+    const firma=pads.docente.get(600,200);
     if(!firma){ $('#msgFirmaDoc').textContent='Realice su firma primero.'; return; }
     if(docenteSessionId){
       $('#msgFirmaDoc').textContent='Enviando firma...';
@@ -1076,18 +1159,25 @@ function actualizarListaDocente(){
 }
 
 /* ----------------- Docente: lista desde API ----------------- */
+let pollApiDocenteTimer=null;
+let pollApiDocenteInterval=4000;
 async function actualizarListaDocenteDesdeAPI(){
-  if(!docenteSessionId) return;
+  if(!docenteSessionId) return false;
   if(pollApiDocenteCtrl){ try{ pollApiDocenteCtrl.abort(); }catch(e){} }
   pollApiDocenteCtrl=new AbortController();
   const sid=docenteSessionId;
+  let huboCambios=false;
   try{
-    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid)+'&teacherCode='+encodeURIComponent(sessionStorage.getItem('utch.docente')||''),{signal:pollApiDocenteCtrl.signal});
+    const sinceParam = docenteLastVersion ? '&since='+encodeURIComponent(docenteLastVersion) : '';
+    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid)+'&teacherCode='+encodeURIComponent(sessionStorage.getItem('utch.docente')||'')+'&lite=1'+sinceParam,{signal:pollApiDocenteCtrl.signal});
     const data=await r.json().catch(()=>null);
-    if(!r.ok||!data||!data.ok||!Array.isArray(data.records)) return;
-    if(docenteSessionId!==sid) return;
+    if(!r.ok||!data||!data.ok) return false;
+    if(data.changed===false) return false;
+    if(!Array.isArray(data.records)) return false;
+    if(docenteSessionId!==sid) return false;
     const srvFirmaDoc2 = firmaSegura(data.teacherSignature||'');
     if(srvFirmaDoc2){ S.firmaDoc = srvFirmaDoc2; }
+    const prevIds=S.estudiantes.map(f=>f.id).join(',');
     S.estudiantes=data.records.map(f=>{
       let ts=Date.parse(f.createdAt);
       if(isNaN(ts)) ts=Date.now();
@@ -1095,28 +1185,64 @@ async function actualizarListaDocenteDesdeAPI(){
         id:String(f.id||''),
         nombre:clean(f.fullName,80),
         ident:clean(f.identification,20),
-        firma:firmaSegura(f.studentSignature),
+        firma: firmaCache[f.id] || (f.studentSignature ? firmaSegura(f.studentSignature) : ''),
         ts
       };
     }).filter(f=>f.nombre&&f.ident);
+    if(prevIds!==S.estudiantes.map(f=>f.id).join(',')) huboCambios=true;
+    if(data.version) docenteLastVersion=data.version;
+    /* Pedir en una sola llamada las firmas que faltan (lite). */
+    const faltantes = data.records.filter(f => f.hasSignature && !firmaCache[f.id]).map(f => f.id);
+    if (faltantes.length) {
+      fetch('/api/records/signatures?sessionId='+encodeURIComponent(sid)+'&teacherCode='+encodeURIComponent(sessionStorage.getItem('utch.docente')||'')+'&ids='+faltantes.join(','))
+        .then(r=>r.json()).then(d=>{
+          if(d && d.ok && d.signatures){
+            for(const id in d.signatures){ firmaCache[id]=firmaSegura(d.signatures[id]||''); }
+            actualizarListaDocente();
+          }
+        }).catch(()=>{});
+    }
     /* Persistir la lista fresca (igual que el panel del representante)
        para que un estado antiguo no oculte registros recién recibidos. */
     guardarDiferido();
     actualizarListaDocente();
   }catch(e){ /* abort o red: se reintenta en el siguiente ciclo */ }
+  return huboCambios;
 }
 function detenerPollingApiDocente(){
-  if(pollApiDocente){ clearInterval(pollApiDocente); pollApiDocente=null; }
+  if(pollApiDocenteTimer){ clearTimeout(pollApiDocenteTimer); pollApiDocenteTimer=null; }
   if(pollApiDocenteCtrl){ try{ pollApiDocenteCtrl.abort(); }catch(e){} pollApiDocenteCtrl=null; }
+  pollApiDocenteInterval=4000;
 }
 function iniciarPollingApiDocente(){
   detenerPollingApiDocente();
   if(!docenteSessionId) return;
-  actualizarListaDocenteDesdeAPI();
-  pollApiDocente=setInterval(()=>{
-    if(!docenteSessionId){ detenerPollingApiDocente(); return; }
-    actualizarListaDocenteDesdeAPI();
-  },4000);
+  docenteLastVersion='';
+  pollApiDocenteInterval=4000;
+  programarPollingDocente(true);
+}
+function programarPollingDocente(inmediato){
+  if(pollApiDocenteTimer){ clearTimeout(pollApiDocenteTimer); pollApiDocenteTimer=null; }
+  if(!docenteSessionId) return;
+  if(inmediato){
+    actualizarListaDocenteDesdeAPI().then(huboCambios=>{
+      pollApiDocenteInterval = huboCambios ? 4000 : Math.min(pollApiDocenteInterval*2, 30000);
+      if(docenteSessionId){
+        pollApiDocenteTimer=setTimeout(()=>programarPollingDocente(false), pollApiDocenteInterval);
+      }
+    });
+  } else {
+    if(document.hidden){
+      pollApiDocenteTimer=setTimeout(()=>programarPollingDocente(false), 1000);
+      return;
+    }
+    actualizarListaDocenteDesdeAPI().then(huboCambios=>{
+      pollApiDocenteInterval = huboCambios ? 4000 : Math.min(pollApiDocenteInterval*2, 30000);
+      if(docenteSessionId){
+        pollApiDocenteTimer=setTimeout(()=>programarPollingDocente(false), pollApiDocenteInterval);
+      }
+    });
+  }
 }
 
 /* -------------------- Conexión del DOCENTE ------------------- */
@@ -1179,66 +1305,307 @@ async function cargarAsistenciasRep(){
         '<span class="mut">'+esc([s.codigo,s.docente].filter(Boolean).join(' · '))+' · '+esc(s.status)+
         (s.registrationOpen?'':' · registros cerrados')+' · '+esc(String(s.recordCount))+' est.'+
         '</span></div>' +
-        '<button class="s" data-sid="'+esc(s.sessionId)+'">Abrir</button>' +
+        '<button class="s" data-sid="'+esc(s.sessionId)+'" data-status="'+esc(s.status)+'">Abrir</button>' +
       '</div>'
     ).join('');
     lista.querySelectorAll('[data-sid]').forEach(b=>{
-      b.onclick=()=>seleccionarAsistenciaRep(b.dataset.sid);
+      b.onclick=async()=>{
+        if(b.dataset.status==='OPEN'){ await seleccionarAsistenciaRep(b.dataset.sid); return; }
+        /* Asistencia cerrada: «Abrir» la REABRE (mismo id), no crea otra. */
+        b.disabled=true;
+        const ok=await reabrirAsistencia(b.dataset.sid);
+        b.disabled=false;
+        if(ok){
+          await cargarAsistenciasRep();
+          window.scrollTo(0,0);
+        }
+      };
     });
   }catch(e){
     if(msg) msg.textContent='No se pudo conectar con el servidor.';
   }
 }
 
+/* Aplica al estado local una sesión + registros que vienen del servidor.
+   El servidor es la fuente de verdad: estudiantes y firmas se REEMPLAZAN
+   (incluido vacío) en cada carga explícita; no se fusiona una copia local
+   antigua que podría ocultar un dato borrado a propósito. */
+async function aplicarSesionDesdeServidor(data,opts){
+  opts=opts||{};
+  const s=data.session;
+  if(!s) return false;
+  const mismoSid=String(S.sesion.sessionId||'')===String(s.sessionId||'');
+  const yaAbierta=S.sesion.abierta&&mismoSid;
+  detenerPollingApi();
+  repRegAbiertos=s.registrationOpen!==false;
+  S.sesion.sessionId=String(s.sessionId||'');
+  S.sesion.clave=String(s.studentCode||'').toUpperCase();
+  S.sesion.claveDocente=String(s.teacherCode||'').toUpperCase();
+  S.sesion.abierta=(s.status==='OPEN');
+  /* La vigencia se reinicia solo al abrir/reaperturar, no en cada refresco. */
+  S.sesion.inicio=S.sesion.abierta
+    ? ((opts.reabierta||!yaAbierta)?Date.now():(S.sesion.inicio||Date.now()))
+    : 0;
+  for(const k of ['facultad','programa','nivel','periodo','asignatura','codigo','docente']){
+    if(typeof s[k]==='string'&&s[k]) S.cfg[k]=clean(s[k],160);
+  }
+  /* La planilla debe fechar la asistencia SELECCIONADA (apertura del
+     servidor en Bogotá), no el borrador local. */
+  const fAp=fechaAperturaBogota(s.createdAt), hAp=horaAperturaBogota(s.createdAt);
+  if(fAp){
+    S.cfg.fecha=fAp;
+    const ff=$('#f_fecha'); if(ff) ff.value=fAp;
+  }
+  if(hAp){
+    S.cfg.hora=hAp;
+    const fh=$('#f_hora'); if(fh) fh.value=hAp;
+  }
+  /* Firmas: las del servidor, sin copia local de respaldo. */
+  S.firmaDoc=firmaSegura(s.teacherSignature||'');
+  S.firmaRep=firmaSegura(s.representativeSignature||'');
+  S.firmaDocQuitar=false; S.firmaRepQuitar=false;
+  if(pads.doc){ try{ pads.doc.set(S.firmaDoc); }catch(e){} }
+  if(pads.rep){ try{ pads.rep.set(S.firmaRep); }catch(e){} }
+  S.estudiantes=(Array.isArray(data.records)?data.records:[]).map(f=>{
+    let ts=Date.parse(f.createdAt);
+    if(isNaN(ts)) ts=Date.now();
+    return {id:String(f.id||''),nombre:clean(f.fullName,80),ident:clean(f.identification,20),firma:firmaSegura(f.studentSignature),ts};
+  }).filter(f=>f.nombre&&f.ident);
+  await guardar();
+  return true;
+}
+
+async function cargarSesionDesdeServidor(sessionId,opts){
+  const r=await fetch('/api/rep/session?sessionId='+encodeURIComponent(sessionId));
+  const data=await r.json().catch(()=>null);
+  if(!r.ok||!data||!data.ok||!data.session) return false;
+  return aplicarSesionDesdeServidor(data,opts);
+}
+
+/* Reabre la MISMA asistencia (mismo id) desde el historial o el panel.
+   Si hay otra abierta, pide confirmación antes de cerrarla. */
+async function reabrirAsistencia(sessionId){
+  try{
+    let r=await fetch('/api/sessions/reopen',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId})});
+    let data=await r.json().catch(()=>null);
+    if(r.status===409&&data&&data.error==='REP_HAS_OPEN_SESSION'){
+      const otra=data.openSession||{};
+      const aceptar=await uiConfirm({
+        kind:'warn',
+        title:'Ya tiene una asistencia abierta',
+        okText:'Cerrarla y reabrir esta',
+        cancelText:'Cancelar',
+        message:'Ya tiene la asistencia'+(otra.studentCode?(' '+otra.studentCode):'')+' abierta. ¿Desea cerrarla y reabrir la asistencia seleccionada?\n\nLa que se cierre conserva todos sus estudiantes y firmas, y quedará disponible para consulta durante 24 horas.'
+      });
+      if(!aceptar) return false;
+      r=await fetch('/api/sessions/reopen',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,force:true})});
+      data=await r.json().catch(()=>null);
+    }
+    if(!r.ok||!data||!data.ok||!data.session){
+      redMensaje='No se pudo reabrir la asistencia.';
+      pintarRed();
+      return false;
+    }
+    /* Recarga el estado real (estudiantes, firmas, encabezado) desde la BD. */
+    const ok=await cargarSesionDesdeServidor(sessionId,{reabierta:true});
+    if(!ok){
+      redMensaje='La asistencia se reabrió, pero no se pudo recargar su estado.';
+      pintarRed();
+      return false;
+    }
+    redMensaje='';
+    refrescarPanel();
+    pintarHoja();
+    iniciarPollingApi();
+    return true;
+  }catch(e){
+    redMensaje='No se pudo conectar con el servidor.';
+    pintarRed();
+    return false;
+  }
+}
+
+/* Guarda/borra firmas en el servidor apenas se pulsa guardar/quitar.
+   No cambia el estado de la asistencia (abierta/cerrada). Solo el dueño. */
+async function guardarFirmaEnServidor(sigs){
+  const sid=String(S.sesion.sessionId||'').trim();
+  if(!sid){
+    await uiAlert({kind:'error',title:'Sin asistencia',message:'No hay una asistencia abierta para guardar la firma.'});
+    return false;
+  }
+  const btnSave=document.getElementById('msgFirmaGuardada');
+  try{
+    const r=await fetch('/api/sessions/signatures',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sessionId:sid,...sigs})
+    });
+    const data=await r.json().catch(()=>null);
+    if(r.ok&&data&&data.ok){
+      /* Sincroniza la copia local con lo que devolvió el servidor (fuente de verdad). */
+      if(typeof data.session.teacherSignature==='string'){
+        S.firmaDoc=firmaSegura(data.session.teacherSignature)||'';
+        if(pads.doc){ try{ pads.doc.set(S.firmaDoc); }catch(e){} }
+      }
+      if(typeof data.session.representativeSignature==='string'){
+        S.firmaRep=firmaSegura(data.session.representativeSignature)||'';
+        if(pads.rep){ try{ pads.rep.set(S.firmaRep); }catch(e){} }
+      }
+      S.firmaDocQuitar=false; S.firmaRepQuitar=false;
+      await guardar();
+      pintarHoja();
+      mostrarMsgFirma('Firma guardada ✓','ok');
+      return true;
+    }
+    const codeErr=data&&(data.code||data.error);
+    mostrarMsgFirma('No se pudo guardar la firma'+(codeErr?(' ('+codeErr+')'):'')+'. Reintente.','warn');
+    return false;
+  }catch(e){
+    mostrarMsgFirma('No se pudo conectar con el servidor. La firma queda solo en pantalla.','warn');
+    return false;
+  }
+}
+
+function contactoAdminDisponible(){ return !!(ADMIN_CONTACT.email||ADMIN_CONTACT.whatsapp); }
+function enlaceContactoAdmin(){
+  if(!contactoAdminDisponible()) return '';
+  return ' <a href="#" id="contactarAdmin" style="font-weight:600;text-decoration:underline">Contactar al administrador</a>';
+}
+function abrirModalContactoAdmin(){
+  const titulo='Contactar al administrador';
+  const ultimoError = (typeof redMensaje==='string'&&redMensaje.trim()) ? redMensaje.trim() : '';
+  const zonaFirma = $('#zonaFirmaMsg');
+  const ultimoFirma = zonaFirma ? zonaFirma.textContent.trim() : '';
+  const ultimo = ultimoError || ultimoFirma || '';
+  const seccion = adminMode ? 'panel' : (location.hash.replace(/^#\/?/,'').split('?')[0]||'inicio');
+  const asistencia = (S&&S.cfg&&S.cfg.asignatura) ? (S.cfg.asignatura + (S.cfg.codigo?' ('+S.cfg.codigo+')':'')) : (S&&S.sesion&&S.sesion.sessionId ? ('Asistencia '+String(S.sesion.sessionId).slice(0,8)) : '');
+  const nombreRep = (typeof repNombre==='string'&&repNombre.trim()) ? repNombre.trim() : 'Representante';
+  const ua = (navigator.userAgent||'').slice(0,120);
+  const fecha = new Date().toLocaleString('es-CO',{timeZone:'America/Bogota'});
+  const baseMsg = 'Asunto: Ayuda – Sistema de Asistencia DSJB\n'+
+    'Representante: '+nombreRep+'\n'+
+    'Fecha y hora: '+fecha+'\n'+
+    'Sección: '+seccion+'\n'+
+    (asistencia?'Asistencia: '+asistencia+'\n':'')+
+    (ultimo?'Último error mostrado: '+ultimo+'\n':'')+
+    'Dispositivo/navegador: '+ua+'\n'+
+    'Descripción: ';
+  const raiz=$('#uiModal')||document.body;
+  const overlay=document.createElement('div');
+  overlay.className='ui-overlay';
+  overlay.innerHTML=
+    '<div class="ui-panel" role="dialog" aria-modal="true" aria-label="'+esc(titulo)+'" style="max-width:520px">'+
+      '<h3 class="ui-title">'+esc(titulo)+'</h3>'+
+      '<p class="ui-msg">Cuéntanos qué pasó; se adjuntan datos básicos para ayudarte más rápido.</p>'+
+      '<label for="contactoDesc" style="font-size:13px;font-weight:600">Describe el problema (opcional)</label>'+
+      '<textarea id="contactoDesc" maxlength="500" rows="4" style="width:100%;margin:6px 0 8px;padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical"></textarea>'+
+      '<div style="text-align:right;font-size:12px;color:var(--muted);margin-bottom:10px"><span id="contactoCount">0</span>/500</div>'+
+      '<div style="background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:12px">'+
+        '<div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px">Vista previa del mensaje</div>'+
+        '<pre id="contactoPreview" style="white-space:pre-wrap;word-break:break-word;font-size:12px;margin:0;color:var(--ink)"></pre>'+
+      '</div>'+
+      '<div class="ui-actions" style="flex-wrap:wrap;gap:8px">'+
+        (ADMIN_CONTACT.whatsapp?'<a class="btn" id="contactoWa" href="#" target="_blank" rel="noopener noreferrer" style="min-height:44px">'+I.link+'Enviar por WhatsApp</a>':'')+
+        (ADMIN_CONTACT.email?'<a class="btn s" id="contactoMail" href="#" target="_blank" rel="noopener noreferrer" style="min-height:44px">'+I.info+'Enviar por correo</a>':'')+
+        '<button type="button" class="s" id="contactoCopy" style="min-height:44px">'+I.copy+'Copiar detalles</button>'+
+        '<button type="button" class="s" id="contactoCerrar" style="min-height:44px">'+I.x+'Cerrar</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(overlay);
+  const desc=$('#contactoDesc',overlay);
+  const preview=$('#contactoPreview',overlay);
+  const count=$('#contactoCount',overlay);
+  const actualizar=()=>{
+    const d=desc.value.trim();
+    const msg=baseMsg+d;
+    preview.textContent=msg;
+    count.textContent=String(desc.value.length);
+    const wa=$('#contactoWa',overlay);
+    if(wa) wa.href='https://wa.me/'+encodeURIComponent(ADMIN_CONTACT.whatsapp)+'?text='+encodeURIComponent(msg);
+    const mail=$('#contactoMail',overlay);
+    if(mail) mail.href='mailto:'+encodeURIComponent(ADMIN_CONTACT.email)+'?subject='+encodeURIComponent('Ayuda – Sistema de Asistencia DSJB')+'&body='+encodeURIComponent(msg);
+  };
+  desc.addEventListener('input',actualizar);
+  actualizar();
+  const cerrar=()=>overlay.remove();
+  $('#contactoCerrar',overlay).onclick=cerrar;
+  overlay.addEventListener('click',e=>{ if(e.target===overlay) cerrar(); });
+  document.addEventListener('keydown',function esc(e){ if(e.key==='Escape'){ cerrar(); document.removeEventListener('keydown',esc); } });
+  const copiar=$('#contactoCopy',overlay);
+  if(copiar) copiar.onclick=async()=>{
+    try{ await navigator.clipboard.writeText(preview.textContent); copiar.innerHTML=I.check+'Copiado ✓'; }
+    catch(e){ copiar.innerHTML=I.copy+'Seleccione y copie'; }
+    setTimeout(()=>{ copiar.innerHTML=I.copy+'Copiar detalles'; },1800);
+  };
+}
+function mostrarMsgFirma(texto,kind){
+  const cont=$('#zonaFirmaMsg');
+  if(!cont) return;
+  cont.innerHTML='<div class="aviso '+(kind==='ok'?'ok':'warn')+'">'+(kind==='ok'?I.shieldCheck:I.alert)+
+    '<span>'+esc(texto)+'</span>'+enlaceContactoAdmin()+'</div>';
+  const link=cont.querySelector('#contactarAdmin');
+  if(link) link.onclick=e=>{ e.preventDefault(); abrirModalContactoAdmin(); };
+}
+
 /* Selecciona una asistencia propia y continúa trabajando con ella. */
 async function seleccionarAsistenciaRep(sessionId){
   const msg=$('#msgAsistencias');
   try{
-    const r=await fetch('/api/rep/session?sessionId='+encodeURIComponent(sessionId));
-    const data=await r.json().catch(()=>null);
-    if(!r.ok||!data||!data.ok||!data.session){
+    const ok=await cargarSesionDesdeServidor(sessionId);
+    if(!ok){
       if(msg) msg.textContent='No se pudo abrir la asistencia.';
       return;
     }
-    const s=data.session;
-    detenerPollingApi();
-    repRegAbiertos=s.registrationOpen!==false;
-    S.sesion.sessionId=String(s.sessionId||'');
-    S.sesion.clave=String(s.studentCode||'').toUpperCase();
-    S.sesion.claveDocente=String(s.teacherCode||'').toUpperCase();
-    S.sesion.abierta=(s.status==='OPEN');
-    S.sesion.inicio=Date.now(); S.sesion.minutos=0;
-    for(const k of ['facultad','programa','nivel','periodo','asignatura','codigo','docente']){
-      if(typeof s[k]==='string'&&s[k]) S.cfg[k]=clean(s[k],160);
-    }
-    /* La planilla debe fechar la asistencia SELECCIONADA (apertura del
-       servidor en Bogotá), no el borrador local: sin esto conservaba una
-       fecha antigua de otra configuración. Solo se aplica con valor válido. */
-    const fAp=fechaAperturaBogota(s.createdAt), hAp=horaAperturaBogota(s.createdAt);
-    if(fAp){
-      S.cfg.fecha=fAp;
-      const ff=$('#f_fecha'); if(ff) ff.value=fAp;
-    }
-    if(hAp){
-      S.cfg.hora=hAp;
-      const fh=$('#f_hora'); if(fh) fh.value=hAp;
-    }
-    const srvFirmaDoc3 = firmaSegura(data.session.teacherSignature||'');
-    if(srvFirmaDoc3){ S.firmaDoc = srvFirmaDoc3; }
-    const srvFirmaRep3 = firmaSegura(data.session.representativeSignature||'');
-    if(srvFirmaRep3){ S.firmaRep = srvFirmaRep3; }
-    S.estudiantes=(Array.isArray(data.records)?data.records:[]).map(f=>{
-      let ts=Date.parse(f.createdAt);
-      if(isNaN(ts)) ts=Date.now();
-      return {id:String(f.id||''),nombre:clean(f.fullName,80),ident:clean(f.identification,20),firma:firmaSegura(f.studentSignature),ts};
-    }).filter(f=>f.nombre&&f.ident);
-    await guardar();
     refrescarPanel();
     if(S.sesion.abierta) iniciarPollingApi();
     if(msg) msg.textContent='Asistencia cargada.';
     window.scrollTo(0,0);
   }catch(e){
     if(msg) msg.textContent='No se pudo conectar con el servidor.';
+  }
+}
+
+/* Al entrar al panel, si hay una asistencia vinculada se revalida contra la
+   base de datos: el servidor manda sobre cualquier copia local. */
+let hidratandoSesion=false;
+async function hidratarSesionDesdeServidor(){
+  if(hidratandoSesion) return false;
+  hidratandoSesion=true;
+  try{
+    let sid=String(S.sesion&&S.sesion.sessionId||'').trim();
+    if(!sid){
+      /* Sin sesión vinculada en este dispositivo: si el representante tiene
+         una asistencia abierta en la base de datos (por ejemplo, abierta
+         desde otro equipo), se carga automáticamente. */
+      const lr=await fetch('/api/rep/sessions');
+      const ld=await lr.json().catch(()=>null);
+      if(lr.ok&&ld&&ld.ok&&Array.isArray(ld.sessions)){
+        const abierta=ld.sessions.find(s=>s.status==='OPEN'&&s.sessionId);
+        if(abierta) sid=String(abierta.sessionId);
+      }
+      if(!sid) return false;
+    }
+    const r=await fetch('/api/rep/session?sessionId='+encodeURIComponent(sid));
+    if(r.status===404||r.status===401){
+      /* La sesión ya no existe (o no es propia): no mostrar datos viejos. */
+      detenerPollingApi();
+      S.sesion={abierta:false,inicio:0,minutos:S.sesion.minutos||0,clave:'',sessionId:''};
+      S.estudiantes=[];
+      S.firmaDoc=''; S.firmaRep='';
+      S.firmaDocQuitar=false; S.firmaRepQuitar=false;
+      if(pads.doc){ try{ pads.doc.clear(); }catch(e){} }
+      if(pads.rep){ try{ pads.rep.clear(); }catch(e){} }
+      await guardar();
+      return true;
+    }
+    if(!r.ok) return false;
+    const data=await r.json().catch(()=>null);
+    if(!data||!data.ok||!data.session) return false;
+    return await aplicarSesionDesdeServidor(data);
+  }catch(e){
+    return false;
+  }finally{
+    hidratandoSesion=false;
   }
 }
 
@@ -1273,6 +1640,7 @@ function vistaAdmin(app){
     cabecera('Panel del docente') +
     '<p class="np" style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
       '<strong id="repSaludo" style="font-size:1.05rem">Hola</strong>' +
+      (contactoAdminDisponible()?'<button class="s" id="btnAyuda" style="min-height:44px">'+I.info+'¿Necesitas ayuda?</button>':'') +
       '<button class="s back-button" id="salir" style="margin-left:auto">'+I.lock+'Cerrar sesión</button>' +
     '</p>' +
 
@@ -1358,12 +1726,17 @@ function vistaAdmin(app){
           '<p style="margin-top:12px"><button id="saveRep">'+I.check+'Guardar firma</button> ' +
           '<button class="d" id="delRep">'+I.trash+'Quitar</button></p></div>' +
       '</div>' +
+      '<div id="zonaFirmaMsg" style="margin-top:10px"></div>' +
     '</div>' +
 
     '<div class="card np">' +
       '<h2>'+I.database+'Exportar y respaldar</h2>' +
-      '<div class="row">' +
+      '<div class="row" style="align-items:center;gap:12px;flex-wrap:wrap">' +
         '<button id="pdf">'+I.print+'Exportar a PDF / Imprimir</button>' +
+        '<label class="print-opt" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13.5px;color:var(--ink);min-height:44px">'+
+          '<input type="checkbox" id="printZigzag" checked style="width:18px;height:18px;accent-color:var(--blue-600)">'+
+          '<span>Rayar filas vacías (zigzag)</span>'+
+        '</label>' +
         '<button class="s" id="json">'+I.download+'Respaldo JSON</button>' +
         '<button class="s" id="csv">'+I.download+'Exportar CSV</button>' +
       '</div>' +
@@ -1389,11 +1762,15 @@ function vistaAdmin(app){
     '<div class="aviso np" id="avisoHoja" style="margin:0 0 12px"></div>' +
     '<div class="wrap"><div id="hoja"></div></div>';
 
+  const btnAyuda=$('#btnAyuda');
+  if(btnAyuda) btnAyuda.onclick=()=>abrirModalContactoAdmin();
   $('#salir').onclick=async()=>{
     detenerPollingApi();
+    limpiarFirmaCache();
     try{
       await fetch('/api/rep/logout',{method:'POST'});
     }catch(e){}
+    limpiarDatosSesionRep();
     sessionStorage.removeItem(SESSION_REP);
     try{ sessionStorage.removeItem(SESSION_REP_ID); }catch(e){}
     repIdActual=''; repNombre='';
@@ -1402,6 +1779,10 @@ function vistaAdmin(app){
 
   actualizarSelectorMaterias();
   cargarOfertasRep();
+  /* Inicializar preferencia de rayado (zigzag) al imprimir */
+  const printZigzag=localStorage.getItem('printZigzag');
+  const printZigzagEl=$('#printZigzag');
+  if(printZigzagEl) printZigzagEl.checked=printZigzag!=='false';
   $('#verAsistencias').onclick=()=>cargarAsistenciasRep();
   $('#materiaSelect').onchange=async e=>{
     const id=e.target.value;
@@ -1521,6 +1902,14 @@ function vistaAdmin(app){
   $('#abrir').onclick=async()=>{
     const btnAbrir=$('#abrir');
     if(btnAbrir) btnAbrir.disabled=true;
+    /* Si ya hay una asistencia vinculada, «Abrir» REABRE esa misma
+       (mismo id) en vez de crear una nueva en blanco. */
+    const sidActual=String(S.sesion.sessionId||'').trim();
+    if(sidActual){
+      await reabrirAsistencia(sidActual);
+      if(btnAbrir) btnAbrir.disabled=false;
+      return;
+    }
     const materiaAbierta=S.materias.find(item=>item.id===S.materiaActiva);
     const ofertaAbierta=materiaAbierta&&Number(materiaAbierta.courseOfferingId)||0;
     if(!ofertaAbierta){
@@ -1565,7 +1954,13 @@ function vistaAdmin(app){
       if(sid){
         let r=null, data=null;
         try{
-          r=await fetch('/api/sessions/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid})});
+          r=await fetch('/api/sessions/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+            sessionId:sid,
+            teacherSignature:S.firmaDoc||'',
+            representativeSignature:S.firmaRep||'',
+            clearTeacherSignature:!!S.firmaDocQuitar,
+            clearRepresentativeSignature:!!S.firmaRepQuitar
+          })});
           data=await r.json().catch(()=>null);
         }catch(e){ r=null; data=null; }
         if(!r||!r.ok||!data||!data.ok){
@@ -1587,8 +1982,10 @@ function vistaAdmin(app){
       repRegAbiertos=true;
       S.sesion.inicio=0;
       S.estudiantes=[];
+      limpiarFirmaCache();
       S.firmaDoc='';
       S.firmaRep='';
+      S.firmaDocQuitar=false; S.firmaRepQuitar=false;
       if(pads.doc) pads.doc.clear();
       if(pads.rep) pads.rep.clear();
       await guardar();
@@ -1597,6 +1994,7 @@ function vistaAdmin(app){
       pintarRed();
     }finally{
       cierreEnCurso=false;
+      if(detBtn) detBtn.disabled=false;
     }
   };
   $('#nuevaClave').onclick=async()=>{
@@ -1615,7 +2013,13 @@ function vistaAdmin(app){
       const sidViejo=S.sesion.sessionId||'';
       if(sidViejo){
         try{
-          await fetch('/api/sessions/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sidViejo})});
+          await fetch('/api/sessions/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+            sessionId:sidViejo,
+            teacherSignature:S.firmaDoc||'',
+            representativeSignature:S.firmaRep||'',
+            clearTeacherSignature:!!S.firmaDocQuitar,
+            clearRepresentativeSignature:!!S.firmaRepQuitar
+          })});
         }catch(e){}
       }
       const r=await fetch('/api/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({courseOfferingId:ofertaNueva})});
@@ -1669,12 +2073,37 @@ function vistaAdmin(app){
   pads.rep=sigPad($('#padRep'));
   if(S.firmaDoc) pads.doc.set(S.firmaDoc);
   if(S.firmaRep) pads.rep.set(S.firmaRep);
-  $('#saveDoc').onclick=async()=>{ const g=pads.doc.get(); if(g){ S.firmaDoc=firmaSegura(g)||g; await guardar(); pintarHoja(); } };
-  $('#delDoc').onclick=async()=>{ S.firmaDoc=''; pads.doc.clear(); await guardar(); pintarHoja(); };
-  $('#saveRep').onclick=async()=>{ const g=pads.rep.get(); if(g){ S.firmaRep=g; await guardar(); pintarHoja(); } };
-  $('#delRep').onclick=async()=>{ S.firmaRep=''; pads.rep.clear(); await guardar(); pintarHoja(); };
+  $('#saveDoc').onclick=async()=>{
+    const g=pads.doc.get(900,300);
+    if(!g) return;
+    await guardarFirmaEnServidor({teacherSignature: g, clearTeacherSignature: false});
+    S.firmaDoc=firmaSegura(g)||g; S.firmaDocQuitar=false;
+    await guardar(); pintarHoja();
+  };
+  $('#delDoc').onclick=async()=>{
+    await guardarFirmaEnServidor({clearTeacherSignature: true});
+    S.firmaDoc=''; S.firmaDocQuitar=true; pads.doc.clear();
+    await guardar(); pintarHoja();
+  };
+  $('#saveRep').onclick=async()=>{
+    const g=pads.rep.get(900,300);
+    if(!g) return;
+    await guardarFirmaEnServidor({representativeSignature: g, clearRepresentativeSignature: false});
+    S.firmaRep=firmaSegura(g)||g; S.firmaRepQuitar=false;
+    await guardar(); pintarHoja();
+  };
+  $('#delRep').onclick=async()=>{
+    await guardarFirmaEnServidor({clearRepresentativeSignature: true});
+    S.firmaRep=''; S.firmaRepQuitar=true; pads.rep.clear();
+    await guardar(); pintarHoja();
+  };
 
   $('#pdf').onclick=()=>{
+    const zigzag=!!$('#printZigzag')?.checked;
+    const hoja=$('#hoja');
+    if(hoja) hoja.classList.toggle('sin-rayado',!zigzag);
+    if(!zigzag) localStorage.setItem('printZigzag','false');
+    else localStorage.removeItem('printZigzag');
     tituloPDF=document.title;
     document.title='Asistencia_'+fmtFecha(S.cfg.fecha||hoy());
     prepararImpresion().then(()=>setTimeout(()=>{ ajustarHojaUnaPagina(); window.print(); },60));
@@ -1763,6 +2192,7 @@ function vistaAdmin(app){
       }catch(e){}
       S.sesion={abierta:false,inicio:0,minutos:0,clave:'',sessionId:''};
       S.estudiantes=[];
+      limpiarFirmaCache();
       S.firmaDoc='';
       S.firmaRep='';
       repRegAbiertos=true;
@@ -1784,55 +2214,130 @@ function vistaAdmin(app){
   arrancarTic();
   iniciarPollingApi();
   /* Revalida la identidad contra el servidor: vincula el borrador propio,
-     expulsa sesiones inválidas y pinta el saludo con el nombre de la BD. */
-  confirmarIdentidadRep().catch(()=>{});
+     expulsa sesiones inválidas y pinta el saludo con el nombre de la BD.
+     Después revalida la asistencia vinculada: estudiantes, firmas, estado y
+     códigos se leen de la base de datos, no de la copia local. */
+  confirmarIdentidadRep().then(async rep=>{
+    if(!rep||!adminMode) return;
+    const cambio=await hidratarSesionDesdeServidor();
+    if(cambio){
+      refrescarPanel();
+      pintarHoja();
+      if(S.sesion.abierta) iniciarPollingApi();
+    }
+  }).catch(()=>{});
 }
 
 /* ----------------- Representante: lista desde API -----------------
    Fuente de verdad PostgreSQL. Un solo intervalo, sin duplicados. */
 async function actualizarListaDesdeAPI(){
-  if(!adminMode||!S.sesion.sessionId) return;
+  if(!adminMode||!S.sesion.sessionId) return false;
   if(pollApiCtrl){ try{ pollApiCtrl.abort(); }catch(e){} }
   pollApiCtrl=new AbortController();
   const sid=S.sesion.sessionId;
+  let huboCambios=false;
   try{
-    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid),{signal:pollApiCtrl.signal});
+    const sinceParam = S.lastVersion ? '&since='+encodeURIComponent(S.lastVersion) : '';
+    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid)+'&lite=1'+sinceParam,{signal:pollApiCtrl.signal});
     const data=await r.json().catch(()=>null);
-    if(!r.ok||!data||!data.ok||!Array.isArray(data.records)) return;
-    if(!adminMode||S.sesion.sessionId!==sid) return;
+    if(!r.ok||!data||!data.ok) return false;
+    if(data.changed===false){
+      // Sin cambios: no actualizar lista, pero ajustar backoff.
+      return false;
+    }
+    if(!Array.isArray(data.records)) return false;
+    if(!adminMode||S.sesion.sessionId!==sid) return false;
     if(typeof data.registrationOpen === 'boolean') repRegAbiertos=data.registrationOpen;
-    const srvFirmaDoc = firmaSegura(data.teacherSignature||'');
-    if(srvFirmaDoc){ S.firmaDoc = srvFirmaDoc; }
-    S.estudiantes=data.records.map(f=>{
+    /* La firma del docente solo se rellena si aún no hay una en pantalla:
+       nunca pisa una firma recién dibujada (aún sin cerrar) ni una que el
+       representante acaba de quitar a propósito. */
+    if(!S.firmaDoc && !S.firmaDocQuitar){
+      /* En modo lite, la firma del docente viene como hasTeacherSignature + versión.
+         Si hay firma y no la tenemos, pedirla por signatures. */
+      if(data.hasTeacherSignature && !S.firmaDoc){
+        // La firma del docente se pide una sola vez via signatures endpoint con ids vacíos? 
+        // En su lugar, usar el campo teacherSignature si viene (compatibilidad).
+        const srvFirmaDoc = firmaSegura(data.teacherSignature||'');
+        if(srvFirmaDoc) S.firmaDoc = srvFirmaDoc;
+      }
+    }
+    const prevIds=S.estudiantes.map(f=>f.id).join(',');
+    const nuevos=data.records.map(f=>{
       let ts=Date.parse(f.createdAt);
       if(isNaN(ts)) ts=Date.now();
       return {
         id:String(f.id||''),
         nombre:clean(f.fullName,80),
         ident:clean(f.identification,20),
-        firma:firmaSegura(f.studentSignature),
+        firma: firmaCache[f.id] || (f.studentSignature ? firmaSegura(f.studentSignature) : ''),
         ts
       };
     }).filter(f=>f.nombre&&f.ident);
+    const newIds=nuevos.map(f=>f.id).join(',');
+    if(prevIds!==newIds) huboCambios=true;
+    S.estudiantes=nuevos;
+    if(data.version) S.lastVersion=data.version;
+    /* Pedir en una sola llamada las firmas que faltan (lite). */
+    const faltantes = data.records.filter(f => f.hasSignature && !firmaCache[f.id]).map(f => f.id);
+    if (faltantes.length) {
+      fetch('/api/records/signatures?sessionId='+encodeURIComponent(sid)+'&ids='+faltantes.join(','))
+        .then(r=>r.json()).then(d=>{
+          if(d && d.ok && d.signatures){
+            for(const id in d.signatures){ firmaCache[id]=firmaSegura(d.signatures[id]||''); }
+            pintarHoja();
+          }
+        }).catch(()=>{});
+    }
+    /* Firma del representante (lite): pedir una sola vez si cambió la versión. */
+    if(data.hasRepSignature && !S.firmaRep && !S.firmaRepQuitar){
+      // compatibilidad: si viene el campo completo, usarlo
+      const srvFirmaRep = firmaSegura(data.representativeSignature||'');
+      if(srvFirmaRep) S.firmaRep = srvFirmaRep;
+    }
     /* Persistir la lista fresca para que focus/storage (sincronizar) no
        revierta a una versión antigua sin los registros recién recibidos. */
     guardarDiferido();
     pintarHoja();
     pintarEstadoReg();
   }catch(e){ /* abort o red: se reintenta en el siguiente ciclo */ }
+  return huboCambios;
 }
+let pollApiTimer=null;
+let pollApiInterval=4000;
 function detenerPollingApi(){
-  if(pollApi){ clearInterval(pollApi); pollApi=null; }
+  if(pollApiTimer){ clearTimeout(pollApiTimer); pollApiTimer=null; }
   if(pollApiCtrl){ try{ pollApiCtrl.abort(); }catch(e){} pollApiCtrl=null; }
+  pollApiInterval=4000;
 }
 function iniciarPollingApi(){
   detenerPollingApi();
   if(!adminMode||!S.sesion.abierta||!S.sesion.sessionId) return;
-  actualizarListaDesdeAPI();
-  pollApi=setInterval(()=>{
-    if(!adminMode||!S.sesion.abierta||!S.sesion.sessionId){ detenerPollingApi(); return; }
-    actualizarListaDesdeAPI();
-  },4000);
+  S.lastVersion='';
+  pollApiInterval=4000;
+  programarPollingApi(true);
+}
+function programarPollingApi(inmediato){
+  if(pollApiTimer){ clearTimeout(pollApiTimer); pollApiTimer=null; }
+  if(!adminMode||!S.sesion.abierta||!S.sesion.sessionId) return;
+  if(inmediato){
+    actualizarListaDesdeAPI().then(huboCambios=>{
+      pollApiInterval = huboCambios ? 4000 : Math.min(pollApiInterval*2, 30000);
+      if(adminMode && S.sesion.abierta && S.sesion.sessionId){
+        pollApiTimer=setTimeout(()=>programarPollingApi(false), pollApiInterval);
+      }
+    });
+  } else {
+    if(document.hidden){ /* pausar: reintentar cuando vuelva la visibilidad */
+      pollApiTimer=setTimeout(()=>programarPollingApi(false), 1000);
+      return;
+    }
+    actualizarListaDesdeAPI().then(huboCambios=>{
+      pollApiInterval = huboCambios ? 4000 : Math.min(pollApiInterval*2, 30000);
+      if(adminMode && S.sesion.abierta && S.sesion.sessionId){
+        pollApiTimer=setTimeout(()=>programarPollingApi(false), pollApiInterval);
+      }
+    });
+  }
 }
 
 function pintarEstadoReg(){
@@ -1879,7 +2384,7 @@ function vistaRutaAdmin(app){
   let ofs=[], listaReps=[], cats={periodos:[],niveles:[],grupos:[],asignaturas:[],docentes:[]},
       filt={periodoId:'',nivelId:'',q:''};
   app.innerHTML =
-    cabecera('Administración') +
+    cabecera('Administración', true) +
     '<p class="mut" style="text-align:center;margin-bottom:16px">Representantes y ofertas académicas</p>' +
     '<div class="card adm-wrap">' +
       '<h2>'+I.lock+'Administración de representantes</h2>' +
@@ -2219,6 +2724,12 @@ function loginAdmin(app){
 /* ------------------- Hoja institucional ---------------------- */
 /* Réplica del formato oficial F-GCA-24 (Oficio 8.5 x 14 in, una hoja). */
 const PIE_INSTITUCIONAL='pie-utch.jpg';
+/* Contacto del administrador (editable). Dejar vacío para ocultar canales. */
+const ADMIN_CONTACT = {
+  nombre: 'Administrador del sistema',
+  email: '',
+  whatsapp: ''
+};
 const FILAS_MINIMAS=28;   /* filas fijas de la plantilla oficial */
 const FILAS_MAXIMAS=40;   /* contingencia máxima en una sola hoja */
 
@@ -2537,7 +3048,20 @@ function uiPrompt(o){
   window.addEventListener('storage',alCambiarAlmacenamiento);
   window.addEventListener('focus',()=>{ if(!saveTimer) sincronizar(); });
   window.addEventListener('beforeprint',()=>{ if(adminMode){ const h=$('#hoja'); if(h) h.innerHTML=hojaHTMLImpresion(); ajustarHojaUnaPagina(); } });
-  window.addEventListener('afterprint',()=>{ const h=$('#hoja'); if(h){ h.style.removeProperty('zoom'); h.style.removeProperty('--fila'); } if(tituloPDF){ document.title=tituloPDF; tituloPDF=null; } });
+  /* Polling inteligente: pausar cuando la pestaña está oculta, reanudar con
+     lectura inmediata al volver. */
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden) return;
+    if(adminMode && S.sesion.abierta && S.sesion.sessionId){
+      pollApiInterval=4000;
+      programarPollingApi(true);
+    }
+    if(docenteSessionId){
+      pollApiDocenteInterval=4000;
+      programarPollingDocente(true);
+    }
+  });
+  window.addEventListener('afterprint',()=>{ const h=$('#hoja'); if(h){ h.style.removeProperty('zoom'); h.style.removeProperty('--fila'); h.classList.remove('sin-rayado'); } if(tituloPDF){ document.title=tituloPDF; tituloPDF=null; } });
   render();
   if(!(globalThis.crypto && crypto.subtle)){
     document.body.insertAdjacentHTML('afterbegin',

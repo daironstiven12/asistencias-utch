@@ -1209,11 +1209,18 @@ async function verDetalleHist(id, btn){
       '<div class="wrap"><div id="hoja">'+hojaAdmActual+'</div></div>'+
       '<div class="adm-modal-foot"><div class="adm-modal-actions">'+
       '<button id="admDPdf">'+I.download+'Descargar PDF</button>'+
+      '<label class="print-opt" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13.5px;color:var(--ink);min-height:44px">'+
+        '<input type="checkbox" id="admPrintZigzag" checked style="width:18px;height:18px;accent-color:var(--blue-600)">'+
+        '<span>Rayar filas vacías (zigzag)</span>'+
+      '</label>'+
       '<button class="s" id="admDCsv">'+I.download+'Descargar CSV</button>'+
       '<button class="s" id="admDJson">'+I.download+'Descargar JSON</button>'+
       '<button class="d" id="admDEli">'+I.trash+'Eliminar asistencia</button>'+
       '<button class="s" id="admDCerrar">'+I.x+'Cerrar</button></div></div></div></div>';
   ajustarNombresHojaAdmin($a('#admModal #hoja'));
+  /* Inicializar preferencia de rayado (zigzag) al imprimir en el modal */
+  const admPrintZigzagEl=$('#admPrintZigzag');
+  if(admPrintZigzagEl) admPrintZigzagEl.checked=localStorage.getItem('admPrintZigzag')!=='false';
   const descargar=(nombre,blob)=>{
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
@@ -1228,15 +1235,21 @@ async function verDetalleHist(id, btn){
     const btn=e.currentTarget;
     const finBtn=botonCarga(btn,'Generando PDF…');
     try{
-      hojaPrintSheet().innerHTML='<div id="hoja">'+hojaAdmActual+'</div>';
-      ajustarNombresHojaAdmin(hojaPrintSheet());
+      const zigzag=!!$('#admPrintZigzag')?.checked;
+      const hoja=hojaPrintSheet();
+      hoja.innerHTML='<div id="hoja">'+hojaAdmActual+'</div>';
+      const hojaEl=hoja.querySelector('#hoja');
+      if(hojaEl) hojaEl.classList.toggle('sin-rayado',!zigzag);
+      if(!zigzag) localStorage.setItem('admPrintZigzag','false');
+      else localStorage.removeItem('admPrintZigzag');
+      ajustarNombresHojaAdmin(hoja);
       const tituloOrig=document.title;
       document.title=nombreBase;
       document.body.classList.add('adm-print');
       const restaurar=()=>{
         document.title=tituloOrig;
         document.body.classList.remove('adm-print');
-        hojaPrintSheet().innerHTML='';
+        hoja.innerHTML='';
       };
       window.addEventListener('afterprint',restaurar,{once:true});
       setTimeout(restaurar,3000);

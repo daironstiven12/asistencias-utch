@@ -1,19 +1,18 @@
 /* =============================================================
    Pie de página institucional público.
-   Solo presentación: no contiene lógica de negocio ni toca datos.
    ============================================================= */
 const FOOTER = {
   desarrolladora: 'Ingenio Digital',
-  sistemaLogo: '/img/logo-v2.png',
+  sistemaLogo: '/img/logo-sistema-transparente.png',
   sistemaNombre: 'Sistema de Asistencia DSJB',
   entidad: {
     etiqueta: 'Entidad aliada',
     nombre: 'Universidad Tecnológica del Chocó Diego Luis Córdoba',
-    logo: '/logo.png'
+    logo: '/img/logo-utch-transparente.png'
   },
   enlaces: [
     { nombre: 'Dairon',      red: 'linkedin', url: 'https://www.linkedin.com/in/daironorejuela/' },
-    { nombre: 'Jeanpier', red: 'linkedin', url: 'https://www.linkedin.com/in/jeanpier-buena%C3%B1o-742601437/' },
+    { nombre: 'Jean Pierre', red: 'linkedin', url: 'https://www.linkedin.com/in/jeanpier-buena%C3%B1o-742601437/' },
     { nombre: 'Facebook',    red: 'facebook', url: 'https://www.facebook.com/profile.php?id=61587633734785' }
   ]
 };
@@ -30,19 +29,22 @@ function footerHTML(){
       'aria-label="' + etiqueta + '">' + icono + '<span>' + e.nombre + '</span></a>';
   }).join('');
 
-  return '<div class="footer-grid">' +
+  return '<div class="footer-top">' +
     '<div class="footer-zona foo-sistema">' +
       '<img src="' + FOOTER.sistemaLogo + '" alt="' + FOOTER.sistemaNombre + '">' +
     '</div>' +
+    '<div class="footer-sep" aria-hidden="true"></div>' +
     '<div class="footer-zona foo-entidad">' +
       '<span class="foo-eyebrow">' + FOOTER.entidad.etiqueta + '</span>' +
-      '<div class="foo-pill"><img src="' + FOOTER.entidad.logo + '" alt="' + FOOTER.entidad.nombre + '"></div>' +
+      '<img src="' + FOOTER.entidad.logo + '" alt="' + FOOTER.entidad.nombre + '">' +
     '</div>' +
-    '<div class="footer-zona foo-dev">' +
-      '<span class="foo-eyebrow">Desarrollado por</span>' +
-      '<div class="foo-dev-brand"><img src="/ingenio.jpg" alt="Ingenio Digital"><b>' + FOOTER.desarrolladora + '</b></div>' +
-      '<nav class="foo-links" aria-label="Redes de ' + FOOTER.desarrolladora + '">' + enlaces + '</nav>' +
+  '</div>' +
+  '<div class="footer-devbar">' +
+    '<div class="foo-dev-brand">' +
+      '<img src="/ingenio.jpg" alt="Ingenio Digital">' +
+      '<span>Desarrollado por <b>Ingenio Digital</b></span>' +
     '</div>' +
+    '<nav class="foo-links" aria-label="Redes de ' + FOOTER.desarrolladora + '">' + enlaces + '</nav>' +
   '</div>' +
   '<p class="footer-copy"><span class="copy-full">© 2026 Sistema de Asistencia DSJB · Todos los derechos reservados</span><span class="copy-short">© 2026 Sistema de Asistencia DSJB</span></p>';
 }

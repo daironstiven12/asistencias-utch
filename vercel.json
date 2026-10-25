@@ -36,6 +36,10 @@
     {
       "source": "/api/rep/session",
       "destination": "/api/rep/data?op=session"
+    },
+    {
+      "source": "/api/sessions/signatures",
+      "destination": "/api/sessions/signatures"
     }
   ],
   "crons": [

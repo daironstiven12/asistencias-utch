@@ -9,4 +9,9 @@ backup*/
 *.log
 *.pem
 *.key
-*.sql
+*.dump
+*.backup
+dump*.sql
+test-results/
+backup*/
+.backup_*/

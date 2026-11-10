@@ -12,6 +12,43 @@ const escA = s => String(s ?? '').replace(/[&<>"']/g, c => (
   { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
 ));
 
+/* Validación de firma para cargas administrativas: mismos formatos y
+   límite que usa el sistema (PNG, JPEG, WebP como data URL, ≤ 1 MB). */
+const SIG_RE = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/;
+const MAX_SIGNATURE = 1000000;
+
+/* Lee un archivo de imagen y lo devuelve como data URL. */
+function leerImagenDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=()=>reject(reader.error||new Error('No se pudo leer la imagen.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/* Envía al backend la firma para una sesión. field: teacher_signature o
+   representative_signature. dataUrl es una cadena data:image/...;base64,...
+   ya validada. Devuelve la sesión actualizada. */
+async function guardarFirmaAdmin(sessionId, field, dataUrl){
+  if(!SIG_RE.test(dataUrl)){
+    throw new Error('Formato de imagen no compatible. Use PNG, JPEG o WebP.');
+  }
+  if(dataUrl.length>MAX_SIGNATURE){
+    throw new Error('La imagen supera el tamaño máximo permitido (1 MB).');
+  }
+  const r=await fetch('/api/admin/sesiones?signature=1',{
+    method:'PATCH',
+    headers:{'Content-Type':'application/json','x-admin-secret':adminSecret||''},
+    body:JSON.stringify({sessionId:sessionId,field:field,signature:dataUrl})
+  });
+  const data=await r.json().catch(()=>null);
+  if(!r.ok||!data||!data.ok){
+    throw new Error((data&&data.error)||('http-'+r.status));
+  }
+  return data.session;
+}
+
 const I = {
   lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
   key:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>',
@@ -35,7 +72,8 @@ const I = {
   eye:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
   eyeOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
   x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
-  download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
+  download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  image:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'
 };
 
 /* Iniciales y presentación (solo visual; no modifican los datos). */
@@ -54,9 +92,17 @@ function vacioA(texto){
   return '<div class="adm-empty">'+I.info+'<span class="adm-empty-t">'+escA(texto)+'</span></div>';
 }
 /* Cierre visual de modales (botón X). No interviene en la lógica de guardado. */
+/* Limpia vistas previas temporales de firmas al cerrar cualquier modal,
+   evitando mostrar imágenes de otra asistencia. */
+function limpiarVistasPreviasFirma(){
+  const p1=$a('#admFPrevDoc'), p2=$a('#admFPrevRep');
+  if(p1){ p1.src=''; p1.style.display='none'; }
+  if(p2){ p2.src=''; p2.style.display='none'; }
+}
 document.addEventListener('click',e=>{
   const x=e.target&&e.target.closest?e.target.closest('#admModal [data-close]'):null;
   if(!x) return;
+  limpiarVistasPreviasFirma();
   const m=document.getElementById('admModal');
   if(m) m.innerHTML='';
 });
@@ -129,7 +175,7 @@ const uiAlertA=o=>{ o=o||{}; return uiEncolarA({tipo:'alert',kind:o.kind||'info'
 const ADM_KEY='utch.sesion.adminSecret';
 let adminSecret=sessionStorage.getItem(ADM_KEY)||'';
 let ofs=[], listaReps=[], listaDoc=[], cats={periodos:[],niveles:[],grupos:[],asignaturas:[],docentes:[]};
-let vista='resumen', busRep='', busOf='', filtPer='', filtNiv='', filtGrupo='';
+let vista='resumen', busRep='', busOf='', filtPer='', filtNiv='', filtGrupo='', filtProg='', filtProgRep='';
 let repPage=1, repPageSize=9;
 const selDel=new Set();
 
@@ -299,7 +345,7 @@ function vistaResumen(){
   const maxPer=Math.max(1,...Object.keys(porPeriodo).map(k=>porPeriodo[k]));
   const periodosOrdenados=Object.keys(porPeriodo).sort();
   const periodoActual=periodosOrdenados.length?periodosOrdenados[periodosOrdenados.length-1]:'—';
-  const fechaHoy=new Date().toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const fechaHoy=new Date().toLocaleDateString('es-CO',{timeZone:'America/Bogota',weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const repsOrdenados=listaReps.slice().sort((a,b)=>((b.courseOfferingIds||[]).length)-((a.courseOfferingIds||[]).length));
   const maxOfRep=Math.max(1,...listaReps.map(r=>(r.courseOfferingIds||[]).length));
   const primeros7=listaReps.slice(0,7);
@@ -316,6 +362,7 @@ function vistaResumen(){
       '<div class="adm-stat kpi-teal"><span class="adm-stat-ico" aria-hidden="true">'+I.doc+'</span><div class="n">'+totalReps+'</div><div class="l">Representantes totales</div><div class="adm-stat-ctx">'+activos+' activos</div></div>'+
       '<div class="adm-stat kpi-navy"><span class="adm-stat-ico" aria-hidden="true">'+I.book+'</span><div class="n">'+ofs.length+'</div><div class="l">Ofertas académicas</div><div class="adm-stat-ctx">en el período '+escA(periodoActual)+'</div></div>'+
       '<div class="adm-stat kpi-green"><span class="adm-stat-ico" aria-hidden="true">'+I.link+'</span><div class="n">'+asignaciones+'</div><div class="l">Asignaciones</div><div class="adm-stat-ctx">'+(totalReps?Math.round(asignaciones/totalReps*10)/10:0)+' por representante</div></div>'+
+      (cats.programas&&cats.programas.length?'<div class="adm-stat kpi-navy"><span class="adm-stat-ico" aria-hidden="true">'+I.home+'</span><div class="n">'+cats.programas.length+'</div><div class="l">Programas académicos</div><div class="adm-stat-ctx">'+cats.programas.map(p=>p.nombre).join(' · ')+'</div></div>':'')+
     '</div>'+
     '<div class="adm-dash-row adm-dash-row-3">'+
       '<div class="adm-panel adm-dash-dona">'+
@@ -392,8 +439,16 @@ function vistaResumen(){
 /* ---------------- Representantes ---------------- *//* ---------------- Representantes ---------------- */
 function repsFiltrados(){
   const q=busRep.trim().toLowerCase();
-  if(!q) return listaReps;
-  return listaReps.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.username||'').toLowerCase().includes(q));
+  return listaReps.filter(r=>{
+    const matchQ=!q||(r.name||'').toLowerCase().includes(q)||(r.username||'').toLowerCase().includes(q);
+    if(!matchQ) return false;
+    if(!filtProgRep) return true;
+    const ids=(r.courseOfferingIds||[]);
+    return ids.some(id=>{
+      const o=porId()[id];
+      return o&&String(o.programaId)===String(filtProgRep);
+    });
+  });
 }
 function vistaReps(){
   const mapa=porId();
@@ -408,6 +463,8 @@ function vistaReps(){
     '<p class="adm-sec-sub">Cuentas con acceso de representante y sus ofertas asignadas.</p>'+
     '<div class="adm-toolbar"><button id="admNuevoRep">'+I.plus+' Nuevo representante</button>'+
       '<input type="search" id="admBusRep" maxlength="60" placeholder="Buscar por nombre o usuario" value="'+escA(busRep)+'" autocomplete="off">'+
+      '<div class="adm-field" style="display:inline-block;margin-left:12px"><label for="admFProgRep">Programa</label>'+
+        '<select id="admFProgRep" aria-label="Filtrar por programa"><option value="">Programa: todos</option>'+(cats.programas||[]).map(p=>'<option value="'+p.id+'"'+(String(filtProgRep)===String(p.id)?' selected':'')+'>'+escA(p.nombre)+'</option>').join('')+'</select></div>'+
       '<div class="adm-seg" role="group" aria-label="Filtrar por estado">'+
         '<input type="radio" name="admRepFiltro" id="admRepTodos" checked><label for="admRepTodos">Todos <span>'+listaReps.length+'</span></label>'+
         '<input type="radio" name="admRepFiltro" id="admRepActivos"><label for="admRepActivos">Activos <span>'+nActivos+'</span></label>'+
@@ -418,6 +475,7 @@ function vistaReps(){
       (pagina.map(p=>{
         const ids=(p.courseOfferingIds||[]);
         const det=ids.map(id=>mapa[id]?(mapa[id].asignatura+' ('+mapa[id].codigo+')'):('Oferta '+id));
+        const progs=ids.map(id=>{ const o=mapa[id]; return o&&o.programa?o.programa:null; }).filter((v,i,a)=>v&&a.indexOf(v)===i);
         return '<article class="adm-rep-card '+(p.active?'is-active':'is-inactive')+'" data-active="'+(p.active?'1':'0')+'">'+
           '<div class="adm-rep-head"><div class="adm-rep-id">'+
             '<span class="adm-avatar" aria-hidden="true">'+escA(inicialesA(p.name))+'</span>'+
@@ -426,6 +484,8 @@ function vistaReps(){
           '</div></div>'+
           '<div class="adm-rep-meta"><p class="adm-rep-count"><b>'+ids.length+'</b> oferta(s) asignada(s)</p>'+
             '<span class="adm-badge'+(p.active?' on':'')+'"><span class="dot"></span>'+(p.active?'ACTIVO':'INACTIVO')+'</span></div>'+
+            (progs.length?'<p class="mut" style="margin:4px 0 0;font-size:11.5px;color:var(--muted)">'+escA(progs.join(' · '))+'</p>':'')+
+          '</div>'+
           '<div class="adm-chips">'+
             (det.length
               ? det.slice(0,3).map(d=>'<span class="adm-chip" title="'+escA(d)+'">'+escA(d)+'</span>').join('')+
@@ -445,6 +505,7 @@ function vistaReps(){
     '<div id="admModal"></div>';
   $a('#admNuevoRep').onclick=()=>abrirModalRep(null);
   $a('#admBusRep').oninput=e=>{ busRep=e.target.value; repPage=1; vistaReps(); const b=$a('#admBusRep'); b.focus(); b.setSelectionRange(b.value.length,b.value.length); };
+  $a('#admFProgRep').onchange=e=>{ filtProgRep=e.target.value; repPage=1; vistaReps(); };
   const repPrev=$a('#repPrev'), repNext=$a('#repNext');
   if(repPrev) repPrev.onclick=()=>{ if(repPage>1){ repPage--; vistaReps(); } };
   if(repNext) repNext.onclick=()=>{ if(repPage<pages){ repPage++; vistaReps(); } };
@@ -476,14 +537,17 @@ function gruposOfertas(lista){
   lista.forEach(o=>{ const k=(o.periodo||'—')+'|||'+(o.nivel||'—'); (g[k]=g[k]||[]).push(o); });
   return Object.keys(g).sort().map(k=>({titulo:k.split('|||'),items:g[k]}));
 }
+let filtProgRepModal='';
+let filtProgNueva='';
 function abrirModalRep(rep){
   const sel=new Set(rep?(rep.courseOfferingIds||[]):[]);
-  const grupos=gruposOfertas(ofs);
+  const ofsFiltradasProg=filtProgRepModal?ofs.filter(o=>String(o.programaId)===String(filtProgRepModal)):ofs;
+  const grupos=gruposOfertas(ofsFiltradasProg);
   /* Niveles presentes en las ofertas disponibles, ordenados por número.
      El filtro solo alterna la visualización de los grupos; las casillas
      y el guardado no cambian. */
   const nivPorId={};
-  ofs.forEach(o=>{
+  ofsFiltradasProg.forEach(o=>{
     if(o.nivelId==null||nivPorId[o.nivelId]) return;
     nivPorId[o.nivelId]={id:o.nivelId,nombre:o.nivel||('Nivel '+o.nivelId),
       numero:(o.nivelNumero==null?null:Number(o.nivelNumero))};
@@ -500,6 +564,8 @@ function abrirModalRep(rep){
       '<div><label>Usuario *</label><input id="mRepUser" maxlength="160" autocomplete="off" value="'+escA(rep?rep.username:'')+'"'+(rep?' disabled':'')+'></div>'+
       (rep?'':'<div><label>Contraseña (mín. 8) *</label><input id="mRepPass" type="password" maxlength="256" autocomplete="new-password"></div>')+
       '</div><div style="margin-top:14px"><b>Ofertas académicas</b><p class="mut">Solo las asignadas aparecen marcadas; las demás siguen disponibles.</p>'+
+      '<div style="margin:10px 0 4px;max-width:280px"><label for="mRepProg">Programa</label>'+
+      '<select id="mRepProg"><option value="">Programa: todos</option>'+(cats.programas||[]).map(p=>'<option value="'+p.id+'"'+(String(filtProgRepModal)===String(p.id)?' selected':'')+'>'+escA(p.nombre)+'</option>').join('')+'</select></div>'+
       '<div style="margin:10px 0 4px;max-width:280px"><label for="mRepSem">Filtrar por semestre</label>'+
       '<select id="mRepSem"><option value="">Todos los semestres</option>'+
       niveles.map(n=>'<option value="'+n.id+'">'+escA(n.nombre+' semestre')+'</option>').join('')+
@@ -516,6 +582,10 @@ function abrirModalRep(rep){
       '<div class="adm-modal-actions"><button class="s" id="admMCancel">Cancelar</button><button id="admMOk">Guardar</button></div></div></div></div>';
   $a('#admModal').querySelector('.adm-modal').onclick=e=>{ if(e.target.classList.contains('adm-modal')) $a('#admModal').innerHTML=''; };
   $a('#admMCancel').onclick=()=>{ $a('#admModal').innerHTML=''; };
+  $a('#mRepProg').onchange=e=>{
+    filtProgRepModal=e.target.value;
+    abrirModalRep(rep);
+  };
   $a('#mRepSem').onchange=e=>{
     const v=e.target.value;
     $a('#admModal').querySelectorAll('[data-nivel]').forEach(el=>{
@@ -793,6 +863,7 @@ function ofsFiltradas(){
     (!filtPer||String(o.periodoId)===String(filtPer)) &&
     (!filtNiv||String(o.nivelId)===String(filtNiv)) &&
     (!filtGrupo||String(o.grupoId)===String(filtGrupo)) &&
+    (!filtProg||String(o.programaId)===String(filtProg)) &&
     (!q||(o.asignatura||'').toLowerCase().includes(q)||(o.codigo||'').toLowerCase().includes(q))
   );
 }
@@ -816,6 +887,8 @@ function vistaOfertas(){
     '<p class="adm-sec-sub">Catálogo en PostgreSQL (período → nivel → ofertas). Marque ofertas para eliminarlas de forma selectiva.</p>'+
     '<div class="adm-filters adm-filters-offers"><div class="adm-filter-row">'+
       '<div class="adm-field adm-field-btn"><button id="admIrNueva">'+I.plus+' Crear oferta académica</button></div>'+
+      '<div class="adm-field"><label for="admFProg">Programa</label>'+
+        '<select id="admFProg" aria-label="Filtrar por programa"><option value="">Programa: todos</option>'+(cats.programas||[]).map(p=>'<option value="'+p.id+'"'+(String(filtProg)===String(p.id)?' selected':'')+'>'+escA(p.nombre)+'</option>').join('')+'</select></div>'+
       '<div class="adm-field"><label for="admFPer">Período</label>'+
         '<select id="admFPer" aria-label="Filtrar por período"><option value="">Período: todos</option>'+cats.periodos.map(p=>'<option value="'+p.id+'"'+(String(filtPer)===String(p.id)?' selected':'')+'>'+escA(p.nombre)+'</option>').join('')+'</select></div>'+
       '<div class="adm-field"><label for="admFNiv">Nivel</label>'+
@@ -856,11 +929,12 @@ function vistaOfertas(){
     '<select id="ofPageSize" aria-label="Resultados por página">'+[12,24,48].map(n=>'<option value="'+n+'"'+(ofPageSize===n?' selected':'')+'>'+n+' / pág.</option>').join('')+'</select>'+
     '<button class="s" id="ofNext"'+(ofPage>=pages?' disabled':'')+'>Siguiente →</button></div>';
   $a('#admIrNueva').onclick=()=>{ vista='nueva'; renderApp(); };
+  $a('#admFProg').onchange=e=>{ filtProg=e.target.value; filtPer=''; filtNiv=''; filtGrupo=''; ofPage=1; vistaOfertas(); };
   $a('#admFPer').onchange=e=>{ filtPer=e.target.value; ofPage=1; vistaOfertas(); };
   $a('#admFNiv').onchange=e=>{ filtNiv=e.target.value; ofPage=1; vistaOfertas(); };
   $a('#admFGru').onchange=e=>{ filtGrupo=e.target.value; ofPage=1; vistaOfertas(); };
   $a('#admFQ').oninput=e=>{ busOf=e.target.value; ofPage=1; vistaOfertas(); const b=$a('#admFQ'); b.focus(); b.setSelectionRange(b.value.length,b.value.length); };
-  $a('#admLimpiar').onclick=()=>{ filtPer=''; filtNiv=''; filtGrupo=''; busOf=''; ofPage=1; vistaOfertas(); };
+  $a('#admLimpiar').onclick=()=>{ filtProg=''; filtPer=''; filtNiv=''; filtGrupo=''; busOf=''; ofPage=1; vistaOfertas(); };
   const ofPrev=$a('#ofPrev'), ofNext=$a('#ofNext');
   if(ofPrev) ofPrev.onclick=()=>{ if(ofPage>1){ ofPage--; vistaOfertas(); } };
   if(ofNext) ofNext.onclick=()=>{ if(ofPage<pages){ ofPage++; vistaOfertas(); } };
@@ -917,7 +991,7 @@ async function eliminarSeleccionadas(){
 }
 
 /* ---------------- Historial de asistencias ---------------- */
-let hist={desde:'',hasta:'',q:'',nivelId:'',grupoId:'',repId:'',status:'',page:1,pageSize:10,total:0,pages:1,data:[]};
+let hist={desde:'',hasta:'',q:'',nivelId:'',grupoId:'',repId:'',progId:'',status:'',page:1,pageSize:10,total:0,pages:1,data:[]};
 let histTic=null;
 function fmtDuracion(ms){
   if(ms==null||isNaN(ms)||ms<0) return '—';
@@ -981,6 +1055,7 @@ async function cargarHistorial(){
   if(hist.q.trim()) q.set('q',hist.q.trim());
   if(hist.nivelId) q.set('nivelId',hist.nivelId);
   if(hist.grupoId) q.set('grupoId',hist.grupoId);
+  if(hist.progId) q.set('progId',hist.progId);
   if(hist.repId) q.set('repId',hist.repId);
   if(hist.status) q.set('status',hist.status);
   const data=await api('/api/admin/sesiones?'+q.toString());
@@ -1043,6 +1118,8 @@ function vistaHistorial(){
         '<input type="date" id="hHasta" aria-label="Fecha final" value="'+escA(hist.hasta)+'"></div>'+
       '<div class="adm-field adm-f-q"><label for="hQ">Asignatura o código</label>'+
         '<input type="search" id="hQ" maxlength="60" placeholder="Asignatura o código" value="'+escA(hist.q)+'" autocomplete="off"></div>'+
+      '<div class="adm-field adm-f-select"><label for="hProg">Programa</label>'+
+        '<select id="hProg" aria-label="Filtrar por programa"><option value="">Programa: todos</option>'+(cats.programas||[]).map(p=>'<option value="'+p.id+'"'+(String(hist.progId)===String(p.id)?' selected':'')+'>'+escA(p.nombre)+'</option>').join('')+'</select></div>'+
       '<div class="adm-field adm-f-select"><label for="hNivel">Nivel</label>'+
         '<select id="hNivel" aria-label="Filtrar por nivel"><option value="">Nivel: todos</option>'+cats.niveles.map(n=>'<option value="'+n.id+'"'+(String(hist.nivelId)===String(n.id)?' selected':'')+'>'+escA(n.nombre)+'</option>').join('')+'</select></div>'+
       '<div class="adm-field adm-f-select"><label for="hGrupo">Grupo</label>'+
@@ -1071,12 +1148,13 @@ function vistaHistorial(){
   $a('#hDesde').onchange=e=>{ hist.desde=e.target.value; recargarPagina(); };
   $a('#hHasta').onchange=e=>{ hist.hasta=e.target.value; recargarPagina(); };
   $a('#hQ').oninput=e=>{ hist.q=e.target.value; clearTimeout(hist._t); hist._t=setTimeout(recargarPagina,400); };
+  $a('#hProg').onchange=e=>{ hist.progId=e.target.value; recargarPagina(); };
   $a('#hNivel').onchange=e=>{ hist.nivelId=e.target.value; recargarPagina(); };
   $a('#hGrupo').onchange=e=>{ hist.grupoId=e.target.value; recargarPagina(); };
   $a('#hRep').onchange=e=>{ hist.repId=e.target.value; recargarPagina(); };
   $a('#hStatus').onchange=e=>{ hist.status=e.target.value; recargarPagina(); };
   $a('#hPageSize').onchange=e=>{ hist.pageSize=Number(e.target.value)||10; recargarPagina(); };
-  $a('#hLimpiar').onclick=()=>{ hist.desde=''; hist.hasta=''; hist.q=''; hist.nivelId=''; hist.grupoId=''; hist.repId=''; hist.status=''; hist.page=1; vistaHistorial(); cargarHistorial().catch(()=>{}); };
+  $a('#hLimpiar').onclick=()=>{ hist.desde=''; hist.hasta=''; hist.q=''; hist.nivelId=''; hist.grupoId=''; hist.progId=''; hist.repId=''; hist.status=''; hist.page=1; vistaHistorial(); cargarHistorial().catch(()=>{}); };
   $a('#histPrev').onclick=()=>{ if(hist.page>1){ hist.page--; cargarHistorial().catch(()=>{}); } };
   $a('#histNext').onclick=()=>{ if(hist.page<hist.pages){ hist.page++; cargarHistorial().catch(()=>{}); } };
   arrancarTicHist();
@@ -1203,10 +1281,53 @@ async function verDetalleHist(id, btn){
   const s=d.sesion, regs=d.registros||[];
   hojaAdmActual=hojaAdmin(s,regs);
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const tieneDoc=!!s.teacherSignature, tieneRep=!!s.representativeSignature;
   $a('#admModal').innerHTML=
     '<div class="adm-modal"><div class="box box-wide"><button type="button" class="adm-modal-x" data-close aria-label="Cerrar">'+I.x+'</button><h2>'+escA(s.asignatura||'Asistencia')+' '+badgeEstado(s.status)+'</h2>'+
       '<p class="mut">'+escA([s.codigo,s.periodo,s.grupo?('Grupo '+s.grupo):null].filter(Boolean).join(' · '))+' · '+regs.length+' registro(s)</p>'+
       '<div class="wrap"><div id="hoja">'+hojaAdmActual+'</div></div>'+
+      /* ----------------- Gestión de firmas ----------------- */
+      '<div class="adm-firmas-panel" style="margin:14px 0 0;border:1px solid var(--line);border-radius:14px;background:var(--firma-bg,#fbfdff);">'+
+        '<div class="adm-firmas-header" style="padding:14px 16px 10px;border-bottom:1px solid var(--line);">'+
+          '<h3 style="margin:0;font-size:14px;font-weight:700;color:var(--navy-800);display:flex;align-items:center;gap:8px;"><span style="display:inline-flex;width:18px;height:18px;flex-shrink:0">'+I.edit+'</span>Firmas de la asistencia</h3>'+
+        '</div>'+
+        '<div class="adm-firmas-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 16px 16px;">'+
+        /* Docente */
+        '<div class="adm-firma-campo" style="display:flex;flex-direction:column;gap:10px;">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'+
+            '<div style="font-size:12.5px;font-weight:600;color:var(--navy-800);">Firma del docente</div>'+
+            '<span class="adm-firma-badge" style="font-size:11px;padding:2px 8px;border-radius:999px;background:'+(tieneDoc?'var(--ok-bg)':'var(--off-bg)')+';color:'+(tieneDoc?'var(--ok)':'var(--off)')+';">'+(tieneDoc?'Presente':'Pendiente')+'</span>'+
+          '</div>'+
+          '<div class="adm-firma-vista-previa" style="border:1px solid var(--line);border-radius:10px;background:#fff;min-height:110px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">'+
+            (tieneDoc?'<img id="admFPrevDocExistente" src="'+escA(s.teacherSignature)+'" alt="Firma del docente" style="max-width:200px;max-height:70px;opacity:0.9;">':'<div style="color:var(--muted);font-size:12px;">Sin firma registrada</div>')+
+            '<label class="adm-firma-input-label" id="admFLabelDoc" style="position:absolute;right:10px;top:10px;z-index:2;">'+
+              '<input type="file" id="admFFileDoc" accept="image/png,image/jpeg,image/webp" style="display:none;">'+
+              I.image+' Seleccionar imagen'+
+            '</label>'+
+          '</div>'+
+          '<img id="admFPrevDoc" src="" alt="Vista previa" style="display:none;margin-top:8px;max-width:220px;height:auto;border:1px solid var(--line);border-radius:6px;background:#fff;box-shadow:0 2px 8px rgba(7,26,61,.1);">'+
+          '<button id="admFSaveDoc" class="s" style="min-height:40px;width:100%;margin-top:6px;">'+(tieneDoc?'Reemplazar firma':'Guardar firma del docente')+'</button>'+
+        '</div>'+
+        /* Representante */
+        '<div class="adm-firma-campo" style="display:flex;flex-direction:column;gap:10px;">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'+
+            '<div style="font-size:12.5px;font-weight:600;color:var(--navy-800);">Firma del representante</div>'+
+            '<span class="adm-firma-badge" style="font-size:11px;padding:2px 8px;border-radius:999px;background:'+(tieneRep?'var(--ok-bg)':'var(--off-bg)')+';color:'+(tieneRep?'var(--ok)':'var(--off)')+';">'+(tieneRep?'Presente':'Pendiente')+'</span>'+
+          '</div>'+
+          '<div class="adm-firma-vista-previa" style="border:1px solid var(--line);border-radius:10px;background:#fff;min-height:110px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">'+
+            (tieneRep?'<img id="admFPrevRepExistente" src="'+escA(s.representativeSignature)+'" alt="Firma del representante" style="max-width:200px;max-height:70px;opacity:0.9;">':'<div style="color:var(--muted);font-size:12px;">Sin firma registrada</div>')+
+            '<label class="adm-firma-input-label" id="admFLabelRep" style="position:absolute;right:10px;top:10px;z-index:2;">'+
+              '<input type="file" id="admFFileRep" accept="image/png,image/jpeg,image/webp" style="display:none;">'+
+              I.image+' Seleccionar imagen'+
+            '</label>'+
+          '</div>'+
+          '<img id="admFPrevRep" src="" alt="Vista previa" style="display:none;margin-top:8px;max-width:220px;height:auto;border:1px solid var(--line);border-radius:6px;background:#fff;box-shadow:0 2px 8px rgba(7,26,61,.1);">'+
+          '<button id="admFSaveRep" class="s" style="min-height:40px;width:100%;margin-top:6px;">'+(tieneRep?'Reemplazar firma':'Guardar firma del representante')+'</button>'+
+        '</div>'+
+        '</div>'+
+        '<div id="admFMsg" class="mut" style="padding:0 16px 12px;min-height:20px;"></div>'+
+      '</div>'+
+      /* --------------------------------------------------- */
       '<div class="adm-modal-foot"><div class="adm-modal-actions">'+
       '<button id="admDPdf">'+I.download+'Descargar PDF</button>'+
       '<button class="s" id="admDCsv">'+I.download+'Descargar CSV</button>'+
@@ -1256,20 +1377,105 @@ async function verDetalleHist(id, btn){
       new Blob([JSON.stringify({exportado:new Date().toISOString(),sesion:s,registros:regs.map(r=>({nombre:r.fullName,identificacion:r.identification,registrado:r.createdAt}))},null,2)],{type:'application/json'}));
   };
   $a('#admDEli').onclick=e=>eliminarSesionHist(id,e.currentTarget);
+
+  /* ---------------- Gestión de firmas (vista previa y guardado) ---------------- */
+  const msgF=$a('#admFMsg');
+  const mostrarMsg=(texto,kind='error')=>{
+    msgF.textContent=texto;
+    msgF.style.color=kind==='success'?'var(--ok)':'var(--danger)';
+    msgF.style.backgroundColor=kind==='success'?'var(--ok-bg)':'var(--danger-bg)';
+    msgF.style.border='1px solid '+(kind==='success'?'#c6ecd9':'var(--danger-line)');
+    msgF.style.borderLeft='4px solid '+(kind==='success'?'var(--ok)':'var(--danger)');
+    msgF.style.borderRadius='6px';
+    msgF.style.padding='6px 10px';
+    msgF.style.marginTop='8px';
+    msgF.style.display='block';
+    msgF.style.fontSize='12.5px';
+  };
+  const limpiarMsg=()=>{ msgF.textContent=''; msgF.style.display='none'; msgF.style.backgroundColor=''; msgF.style.border=''; msgF.style.borderLeft=''; msgF.style.padding=''; msgF.style.marginTop=''; };
+
+  /* Evita que una respuesta de una operación anterior actualice el detalle
+     de una asistencia distinta (condición de respuesta antigua). */
+  const admFirmaRequestId=++verDetalleHist.requestId||(verDetalleHist.requestId=1);
+  const miRequestId=admFirmaRequestId;
+
+  /* Limpia vistas previas temporales al cerrar el modal, para evitar mostrar
+     imágenes de otra asistencia. */
+  $a('#admDCerrar').onclick=()=>{ limpiarVistasPreviasFirma(); $a('#admModal').innerHTML=''; };
+  $a('#admModal').querySelector('.adm-modal').onclick=e=>{
+    if(e.target.classList.contains('adm-modal')){ limpiarVistasPreviasFirma(); $a('#admModal').innerHTML=''; }
+  };
+
+  /* Vista previa al seleccionar archivo. Valida formato y tamaño antes de guardar. */
+  const configurarFirma=(fileId, prevId, btnId, field, campoTexto)=>{
+    const fileIn=$a('#'+fileId), prev=$a('#'+prevId), btn=$a('#'+btnId);
+    let dataUrl=null;
+    fileIn.onchange=async()=>{
+      limpiarMsg();
+      prev.style.display='none'; prev.src='';
+      dataUrl=null;
+      const f=fileIn.files&&fileIn.files[0];
+      if(!f){ btn.disabled=false; return; }
+      try{
+        dataUrl=await leerImagenDataURL(f);
+        if(!SIG_RE.test(dataUrl)){
+          mostrarMsg('Formato no compatible. Use PNG, JPEG o WebP.');
+          fileIn.value=''; return;
+        }
+        if(dataUrl.length>MAX_SIGNATURE){
+          mostrarMsg('La imagen supera el tamaño máximo (1 MB).');
+          fileIn.value=''; return;
+        }
+        prev.src=dataUrl; prev.style.display='block';
+        btn.disabled=false;
+      }catch(e){
+        mostrarMsg(e.message||'No se pudo leer la imagen.');
+        fileIn.value='';
+      }
+    };
+    btn.onclick=async()=>{
+      if(!dataUrl) return;
+      const yaExiste=field==='teacher_signature'?tieneDoc:tieneRep;
+      if(yaExiste){
+        const ok=await uiConfirmA({kind:'warn',title:'Reemplazar firma',okText:'Sí, reemplazar',cancelText:'Cancelar',
+          message:'Ya existe una firma de '+campoTexto+'. ¿Desea reemplazarla por la imagen seleccionada?\nEsta acción sobrescribirá la firma actual.'});
+        if(!ok) return;
+      }
+      btn.disabled=true;
+      const finBtn=botonCarga(btn,'Guardando…');
+      try{
+        const actualizada=await guardarFirmaAdmin(id, field, dataUrl);
+        if(miRequestId!==admFirmaRequestId) return; /* respuesta antigua: ignorar */
+        mostrarMsg('Firma de '+campoTexto+' guardada correctamente.','success');
+        fileIn.value='';
+        /* Recargar detalle para reflejar la firma en la hoja y estados. */
+        verDetalleHist(id);
+      }catch(e){
+        mostrarMsg('Error al guardar: '+(e.message||'error desconocido'));
+      }finally{
+        if(finBtn) finBtn();
+        btn.disabled=false;
+      }
+    };
+  };
+
+  configurarFirma('admFFileDoc','admFPrevDoc','admFSaveDoc','teacher_signature','el docente');
+  configurarFirma('admFFileRep','admFPrevRep','admFSaveRep','representative_signature','el representante');
 }
 let eliminandoSesion=false;
 async function eliminarSesionHist(id, btn){
   if(eliminandoSesion) return;
   let info=null, regs=[];
   try{
-    const d=await api('/api/admin/sesiones?id='+encodeURIComponent(id));
+    /* Solo metadatos + conteo: la eliminación no necesita el detalle con firmas. */
+    const d=await api('/api/admin/sesiones?id='+encodeURIComponent(id)+'&meta=1');
     info=d.sesion; regs=d.registros||[];
   }catch(e){
     if(e&&e.code==='UNAUTHORIZED') return irLogin('Sesión administrativa vencida. Ingrese de nuevo.');
     return uiAlertA({kind:'error',title:'No se pudo cargar',message:'No se pudo verificar la asistencia ('+((e&&e.code)||'error')+').'});
   }
   const ok=await uiConfirmA({kind:'danger',title:'Eliminar asistencia',okText:'Sí, eliminar',cancelText:'Cancelar',
-    message:'Se eliminará definitivamente:\n· '+(info.asignatura||'Asistencia')+' ('+(info.codigo||'—')+')\n· Fecha: '+fmtBogota(info.createdAt,true)+'\n· Grupo: '+(info.grupo||'—')+'\n· Registros: '+regs.length+'\n\nEsta acción es irreversible y no toca asignaturas, docentes ni representantes.'});
+    message:'Se eliminará definitivamente:\n· '+(info.asignatura||'Asistencia')+' ('+(info.codigo||'—')+')\n· Fecha: '+fmtBogota(info.createdAt,true)+'\n· Grupo: '+(info.grupo||'—')+'\n· Registros: '+((Array.isArray(regs)?regs.length:0)||(Number(info&&info.recordCount)||0))+'\n\nEsta acción es irreversible y no toca asignaturas, docentes ni representantes.'});
   if(!ok) return;
   eliminandoSesion=true;
   const finBtn=btn?botonCarga(btn,'Eliminando asistencia…'):null;
@@ -1301,6 +1507,7 @@ function vistaNueva(){
     '<div class="adm-form"><div class="grid">'+
       '<div class="w"><label>Asignatura existente (opcional)</label><select id="mSub">'+
         '<option value="">— Nueva asignatura —</option>'+cats.asignaturas.map(s=>'<option value="'+s.id+'">'+escA(s.codigo+' · '+s.nombre)+'</option>').join('')+'</select></div>'+
+      '<div><label>Programa académico</label><select id="mProgNueva"><option value="">Programa: todos</option>'+(cats.programas||[]).map(p=>'<option value="'+p.id+'"'+(String(filtProgNueva)===String(p.id)?' selected':'')+'>'+escA(p.nombre)+'</option>').join('')+'</select></div>'+
       '<div><label>Nombre de la asignatura *</label><input id="mNombre" maxlength="160" placeholder="Ej. BASES DE DATOS"></div>'+
       '<div><label>Código *</label><input id="mCodigo" maxlength="40" autocomplete="off" placeholder="Ej. 2720808" style="text-transform:uppercase"></div>'+
       '<div><label>Período académico *</label><select id="mPeriodo">'+cats.periodos.map(p=>'<option value="'+p.id+'">'+escA(p.nombre)+'</option>').join('')+'</select></div>'+
@@ -1318,7 +1525,7 @@ function vistaNueva(){
       '<div id="mPreview"></div>'+
       '<div id="mImportRow" hidden><p><button id="mImportar">Importar seleccionadas</button> <span id="mProg" class="mut" role="status"></span></p></div>'+
     '</div>';
-  const gruposDe=(perId,nivId)=>cats.grupos.filter(g=>(!perId||String(g.periodoId)===String(perId))&&(!nivId||String(g.nivelId)===String(nivId)));
+  const gruposDe=(perId,nivId)=>cats.grupos.filter(g=>(!perId||String(g.periodoId)===String(perId))&&(!nivId||String(g.nivelId)===String(nivId))&&(!filtProgNueva||String(g.programaId)===String(filtProgNueva)));
   const refrescarGrupos=()=>{
     const gs=gruposDe($a('#mPeriodo').value,$a('#mNivel').value);
     $a('#mGrupo').innerHTML='<option value="">Automático</option>'+gs.map(g=>'<option value="'+g.id+'">'+escA(g.nombre+(g.periodo?' · '+g.periodo:'')+(g.nivel?' · '+g.nivel:''))+'</option>').join('');
@@ -1328,6 +1535,7 @@ function vistaNueva(){
     $a('#mNombre').disabled=!esNueva; $a('#mCodigo').disabled=!esNueva;
   };
   $a('#mSub').onchange=syncSub; syncSub();
+  $a('#mProgNueva').onchange=e=>{ filtProgNueva=e.target.value; refrescarGrupos(); };
   $a('#mPeriodo').onchange=refrescarGrupos; $a('#mNivel').onchange=refrescarGrupos;
   refrescarGrupos();
   $a('#mCrear').onclick=async()=>{

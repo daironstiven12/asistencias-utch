@@ -79,7 +79,7 @@ module.exports = async function handler(req, res) {
   try {
     const normalized = code.trim().toUpperCase();
     const r = await query(
-      "SELECT id, status," +
+      "SELECT id, status, created_at," +
         " CASE WHEN student_code = $1 THEN 'STUDENT'" +
         " WHEN teacher_code = $1 THEN 'TEACHER' ELSE NULL END AS role" +
         " FROM attendance_runtime_sessions" +
@@ -97,6 +97,7 @@ module.exports = async function handler(req, res) {
       role: row.role,
       sessionId: row.id,
       status: row.status,
+      createdAt: row.created_at,
       cfg,
     });
   } catch (err) {

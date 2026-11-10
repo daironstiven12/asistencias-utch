@@ -148,9 +148,15 @@ async function handleGet(req, res) {
   if (typeof sessionId !== "string" || sessionId.trim() === "") {
     return res.status(400).json({ ok: false, error: "INVALID_DATA" });
   }
+  /* light=1: metadatos ligeros (conteo + última modificación) sin firmas.
+     Permite al frontend detectar cambios sin transferir firmas Base64 en cada
+     ciclo de polling; las firmas se descargan con el detalle completo. */
+  const light = String(readParam(req, "light") || "").trim() === "1";
   try {
     const s = await query(
-      "SELECT id, teacher_code, teacher_signature, registration_open, representative_id FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1",
+      (light
+        ? "SELECT id, teacher_code, teacher_signed_at, registration_open, representative_id FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1"
+        : "SELECT id, teacher_code, teacher_signature, teacher_signed_at, registration_open, representative_id FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1"),
       [sessionId.trim()]
     );
     if (!s.rows[0]) {
@@ -173,15 +179,34 @@ async function handleGet(req, res) {
     if (!autorizado) {
       return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
     }
+    if (light) {
+      const cnt = await query(
+        "SELECT COUNT(*)::int AS \"count\", MAX(created_at) AS \"latestChangeAt\" FROM attendance_runtime_records WHERE session_id = $1",
+        [sessionId.trim()]
+      );
+      return res.status(200).json({
+        ok: true,
+        light: true,
+        status: s.rows[0].status,
+        registrationOpen: s.rows[0].registration_open,
+        count: cnt.rows[0].count,
+        latestChangeAt: cnt.rows[0].latestChangeAt || null,
+        teacherSignedAt: s.rows[0].teacher_signed_at || null,
+      });
+    }
     const r = await query(
       "SELECT id, session_id, full_name, identification, student_signature, created_at" +
         " FROM attendance_runtime_records WHERE session_id = $1 ORDER BY created_at ASC",
       [sessionId.trim()]
     );
+    const ultimo = r.rows.length ? r.rows[r.rows.length - 1] : null;
     return res.status(200).json({
       ok: true,
       teacherSignature: s.rows[0].teacher_signature || null,
+      teacherSignedAt: s.rows[0].teacher_signed_at || null,
       registrationOpen: s.rows[0].registration_open,
+      count: r.rows.length,
+      latestChangeAt: ultimo ? ultimo.created_at : null,
       records: r.rows.map((row) => ({
         id: row.id,
         sessionId: row.session_id,

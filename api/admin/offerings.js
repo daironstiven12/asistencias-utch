@@ -41,13 +41,13 @@ function toInt(v) {
 }
 
 async function handleGet(req, res) {
-  const [rOf, rPer, rNiv, rGrp, rSub, rDoc] = await Promise.all([
+  const [rOf, rPer, rNiv, rGrp, rSub, rDoc, rPro] = await Promise.all([
     query(
       "SELECT co.id AS \"courseOfferingId\", s.code AS codigo, s.name AS asignatura," +
         " TRIM(COALESCE(p.first_name,'')||' '||COALESCE(p.middle_name||' ','')||COALESCE(p.last_name,'')||COALESCE(' '||p.second_last_name,'')) AS docente," +
         " ap.id AS \"periodoId\", ap.name AS periodo," +
         " al.id AS \"nivelId\", al.name AS nivel, al.number AS \"nivelNumero\"," +
-        " ag.id AS \"grupoId\", ag.name AS grupo," +
+        " ag.id AS \"grupoId\", ag.name AS grupo, ag.program_id AS \"programaId\"," +
         " apr.name AS programa, f.name AS facultad" +
         " FROM course_offerings co" +
         " JOIN curriculum_subjects cs ON cs.id = co.curriculum_subject_id" +
@@ -79,6 +79,12 @@ async function handleGet(req, res) {
         " FROM \"users\" u LEFT JOIN persons p ON p.id = u.person_id" +
         " WHERE u.status = 'ACTIVE' ORDER BY nombre"
     ),
+    query(
+      "SELECT apr.id, apr.name, f.name AS facultad" +
+        " FROM academic_programs apr" +
+        " LEFT JOIN faculties f ON f.id = apr.faculty_id" +
+        " WHERE apr.status = 'ACTIVE' ORDER BY apr.name"
+    ),
   ]);
   return res.status(200).json({
     ok: true,
@@ -98,6 +104,7 @@ async function handleGet(req, res) {
       grupoId: row.grupoId != null ? Number(row.grupoId) : null,
       grupo: row.grupo || null,
       programa: row.programa || null,
+      programaId: row.program_id != null ? Number(row.program_id) : null,
       facultad: row.facultad || null,
     })),
     catalogs: {
@@ -118,6 +125,11 @@ async function handleGet(req, res) {
       docentes: rDoc.rows
         .map((r) => ({ id: Number(r.id), nombre: (r.nombre || "").replace(/\s+/g, " ").trim() }))
         .filter((d) => d.nombre),
+      programas: rPro.rows.map((r) => ({
+        id: Number(r.id),
+        nombre: r.name,
+        facultad: r.facultad || null,
+      })),
     },
   });
 }

@@ -1,9 +1,5 @@
 "use strict";
-/* ============================================================
-   SISTEMA INSTITUCIONAL DE REGISTRO DE ASISTENCIA · UTCH
-   100% client-side · Datos cifrados en localStorage
-   Seguridad: AES-GCM 256 · PBKDF2-SHA256 (310k) · Bloqueo por intentos
-   ============================================================ */
+
 const $  = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
@@ -18,23 +14,24 @@ const cleanMulti = (s, max=800) => String(s ?? '')
   .slice(0,max);
 const firmaSegura = s =>
   /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(String(s||'')) ? String(s) : '';
-/* Fecha académica por defecto en zona America/Bogota, sin depender de la
-   zona del equipo. Formato YYYY-MM-DD (igual que <input type="date">). */
+
 const hoy = () => {
   try{
     const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     if(/^\d{4}-\d{2}-\d{2}$/.test(p)) return p;
   }catch(e){}
+  /* Fallback: misma zona horaria (America/Bogota), sin zona local. */
   const d=new Date(), z=n=>String(n).padStart(2,'0');
+  const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(p||'');
+  if(m) return p;
   return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
 };
 const fmtFecha = iso => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||''));
   return m ? `${m[3]}-${m[2]}-${m[1]}` : String(iso||'');
 };
-/* Fecha/hora de apertura de una sesión (created_at del servidor) expresadas
-   en America/Bogota para los campos de la planilla. Devuelven '' si el valor
-   no es válido, caso en el que se conserva la fecha ya configurada. */
+
 const fechaAperturaBogota = iso => {
   try{
     if(iso===null||iso===undefined||iso==='') return '';
@@ -103,10 +100,6 @@ const I = {
   database:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>'
 };
 
-/* ============================================================
-   LOGO INSTITUCIONAL FIJO
-   🔒 El logo es SIEMPRE logo.png (no configurable)
-   ============================================================ */
 const LOGO_SRC = 'logo.png';
 
 /* -------------------------- Cifrado -------------------------- */
@@ -116,11 +109,6 @@ const DATA_STORE='utch.asistencia.v1', KEY_STORE='utch.asistencia.k',
       SESSION_EST='utch.sesion.est',
       SESSION_API='utch.sesion.apiId',
       LOCK_STORE='utch.asistencia.lock';
-
-/* ============================================================
-   Acceso del representante: autenticación real contra la API
-   (POST /api/rep/login). Ya no existe PIN fijo en el frontend.
-   ============================================================ */
 
 const _enc=new TextEncoder(), _dec=new TextDecoder();
 
@@ -210,8 +198,19 @@ let S=DEFAULTS(), adminMode=false, tic=null, saveTimer=null, pads={};
 let tituloPDF=null;
 let repRegAbiertos=true;
 let pollApi=null, pollApiCtrl=null;
+
+let pollMeta={count:0, latestChangeAt:null, teacherSignedAt:null, teacherSignatureAttemptedAt:null, teacherSignatureRetryAt:0};
+let pollMetaDocente={count:0, latestChangeAt:null, teacherSignedAt:null};
+
+let pollPrecarga=false;
+let repSessionSelectionRequestId=0;
 let docenteSessionId=null, pollApiDocente=null, pollApiDocenteCtrl=null, docenteInfo=null;
 let cierreEnCurso=false;
+
+/* Estado del estudiante sincronizado con el servidor (fuente de verdad). */
+let estadoRemotoConfirmado=false;
+let ultimaConsultaEstado=0;
+let pollEstudiante=null, pollEstudianteCtrl=null;
 
 function normalizar(o){
   const d=DEFAULTS(), src=(o&&typeof o==='object')?o:{};
@@ -282,13 +281,7 @@ async function cargar(){
   await guardar();
 }
 
-/* ------------- Aislamiento del borrador por representante -------------
-   El borrador local (materias, configuración, lista, firmas, sesión) se
-   vincula al id estable del representante autenticado (S.repOwner). Al
-   cambiar de cuenta se archiva el borrador actual bajo su dueño y se
-   restaura el propio si existe; nunca se borra. La autorización real
-   sigue en el servidor (cookie HttpOnly); esto solo evita mostrar en
-   pantalla el borrador de otra cuenta del mismo navegador. */
+
 let repIdActual='', repNombre='';
 function repIdSesion(){
   try{ return clean(sessionStorage.getItem(SESSION_REP_ID),80); }catch(e){ return ''; }
@@ -334,9 +327,7 @@ function pintarSaludo(){
   const el=$('#repSaludo'); if(!el) return;
   el.textContent=repNombre?('Hola, '+repNombre):'Hola';
 }
-/* Revalida la sesión contra el servidor al entrar al panel: confirma la
-   identidad (id+nombre desde la BD), vincula el borrador y pinta el saludo.
-   Sin sesión válida no se muestra el panel (ni borradores ajenos). */
+
 async function confirmarIdentidadRep(){
   let rep=null, red=false;
   try{
@@ -346,8 +337,7 @@ async function confirmarIdentidadRep(){
   }catch(e){ red=true; }
   if(!rep){
     if(red){
-      /* Sin red no se puede confirmar: saludo neutro y se conserva el
-         estado local; el servidor seguirá autorizando cada operación. */
+
       const sid=repIdSesion();
       if(sid){
         repIdActual=sid;
@@ -369,12 +359,15 @@ async function confirmarIdentidadRep(){
   if(cambio) render();
   return rep;
 }
-/* Relee los datos guardados por OTRA pestaña sin volver a escribir
-   (evita un bucle infinito de eventos "storage"). */
+
 async function sincronizar(){
   const claveRemota = (modoRemoto) ? String(sessionStorage.getItem(SESSION_EST)||(S&&S.sesion&&S.sesion.clave)||'').trim().toUpperCase() : '';
   const apiRemota = (modoRemoto) ? String(sessionStorage.getItem(SESSION_API)||(S&&S.sesion&&S.sesion.sessionId)||'').trim() : '';
-  const abiertaRemota = (modoRemoto) ? !!((S&&S.sesion&&S.sesion.abierta)) : false;
+  /* Siempre se captura la abierta vigente antes de sobrescribir S con el
+     almacenamiento local, para evitar que sincronizar() apague la abierta del
+     estudiante cuando modoRemoto=false (validación local por coincidencia de
+     código). La restauración se aplica siempre, no solo en modo remoto. */
+  const abiertaRemota = !!((S&&S.sesion&&S.sesion.abierta));
   const inicioRemoto = (modoRemoto) ? Number(S&&S.sesion&&S.sesion.inicio)||0 : 0;
   const raw=localStorage.getItem(DATA_STORE);
   if(raw){
@@ -383,8 +376,7 @@ async function sincronizar(){
       const previo=clean(S&&S.repOwner,80);
       const candidato=normalizar(o);
       const yo=repIdActual||repIdSesion();
-      /* Otra pestaña cambió de cuenta: no se incorpora un borrador ajeno.
-         Se revalida contra el servidor, que restaura lo que corresponda. */
+
       if(yo&&candidato.repOwner&&candidato.repOwner!==yo&&previo!==candidato.repOwner){
         confirmarIdentidadRep().catch(()=>{});
         return;
@@ -393,11 +385,16 @@ async function sincronizar(){
     }
   }
   if(claveRemota){ S.sesion.clave=claveRemota; }
+  /* No se restaura abierta desde memoria/localStorage cuando hay una sesión
+     de estudiante activa: el estado real lo provee el servidor vía
+     actualizarEstadoDesdeServidor / polling. Para el administrador, S=candidato
+     ya trae la abierta correcta de su propio almacenamiento. */
   if(modoRemoto){
-    if(apiRemota){ S.sesion.sessionId=apiRemota; }
-    S.sesion.abierta=abiertaRemota;
+    const sidAnterior=String(S.sesion.sessionId||'');
+    if(apiRemoto){ S.sesion.sessionId=apiRemota; }
+    const cambioSesion=String(S.sesion.sessionId||'')!==sidAnterior;
     S.sesion.inicio=inicioRemoto;
-    S.sesion.minutos=0;
+    if(cambioSesion) S.sesion.minutos=0;
   }
   const ruta=location.hash.replace(/^#\/?/,'').split('?')[0];
   if(ruta==='estudiante') refrescarZona();
@@ -412,9 +409,12 @@ function alCambiarAlmacenamiento(e){
 /* ------------------------- Sesión ---------------------------- */
 function estadoSesion(){
   const s=S.sesion;
-  /* Conectado al docente pero aún sin su estado: NO se puede afirmar que
-     esté cerrado, o el estudiante ve un mensaje falso mientras carga. */
-  if(modoRemoto&&!estadoRemotoRecibido) return { abierto:true, conectando:true, texto:'Conectando con el docente…' };
+  const ahora=Date.now();
+  /* Si hay sesión pero no se ha confirmado con el servidor (o pasó mucho
+     tiempo), se considera conexión pendiente, nunca cierre falso. */
+  if(s.clave && s.sessionId && (!estadoRemotoConfirmado || ahora-ultimaConsultaEstado>30000)){
+    return { abierto:true, conectando:true, texto:'Conectando con el docente…' };
+  }
   if(!s.abierta) return { abierto:false, texto:'El registro está cerrado.' };
   const m=+s.minutos||0;
   if(!m) return { abierto:true, texto:'Registro abierto · sin límite de tiempo.' };
@@ -443,6 +443,7 @@ const espera=ms=>new Promise(r=>setTimeout(r,ms));
 function mostrarExitoEstudiante(nombre,ident){
   sessionStorage.setItem('utch.registro.'+S.sesion.clave,'1');
   zonaFijada=true; zonaEstado='ya-registrado:'+S.sesion.clave;
+  detenerPollingEstudiante();
   const zona=$('#zona');
   if(!zona) return;
   zona.innerHTML =
@@ -552,9 +553,7 @@ function descargar(nombre, blob){
 
 /* --------------------------- Header -------------------------- */
 function cabecera(){
-  /* Encabezado público centrado: solo el título y el subtítulo.
-     Los logos institucionales viven ahora en el pie de página.
-     El .np mantiene el encabezado fuera de la impresión F-GCA-24. */
+
   return '<header class="app-header np">' +
     '<div class="titulos">' +
       '<h1>' +
@@ -600,6 +599,7 @@ function render(){
   pararTic();
   detenerPollingApi();
   detenerPollingApiDocente();
+  detenerPollingEstudiante();
   if(location.pathname==='/ruta-administrativa') return vistaRutaAdmin(app);
   const ruta=location.hash.replace(/^#\/?/,'').split('?')[0];
   if(ruta==='estudiante') return vistaEstudiante(app);
@@ -621,9 +621,15 @@ function arrancarTic(){
     });
     const btn=$('#enviar');
     if(btn && !adminMode){
-      btn.disabled=!e.abierto;
+      btn.disabled=!e.abierto || e.conectando;
       const msg=$('#msg');
-      if(!e.abierto && msg && !msg.textContent) msg.textContent=e.texto;
+      if((!e.abierto || e.conectando) && msg && !msg.textContent) msg.textContent=e.texto;
+    }
+    const ruta=location.hash.replace(/^#\/?/,'').split('?')[0];
+    if(ruta==='estudiante' && $('#zona') && !$('#zona').querySelector('#claveEst') && !$('#zona').querySelector('.aviso.warn') && !$('#zona').querySelector('.aviso.ok')){
+      iniciarPollingEstudiante();
+    }else if(ruta!=='estudiante'){
+      detenerPollingEstudiante();
     }
     const adm=$('#abrir'), det=$('#detener'), re=$('#reiniciar');
     if(adm){
@@ -689,9 +695,7 @@ function vistaPortal(app){
 function pintarTituloEstudiante(){
   const t=$('#titEst'), s=$('#subEst');
   if(!t||!s) return;
-  /* Sin clave validada en ESTA sesión del navegador no se muestra ningún
-     dato académico: la pantalla es completamente genérica hasta que el
-     backend confirma el PIN y se aplica data.cfg. */
+
   const clave=S.sesion.clave||'';
   const validada=!!clave && sessionStorage.getItem(SESSION_EST)===clave;
   const badge=$('#estadoEst');
@@ -712,6 +716,62 @@ function pintarTituloEstudiante(){
     badge.parentNode.style.display=(clave&&sessionStorage.getItem(SESSION_EST)===clave)?'':'none';
   }
 }
+/* Consulta al servidor el estado real de la sesión para el código dado.
+   Devuelve { abierto, sessionId, status } o { error:'NETWORK' }. Nunca toca
+   firmas ni otros datos; solo valida el código y lee status. */
+async function consultarEstadoSesion(code){
+  const v=String(code||'').trim().toUpperCase();
+  if(!v) return null;
+  try{
+    const r=await fetch('/api/sessions/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:v})});
+    const data=await r.json().catch(()=>null);
+    if(r.ok&&data&&data.ok&&data.role==='STUDENT'){
+      return { abierto: data.status==='OPEN', sessionId: data.sessionId, status: data.status };
+    }
+    return { abierto:false, sessionId:null, status: data&&data.status };
+  }catch(e){
+    return { error:'NETWORK' };
+  }
+}
+
+/* Consulta al servidor y actualiza S.sesion.abierta con la respuesta real.
+   Errores de red no modifican el estado (no se presenta como cierre). */
+async function actualizarEstadoDesdeServidor(){
+  if(!S.sesion.clave || !S.sesion.sessionId) return;
+  const ahora=Date.now();
+  if(ahora-ultimaConsultaEstado<15000) return; /* evitar peticiones duplicadas */
+  ultimaConsultaEstado=ahora;
+  const res=await consultarEstadoSesion(S.sesion.clave);
+  if(res&&res.error==='NETWORK'){
+    estadoRemotoConfirmado=false;
+    return;
+  }
+  if(res){
+    estadoRemotoConfirmado=true;
+    S.sesion.abierta=res.abierto;
+    S.sesion.sessionId=res.sessionId||S.sesion.sessionId;
+    if(!res.abierto){
+      sessionStorage.removeItem(SESSION_EST);
+      S.sesion.clave='';
+    }
+    try{ await guardar(); }catch(e){}
+  }
+}
+
+function iniciarPollingEstudiante(){
+  detenerPollingEstudiante();
+  if(!S.sesion.sessionId) return;
+  actualizarEstadoDesdeServidor();
+  pollEstudiante=setInterval(()=>{
+    if(document.hidden) return;
+    actualizarEstadoDesdeServidor();
+  },30000);
+}
+function detenerPollingEstudiante(){
+  if(pollEstudiante){ clearInterval(pollEstudiante); pollEstudiante=null; }
+  if(pollEstudianteCtrl){ try{pollEstudianteCtrl.abort();}catch(e){} pollEstudianteCtrl=null; }
+}
+
 function vistaEstudiante(app){
   adminMode=false;
   app.innerHTML =
@@ -724,7 +784,7 @@ function vistaEstudiante(app){
       '<div id="zona"></div>' +
     '</div>' +
     avisoLocal;
-  $('#volver').onclick=()=>{ sessionStorage.removeItem(SESSION_EST); location.hash=''; };
+  $('#volver').onclick=()=>{ sessionStorage.removeItem(SESSION_EST); location.hash=''; detenerPollingEstudiante(); };
   pintarTituloEstudiante();
   zonaFijada=false;
   pintarZonaEstudiante();
@@ -799,28 +859,43 @@ function pintarZonaEstudiante(){
       try{
         /* Primero se intenta la clase abierta en ESTE dispositivo
            (modo quiosco) y, si no existe, se valida el código con la API. */
-        if(S.sesion.clave && v===S.sesion.clave && !modoRemoto){
-          modoRemoto=false; estadoRemotoRecibido=false;
+        /* Siempre se consulta al servidor para confirmar que la sesión sigue
+           abierta. La coincidencia local del código no es prueba suficiente. */
+        modoRemoto=false; estadoRemotoRecibido=false;
+        const r=await fetch('/api/sessions/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:v})});
+        const data=await r.json().catch(()=>null);
+        if(!r.ok||!data||!data.ok){
+          throw new Error('El código no es válido o la sesión ya no está disponible.');
+        }
+        if(data.role!=='STUDENT'){
+          throw new Error('Este código no es de estudiante. Solicite el código de estudiante al docente.');
+        }
+        const remoto=await consultarEstadoSesion(v);
+        if(remoto&&remoto.error!=='NETWORK'){
+          estadoRemotoConfirmado=true;
+          ultimaConsultaEstado=Date.now();
+          S.sesion.abierta=remoto.abierto;
+          S.sesion.sessionId=remoto.sessionId||String(data.sessionId||'');
+          S.sesion.inicio=Date.now();
+          S.sesion.minutos=0;
+          sessionStorage.setItem(SESSION_API,S.sesion.sessionId);
+          if(!remoto.abierto){
+            sessionStorage.removeItem(SESSION_EST);
+            S.sesion.clave='';
+            throw new Error('La asistencia ya no está disponible o fue cerrada. Solicite un nuevo código al docente.');
+          }
         }else{
-          modoRemoto=true; estadoRemotoRecibido=false;
-          const r=await fetch('/api/sessions/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:v})});
-          const data=await r.json().catch(()=>null);
-          if(!r.ok||!data||!data.ok){
-            throw new Error('El código no es válido o la sesión ya no está disponible.');
-          }
-          if(data.role!=='STUDENT'){
-            throw new Error('Este código no es de estudiante. Solicite el código de estudiante al docente.');
-          }
-          estadoRemotoRecibido=true;
-          S.sesion.abierta=true; S.sesion.inicio=Date.now(); S.sesion.minutos=0;
+          /* Error de red: no se asume cierre. Se conserva el estado actual y
+             se marca como conexión pendiente. */
+          estadoRemotoConfirmado=false;
           S.sesion.sessionId=String(data.sessionId||'');
           sessionStorage.setItem(SESSION_API,S.sesion.sessionId);
-          if(data.cfg&&typeof data.cfg==='object'){
-            /* Reemplazo limpio: no conservar datos de una sesión anterior. */
-            for(const k of ['facultad','programa','nivel','periodo','asignatura','codigo','docente','correo']) S.cfg[k]='';
-            for(const k of ['facultad','programa','nivel','periodo','asignatura','codigo','docente','correo']){
-              if(typeof data.cfg[k]==='string'&&data.cfg[k]) S.cfg[k]=clean(data.cfg[k],160);
-            }
+        }
+        if(data.cfg&&typeof data.cfg==='object'){
+          /* Reemplazo limpio: no conservar datos de una sesión anterior. */
+          for(const k of ['facultad','programa','nivel','periodo','asignatura','codigo','docente','correo']) S.cfg[k]='';
+          for(const k of ['facultad','programa','nivel','periodo','asignatura','codigo','docente','correo']){
+            if(typeof data.cfg[k]==='string'&&data.cfg[k]) S.cfg[k]=clean(data.cfg[k],160);
           }
         }
         sessionStorage.setItem(SESSION_EST,v);
@@ -852,6 +927,7 @@ function pintarZonaEstudiante(){
 
   /* 2) Ya firmó en esta clase */
   if(sessionStorage.getItem('utch.registro.'+clave)==='1'){
+    detenerPollingEstudiante();
     zona.innerHTML =
       '<div class="aviso ok">'+I.shieldCheck+
         '<span><b>Su asistencia ya está registrada en esta clase.</b><br>' +
@@ -861,7 +937,17 @@ function pintarZonaEstudiante(){
     return;
   }
 
-  /* 3) El docente cerró el registro */
+  /* 3) Conexión pendiente con el servidor: no se asume cierre ni se muestra
+     formulario hasta confirmar el estado real. No borra el formulario. */
+  if(est.conectando){
+    zona.innerHTML =
+      '<div class="aviso warn">'+I.alert+
+        '<span>'+esc(est.texto)+'</span></div>' +
+      '<p class="mut">Se está verificando que la asistencia siga abierta.</p>';
+    return;
+  }
+
+  /* 4) El docente cerró el registro */
   if(!est.abierto){
     zona.innerHTML =
       '<div class="aviso warn">'+I.alert+
@@ -907,11 +993,6 @@ function pintarZonaEstudiante(){
 
     boton.disabled=true;
     msg.textContent='Enviando...';
-
-    /* Registro mediante API con el sessionId validado. Aplica al flujo
-       remoto y también al modo quiosco cuando se conoce la sesión: así el
-       registro siempre llega a PostgreSQL. Solo sin sessionId se guarda
-       puramente local. */
     if(S.sesion.sessionId){
       const ctrl=new AbortController();
       const timeoutId=setTimeout(()=>ctrl.abort(),30000);
@@ -986,7 +1067,7 @@ function vistaDocente(app){
           if(typeof data.cfg[k]==='string'&&data.cfg[k]) S.cfg[k]=clean(data.cfg[k],160);
         }
         for(const k of ['facultad','programa','nivel','periodo','asignatura','codigo','docente','correo','fecha']){
-          docenteInfo[k]=(k==='fecha')?hoy():(typeof data.cfg[k]==='string'?data.cfg[k]:'');
+          docenteInfo[k]=(k==='fecha')?fechaAperturaBogota(data.createdAt||''):(typeof data.cfg[k]==='string'?data.cfg[k]:'');
         }
       }
       sessionStorage.setItem('utch.docente',v);
@@ -1075,6 +1156,60 @@ function actualizarListaDocente(){
   pintarHoja();
 }
 
+async function fetchRegistrosCompletos(sid, ctrl, teacherCode){
+  const tc=teacherCode?('&teacherCode='+encodeURIComponent(teacherCode)):'';
+  const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid)+tc,ctrl?{signal:ctrl.signal}:undefined);
+  const data=await r.json().catch(()=>null);
+  if(!r.ok||!data||!data.ok||!Array.isArray(data.records)) return null;
+  return data;
+}
+/* Aplica el detalle completo (con firmas) al estado local de la sesión. */
+async function actualizarRegistrosDesdeAPI(sid, ctrl, teacherSignedAt){
+  const vigente=()=>!ctrl.signal.aborted&&adminMode&&S.sesion.sessionId===sid;
+  const registrarFalloFirma=()=>{
+    if(!vigente()||!teacherSignedAt) return;
+    pollMeta.teacherSignatureAttemptedAt=teacherSignedAt;
+    pollMeta.teacherSignatureRetryAt=Date.now()+30000;
+  };
+  let data;
+  try{
+    data=await fetchRegistrosCompletos(sid, ctrl);
+  }catch(e){
+    registrarFalloFirma();
+    return false;
+  }
+  if(!data||!vigente()){
+    registrarFalloFirma();
+    return false;
+  }
+
+  const srvFirmaDoc=firmaSegura(data.teacherSignature||'');
+  if(srvFirmaDoc){ S.firmaDoc=srvFirmaDoc; }
+  S.estudiantes=data.records.map(f=>{
+    let ts=Date.parse(f.createdAt);
+    if(isNaN(ts)) ts=Date.now();
+    return {
+      id:String(f.id||''), nombre:clean(f.fullName,80), ident:clean(f.identification,20),
+      firma:firmaSegura(f.studentSignature), ts
+    };
+  }).filter(f=>f.nombre&&f.ident);
+  pollMeta.count=Number(data.count)||S.estudiantes.length;
+  pollMeta.latestChangeAt=data.latestChangeAt||null;
+  if(srvFirmaDoc){
+    pollMeta.teacherSignedAt=data.teacherSignedAt||teacherSignedAt||pollMeta.teacherSignedAt||null;
+    pollMeta.teacherSignatureAttemptedAt=null;
+    pollMeta.teacherSignatureRetryAt=0;
+  }else if(teacherSignedAt){
+    pollMeta.teacherSignatureAttemptedAt=data.teacherSignedAt||teacherSignedAt;
+    pollMeta.teacherSignatureRetryAt=Date.now()+30000;
+  }
+
+  guardarDiferido();
+  pintarHoja();
+  pintarEstadoReg();
+  return true;
+}
+
 /* ----------------- Docente: lista desde API ----------------- */
 async function actualizarListaDocenteDesdeAPI(){
   if(!docenteSessionId) return;
@@ -1082,13 +1217,22 @@ async function actualizarListaDocenteDesdeAPI(){
   pollApiDocenteCtrl=new AbortController();
   const sid=docenteSessionId;
   try{
-    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid)+'&teacherCode='+encodeURIComponent(sessionStorage.getItem('utch.docente')||''),{signal:pollApiDocenteCtrl.signal});
+    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid)+'&teacherCode='+encodeURIComponent(sessionStorage.getItem('utch.docente')||'')+'&light=1',{signal:pollApiDocenteCtrl.signal});
     const data=await r.json().catch(()=>null);
-    if(!r.ok||!data||!data.ok||!Array.isArray(data.records)) return;
+    if(!r.ok||!data||!data.ok) return;
     if(docenteSessionId!==sid) return;
-    const srvFirmaDoc2 = firmaSegura(data.teacherSignature||'');
+    /* Si la sesión ya no está abierta (cerrada por el representante), se detiene. */
+    if(data.status && data.status!=='OPEN'){ detenerPollingApiDocente(); return; }
+    const cambio=(Number(data.count)||0)!==pollMetaDocente.count || (data.latestChangeAt||null)!==pollMetaDocente.latestChangeAt || (data.teacherSignedAt||null)!==pollMetaDocente.teacherSignedAt;
+    pollMetaDocente={count:Number(data.count)||0, latestChangeAt:data.latestChangeAt||null, teacherSignedAt:data.teacherSignedAt||null};
+
+    if(!cambio) return;
+    const full=await fetchRegistrosCompletos(sid, pollApiDocenteCtrl, sessionStorage.getItem('utch.docente')||'');
+    if(!full) return;
+    if(docenteSessionId!==sid) return;
+    const srvFirmaDoc2 = firmaSegura(full.teacherSignature||'');
     if(srvFirmaDoc2){ S.firmaDoc = srvFirmaDoc2; }
-    S.estudiantes=data.records.map(f=>{
+    S.estudiantes=full.records.map(f=>{
       let ts=Date.parse(f.createdAt);
       if(isNaN(ts)) ts=Date.now();
       return {
@@ -1112,8 +1256,10 @@ function detenerPollingApiDocente(){
 function iniciarPollingApiDocente(){
   detenerPollingApiDocente();
   if(!docenteSessionId) return;
+  pollMetaDocente={count:0, latestChangeAt:null, teacherSignedAt:null};
   actualizarListaDocenteDesdeAPI();
   pollApiDocente=setInterval(()=>{
+    if(document.hidden) return;
     if(!docenteSessionId){ detenerPollingApiDocente(); return; }
     actualizarListaDocenteDesdeAPI();
   },4000);
@@ -1192,10 +1338,13 @@ async function cargarAsistenciasRep(){
 
 /* Selecciona una asistencia propia y continúa trabajando con ella. */
 async function seleccionarAsistenciaRep(sessionId){
+  const requestId=++repSessionSelectionRequestId;
   const msg=$('#msgAsistencias');
   try{
     const r=await fetch('/api/rep/session?sessionId='+encodeURIComponent(sessionId));
+    if(requestId!==repSessionSelectionRequestId) return;
     const data=await r.json().catch(()=>null);
+    if(requestId!==repSessionSelectionRequestId) return;
     if(!r.ok||!data||!data.ok||!data.session){
       if(msg) msg.textContent='No se pudo abrir la asistencia.';
       return;
@@ -1207,13 +1356,13 @@ async function seleccionarAsistenciaRep(sessionId){
     S.sesion.clave=String(s.studentCode||'').toUpperCase();
     S.sesion.claveDocente=String(s.teacherCode||'').toUpperCase();
     S.sesion.abierta=(s.status==='OPEN');
-    S.sesion.inicio=Date.now(); S.sesion.minutos=0;
+    const inicioMs=new Date(s.createdAt).getTime();
+    S.sesion.inicio=isNaN(inicioMs)?0:inicioMs;
+    S.sesion.minutos=Number(S.sesion.minutos)||0;
     for(const k of ['facultad','programa','nivel','periodo','asignatura','codigo','docente']){
       if(typeof s[k]==='string'&&s[k]) S.cfg[k]=clean(s[k],160);
     }
-    /* La planilla debe fechar la asistencia SELECCIONADA (apertura del
-       servidor en Bogotá), no el borrador local: sin esto conservaba una
-       fecha antigua de otra configuración. Solo se aplica con valor válido. */
+
     const fAp=fechaAperturaBogota(s.createdAt), hAp=horaAperturaBogota(s.createdAt);
     if(fAp){
       S.cfg.fecha=fAp;
@@ -1223,22 +1372,38 @@ async function seleccionarAsistenciaRep(sessionId){
       S.cfg.hora=hAp;
       const fh=$('#f_hora'); if(fh) fh.value=hAp;
     }
+    S.firmaDoc='';
     const srvFirmaDoc3 = firmaSegura(data.session.teacherSignature||'');
     if(srvFirmaDoc3){ S.firmaDoc = srvFirmaDoc3; }
+
     const srvFirmaRep3 = firmaSegura(data.session.representativeSignature||'');
-    if(srvFirmaRep3){ S.firmaRep = srvFirmaRep3; }
+    S.firmaRep = srvFirmaRep3 || '';
+    if(pads.rep) pads.rep.set(S.firmaRep);
+    const msgFirmaRep3=$('#msgFirmaRep'); if(msgFirmaRep3) msgFirmaRep3.textContent='';
     S.estudiantes=(Array.isArray(data.records)?data.records:[]).map(f=>{
       let ts=Date.parse(f.createdAt);
       if(isNaN(ts)) ts=Date.now();
       return {id:String(f.id||''),nombre:clean(f.fullName,80),ident:clean(f.identification,20),firma:firmaSegura(f.studentSignature),ts};
     }).filter(f=>f.nombre&&f.ident);
     await guardar();
+    if(requestId!==repSessionSelectionRequestId) return;
     refrescarPanel();
+
+    let latestMs=0;
+    S.estudiantes.forEach(f=>{ const t=new Date(f.ts||0).getTime(); if(!isNaN(t)&&t>latestMs) latestMs=t; });
+    pollMeta={
+      count:S.estudiantes.length,
+      latestChangeAt:latestMs?new Date(latestMs).toISOString():null,
+      teacherSignedAt:null,
+      teacherSignatureAttemptedAt:null,
+      teacherSignatureRetryAt:0
+    };
+    pollPrecarga=S.sesion.abierta;
     if(S.sesion.abierta) iniciarPollingApi();
     if(msg) msg.textContent='Asistencia cargada.';
     window.scrollTo(0,0);
   }catch(e){
-    if(msg) msg.textContent='No se pudo conectar con el servidor.';
+    if(requestId===repSessionSelectionRequestId&&msg) msg.textContent='No se pudo conectar con el servidor.';
   }
 }
 
@@ -1252,10 +1417,17 @@ async function confirmarCambioAsistencia(){
     message:'La lista actual contiene '+S.estudiantes.length+' asistencias. Exporte el reporte antes de cambiar la materia o la fecha. ¿Desea borrarla y continuar?'
   }))) return false;
   detenerPollingApi();
+  repSessionSelectionRequestId++;
   S.estudiantes=[];
+  S.firmaDoc='';
+  S.firmaRep='';
+  if(pads.rep) pads.rep.clear();
+  const msgFirmaRep=$('#msgFirmaRep'); if(msgFirmaRep) msgFirmaRep.textContent='';
   S.sesion.clave='';
   S.sesion.sessionId='';
   S.sesion.inicio=0;
+  pollMeta={count:0, latestChangeAt:null, teacherSignedAt:null, teacherSignatureAttemptedAt:null, teacherSignatureRetryAt:0};
+  pollPrecarga=false;
   repRegAbiertos=true;
   return true;
 }
@@ -1356,7 +1528,8 @@ function vistaAdmin(app){
           '<button class="d" id="delDoc">'+I.trash+'Quitar</button></p></div>' +
         '<div><label>Firma del representante de clase</label><div id="padRep"></div>' +
           '<p style="margin-top:12px"><button id="saveRep">'+I.check+'Guardar firma</button> ' +
-          '<button class="d" id="delRep">'+I.trash+'Quitar</button></p></div>' +
+          '<button class="d" id="delRep">'+I.trash+'Quitar</button> ' +
+          '<span id="msgFirmaRep" class="mut" role="status"></span></p></div>' +
       '</div>' +
     '</div>' +
 
@@ -1537,9 +1710,17 @@ function vistaAdmin(app){
         throw new Error('api');
       }
       S.sesion.abierta=true; S.sesion.inicio=Date.now();
+      repSessionSelectionRequestId++;
       S.sesion.sessionId=String(data.session.id);
       S.sesion.clave=String(data.session.studentCode).toUpperCase();
       S.sesion.claveDocente=String(data.session.teacherCode).toUpperCase();
+      pollMeta={count:0, latestChangeAt:null, teacherSignedAt:null, teacherSignatureAttemptedAt:null, teacherSignatureRetryAt:0};
+      pollPrecarga=false;
+      /* Sesión nueva: no heredar la firma del representante anterior. */
+      S.firmaDoc='';
+      S.firmaRep='';
+      if(pads.rep) pads.rep.clear();
+      const msgFirmaRep=$('#msgFirmaRep'); if(msgFirmaRep) msgFirmaRep.textContent='';
       repRegAbiertos=true;
       redMensaje='';
       await guardar(); refrescarPanel();
@@ -1557,7 +1738,22 @@ function vistaAdmin(app){
   };
   $('#detener').onclick=async()=>{
     if(cierreEnCurso) return;
-    if(!(await uiConfirm({kind:'danger',title:'Cerrar asistencia definitivamente',okText:'Sí, cerrar',message:'¿Deseas cerrar definitivamente esta asistencia?\n\nDespués de cerrarla:\n- no se podrán registrar nuevos estudiantes;\n- el docente ya no podrá firmar;\n- la asistencia quedará disponible para consulta durante 24 horas;\n- posteriormente será eliminada automáticamente.'}))) return;
+    const sidCierre=S.sesion.sessionId||'';
+    let docenteNoFirio=false;
+    if(sidCierre){
+      try{
+        const rf=await fetch('/api/rep/session?sessionId='+encodeURIComponent(sidCierre));
+        const df=await rf.json().catch(()=>null);
+        docenteNoFirio=!(df&&df.ok&&df.session&&firmaSegura(df.session.teacherSignature));
+      }catch(e){ docenteNoFirio=true; }
+    }
+    const pedirConfirmacionCierre=async()=>{
+      if(docenteNoFirio){
+        return await uiConfirm({kind:'danger',title:'Cerrar asistencia definitivamente',okText:'Sí, cerrar',message:'El docente aún no ha firmado. ¿Seguro que quieres cerrar la asistencia?'});
+      }
+      return await uiConfirm({kind:'danger',title:'Cerrar asistencia definitivamente',okText:'Sí, cerrar',message:'¿Deseas cerrar definitivamente esta asistencia?\n\nDespués de cerrarla:\n- no se podrán registrar nuevos estudiantes;\n- el docente ya no podrá firmar;\n- la asistencia quedará disponible para consulta durante 24 horas;\n- posteriormente será eliminada automáticamente.'});
+    };
+    if(!(await pedirConfirmacionCierre())) return;
     cierreEnCurso=true;
     const detBtn=$('#detener'); if(detBtn) detBtn.disabled=true;
     try{
@@ -1580,6 +1776,7 @@ function vistaAdmin(app){
         }
       }
       detenerPollingApi();
+      repSessionSelectionRequestId++;
       S.sesion.abierta=false;
       S.sesion.clave='';           // Invalida código estudiantes
       S.sesion.claveDocente='';    // Invalida código docente
@@ -1623,9 +1820,17 @@ function vistaAdmin(app){
       if(!r.ok||!data||!data.ok||!data.session||!data.session.id||!data.session.studentCode||!data.session.teacherCode){
         throw new Error('api');
       }
+      repSessionSelectionRequestId++;
       S.sesion.sessionId=String(data.session.id);
       S.sesion.clave=String(data.session.studentCode).toUpperCase();
       S.sesion.claveDocente=String(data.session.teacherCode).toUpperCase();
+      pollMeta={count:0, latestChangeAt:null, teacherSignedAt:null, teacherSignatureAttemptedAt:null, teacherSignatureRetryAt:0};
+      pollPrecarga=false;
+      /* Sesión nueva: no heredar la firma del representante anterior. */
+      S.firmaDoc='';
+      S.firmaRep='';
+      if(pads.rep) pads.rep.clear();
+      const msgFirmaRep=$('#msgFirmaRep'); if(msgFirmaRep) msgFirmaRep.textContent='';
       repRegAbiertos=true;
       redMensaje='';
       await guardar(); refrescarPanel();
@@ -1671,8 +1876,46 @@ function vistaAdmin(app){
   if(S.firmaRep) pads.rep.set(S.firmaRep);
   $('#saveDoc').onclick=async()=>{ const g=pads.doc.get(); if(g){ S.firmaDoc=firmaSegura(g)||g; await guardar(); pintarHoja(); } };
   $('#delDoc').onclick=async()=>{ S.firmaDoc=''; pads.doc.clear(); await guardar(); pintarHoja(); };
-  $('#saveRep').onclick=async()=>{ const g=pads.rep.get(); if(g){ S.firmaRep=g; await guardar(); pintarHoja(); } };
-  $('#delRep').onclick=async()=>{ S.firmaRep=''; pads.rep.clear(); await guardar(); pintarHoja(); };
+  $('#saveRep').onclick=async()=>{
+    const g=pads.rep.get();
+    const msg=$('#msgFirmaRep');
+    if(!g){ if(msg) msg.textContent='Realice su firma primero.'; return; }
+    const sid=S.sesion.sessionId||'';
+    if(!sid){ if(msg) msg.textContent='Abra o seleccione una asistencia antes de guardar la firma.'; return; }
+    const btn=$('#saveRep'); if(btn) btn.disabled=true;
+    if(msg) msg.textContent='Guardando...';
+    try{
+      const r=await fetch('/api/rep/sessions/'+encodeURIComponent(sid)+'/representative-signature',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({representativeSignature:g})
+      });
+      const data=await r.json().catch(()=>null);
+      if(!r.ok||!data||!data.ok){
+        if(msg) msg.textContent=(data&&data.error==='SESSION_NOT_FOUND')
+          ?'No se pudo guardar: la asistencia no está disponible.'
+          :'No se pudo guardar la firma. Inténtelo nuevamente.';
+        return;
+      }
+      const guardada=firmaSegura((data.session&&data.session.representativeSignature)||g)||g;
+      S.firmaRep=guardada;
+      await guardar();
+      pintarHoja();
+      if(msg) msg.textContent='Firma guardada correctamente.';
+    }catch(e){
+      if(msg) msg.textContent='No se pudo conectar con el servidor. Verifique su conexión e inténtelo nuevamente.';
+    }finally{
+      if(btn) btn.disabled=false;
+    }
+  };
+  $('#delRep').onclick=async()=>{
+    S.firmaRep='';
+    pads.rep.clear();
+    await guardar();
+    pintarHoja();
+    const msg=$('#msgFirmaRep');
+    if(msg) msg.textContent=S.sesion.sessionId?'La firma guardada en el servidor se conserva.':'Firma local borrada.';
+  };
 
   $('#pdf').onclick=()=>{
     tituloPDF=document.title;
@@ -1745,8 +1988,7 @@ function vistaAdmin(app){
     try{
       detenerPollingApi();
       const claveAnterior=(S.sesion&&S.sesion.clave)||'';
-      /* Limpieza local dirigida: NO se toca KEY_STORE, LOCK_STORE ni
-         SESSION_REP (autenticación). Solo temporales de la asistencia. */
+ 
       try{ sessionStorage.removeItem(SESSION_EST); }catch(e){}
       try{ sessionStorage.removeItem(SESSION_API); }catch(e){}
       try{ sessionStorage.removeItem('utch.docente'); }catch(e){}
@@ -1757,10 +1999,10 @@ function vistaAdmin(app){
           const k=sessionStorage.key(i);
           if(k&&k.indexOf('utch.registro.')===0) borrar.push(k);
         }
-        /* Solo se retiran marcas de la asistencia anterior ya cerrada;
-           con sesión abierta se habría bloqueado arriba. */
+
         borrar.forEach(k=>{ try{ sessionStorage.removeItem(k); }catch(e){} });
       }catch(e){}
+      repSessionSelectionRequestId++;
       S.sesion={abierta:false,inicio:0,minutos:0,clave:'',sessionId:''};
       S.estudiantes=[];
       S.firmaDoc='';
@@ -1783,42 +2025,31 @@ function vistaAdmin(app){
   refrescarPanel();
   arrancarTic();
   iniciarPollingApi();
-  /* Revalida la identidad contra el servidor: vincula el borrador propio,
-     expulsa sesiones inválidas y pinta el saludo con el nombre de la BD. */
+  
   confirmarIdentidadRep().catch(()=>{});
 }
 
-/* ----------------- Representante: lista desde API -----------------
-   Fuente de verdad PostgreSQL. Un solo intervalo, sin duplicados. */
 async function actualizarListaDesdeAPI(){
   if(!adminMode||!S.sesion.sessionId) return;
   if(pollApiCtrl){ try{ pollApiCtrl.abort(); }catch(e){} }
-  pollApiCtrl=new AbortController();
+  const ctrl=new AbortController();
+  pollApiCtrl=ctrl;
   const sid=S.sesion.sessionId;
   try{
-    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid),{signal:pollApiCtrl.signal});
+    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid)+'&light=1',{signal:ctrl.signal});
     const data=await r.json().catch(()=>null);
-    if(!r.ok||!data||!data.ok||!Array.isArray(data.records)) return;
-    if(!adminMode||S.sesion.sessionId!==sid) return;
+    if(!r.ok||!data||!data.ok) return;
+    if(ctrl.signal.aborted||!adminMode||S.sesion.sessionId!==sid) return;
     if(typeof data.registrationOpen === 'boolean') repRegAbiertos=data.registrationOpen;
-    const srvFirmaDoc = firmaSegura(data.teacherSignature||'');
-    if(srvFirmaDoc){ S.firmaDoc = srvFirmaDoc; }
-    S.estudiantes=data.records.map(f=>{
-      let ts=Date.parse(f.createdAt);
-      if(isNaN(ts)) ts=Date.now();
-      return {
-        id:String(f.id||''),
-        nombre:clean(f.fullName,80),
-        ident:clean(f.identification,20),
-        firma:firmaSegura(f.studentSignature),
-        ts
-      };
-    }).filter(f=>f.nombre&&f.ident);
-    /* Persistir la lista fresca para que focus/storage (sincronizar) no
-       revierta a una versión antigua sin los registros recién recibidos. */
-    guardarDiferido();
-    pintarHoja();
-    pintarEstadoReg();
+    const teacherSignedAt=data.teacherSignedAt||null;
+    const cambioRegistros=(Number(data.count)||0)!==pollMeta.count || (data.latestChangeAt||null)!==pollMeta.latestChangeAt;
+    const firmaNueva=!!teacherSignedAt&&teacherSignedAt!==pollMeta.teacherSignedAt&&teacherSignedAt!==pollMeta.teacherSignatureAttemptedAt;
+    const reintentarFirma=!!teacherSignedAt&&teacherSignedAt===pollMeta.teacherSignatureAttemptedAt&&Date.now()>=pollMeta.teacherSignatureRetryAt;
+    const cambio=cambioRegistros||firmaNueva||reintentarFirma;
+    /* Solo cuando los metadatos ligeros indican cambio se descarga el detalle
+       con firmas completas (evita descargar firmas en cada ciclo de polling). */
+    if(!cambio) return;
+    await actualizarRegistrosDesdeAPI(sid,ctrl,teacherSignedAt);
   }catch(e){ /* abort o red: se reintenta en el siguiente ciclo */ }
 }
 function detenerPollingApi(){
@@ -1828,8 +2059,14 @@ function detenerPollingApi(){
 function iniciarPollingApi(){
   detenerPollingApi();
   if(!adminMode||!S.sesion.abierta||!S.sesion.sessionId) return;
-  actualizarListaDesdeAPI();
+  /* Si los registros ya vienen precargados (p.ej. al abrir desde /api/rep/session)
+     no se repite la descarga: el primer ciclo de polling ya tiene los datos. */
+  if(pollPrecarga){ pollPrecarga=false; }
+  else{
+    actualizarListaDesdeAPI();
+  }
   pollApi=setInterval(()=>{
+    if(document.hidden) return;
     if(!adminMode||!S.sesion.abierta||!S.sesion.sessionId){ detenerPollingApi(); return; }
     actualizarListaDesdeAPI();
   },4000);
@@ -2524,6 +2761,12 @@ function uiPrompt(o){
   await cargar();
   precargarImagenes();
   window.addEventListener('hashchange',render);
+  /* Pausa el polling mientras la pestaña está oculta y reanuda al volver a
+     estar visible (evita ciclos de polling inútiles y consumo de Egress). */
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){ detenerPollingApi(); detenerPollingApiDocente(); }
+    else{ iniciarPollingApi(); iniciarPollingApiDocente(); }
+  });
   /* Expandir/contraer el bloque de privacidad en móvil. */
   document.addEventListener('click',e=>{
     const b=e.target&&e.target.closest?e.target.closest('.privacy-toggle'):null;

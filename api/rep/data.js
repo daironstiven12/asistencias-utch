@@ -1,11 +1,5 @@
 "use strict";
 
-/* Dispatch datos del representante (una sola función serverless).
-   Rutas públicas intactas vía rewrites en vercel.json:
-   GET /api/rep/offerings          (op=offerings)
-   GET /api/rep/sessions           (op=sessions)
-   GET /api/rep/session?sessionId= (op=session)
-   Lógica movida verbatim desde offerings.js / sessions.js / session.js. */
 
 const { query } = require("../../lib/db");
 const { requireRep } = require("../../lib/repSession");

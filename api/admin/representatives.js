@@ -1,14 +1,5 @@
 "use strict";
 
-/* /api/admin/representatives
-   GET — lista con ofertas y estado.
-   POST — crea representante (name, username, password, courseOfferingIds, active?).
-   PATCH — actualiza active y/o reemplaza courseOfferingIds.
-   POST ?op=docentes (rewrite /api/admin/docentes) — alta académica de
-   docente: persons → users → user_roles(DOCENTE), reutilizando por correo.
-   GET ?op=sesiones (rewrite /api/admin/sesiones) — historial paginado de
-   sesiones con filtros; con id= devuelve el detalle con registros.
-   DELETE ?op=sesiones — elimina sesiones (y sus registros en cascada). */
 
 const crypto = require("crypto");
 const { query, getPool } = require("../../lib/db");
@@ -192,7 +183,12 @@ module.exports = async function handler(req, res) {
     try {
       if (req.method === "GET") return await handleSesiones(req, res);
       if (req.method === "DELETE") return await handleEliminarSesiones(req, res);
-      res.setHeader("Allow", "GET, DELETE");
+      if (req.method === "PATCH") {
+        const sig =
+          String(leerParam(req, "signature") || "").trim() === "1";
+        if (sig) return await handleSesionSignature(req, res);
+      }
+      res.setHeader("Allow", "GET, DELETE, PATCH");
       return res.status(405).json({ ok: false, error: "METHOD_NOT_ALLOWED" });
     } catch (err) {
       console.error("admin sesiones error:", err && err.message);
@@ -676,6 +672,7 @@ async function handleSesiones(req, res) {
   const q = String(leerParam(req, "q") || "").trim().slice(0, 60);
   const nivelId = parseInt(leerParam(req, "nivelId"), 10) || 0;
   const grupoId = parseInt(leerParam(req, "grupoId"), 10) || 0;
+  const progId = parseInt(leerParam(req, "progId"), 10) || 0;
   const repId = String(leerParam(req, "repId") || "").trim().slice(0, 40);
   const status = String(leerParam(req, "status") || "").trim().toUpperCase();
   if (status && status !== "OPEN" && status !== "CLOSED") {
@@ -695,6 +692,7 @@ async function handleSesiones(req, res) {
   }
   if (nivelId > 0) like("cs.academic_level_id = ?", nivelId);
   if (grupoId > 0) like("co.group_id = ?", grupoId);
+  if (progId > 0) like("g.program_id = ?", progId);
   if (repId) like("s.representative_id = ?", repId);
   if (status) like("s.status = ?", status);
   const where = conds.length ? " WHERE " + conds.join(" AND ") : "";
@@ -738,16 +736,18 @@ async function handleSesiones(req, res) {
 }
 
 async function handleSesionDetalle(req, res, id) {
-  const r = await query("SELECT " + SESION_FIELDS +
-    ', s.teacher_signature AS "teacherSignature", s.representative_signature AS "representativeSignature"' +
-    " FROM " + SESION_JOINS + " WHERE s.id = $1 LIMIT 1", [id]);
-  const row = r.rows[0];
-  if (!row) return res.status(404).json({ ok: false, error: "NOT_FOUND" });
-  const rec = await query(
-    "SELECT id, full_name, identification, student_signature, created_at" +
-      " FROM attendance_runtime_records WHERE session_id = $1 ORDER BY created_at ASC",
+  /* meta=1: solo metadatos + conteo del detalle (sin firmas ni registros).
+     Usado por la eliminación administrativa, que solo necesita los datos del
+     aviso de confirmación y el conteo, no el detalle completo con firmas. */
+  const metaOnly = String(leerParam(req, "meta") || "").trim() === "1";
+  const r = await query(
+    (metaOnly
+      ? "SELECT " + SESION_FIELDS + " FROM " + SESION_JOINS + " WHERE s.id = $1 LIMIT 1"
+      : "SELECT " + SESION_FIELDS + ', s.teacher_signature AS "teacherSignature", s.representative_signature AS "representativeSignature"' + " FROM " + SESION_JOINS + " WHERE s.id = $1 LIMIT 1"),
     [id]
   );
+  const row = r.rows[0];
+  if (!row) return res.status(404).json({ ok: false, error: "NOT_FOUND" });
   const mapRow = (w) => ({
     sessionId: w.sessionId,
     createdAt: w.createdAt,
@@ -769,6 +769,15 @@ async function handleSesionDetalle(req, res, id) {
     teacherSignature: w.teacherSignature || null,
     representativeSignature: w.representativeSignature || null,
   });
+  if (metaOnly) {
+    const w = { ...row, teacherSignature: null, representativeSignature: null };
+    return res.status(200).json({ ok: true, sesion: mapRow(w), registros: [] });
+  }
+  const rec = await query(
+    "SELECT id, full_name, identification, student_signature, created_at" +
+      " FROM attendance_runtime_records WHERE session_id = $1 ORDER BY created_at ASC",
+    [id]
+  );
   return res.status(200).json({
     ok: true,
     sesion: mapRow(row),
@@ -786,6 +795,75 @@ async function handleSesionDetalle(req, res, id) {
    Elimina cada sesión con sus registros en cascada, en una transacción.
    Nunca toca asignaturas, docentes, representantes ni catálogos. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/* Constantes de validación de firma (mismas que usa el endpoint del
+   representante). Solo imágenes PNG, JPEG o WebP como data URL, ≤ 1 MB. */
+const SIGNATURE_RE = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/;
+const MAX_SIGNATURE = 1000000;
+
+/* PATCH ?op=sesiones&signature=1 {sessionId, field, signature}.
+   Permite al administrador cargar o reemplazar únicamente teacher_signature
+   o representative_signature de una sesión existente. No toca otros campos
+   ni firmas de estudiantes. No crea almacenamiento paralelo.
+   Criterio de *_signed_at: no se actualiza al cargar una firma de forma
+   retroactiva desde administración, ya que la marca de tiempo reflejaría
+   la subida del administrador y no el momento real de la firma del titular.
+   El flag teacherSigned / repSigned se deriva de la presencia del campo. */
+async function handleSesionSignature(req, res) {
+  const body = readBody(req);
+  const sessionId = body && body.sessionId;
+  const field = body && body.field;
+  const signature = body && body.signature;
+
+  if (typeof sessionId !== "string" || !UUID_RE.test(sessionId.trim())) {
+    return res.status(400).json({ ok: false, error: "INVALID_DATA" });
+  }
+  if (field !== "teacher_signature" && field !== "representative_signature") {
+    return res.status(400).json({ ok: false, error: "INVALID_DATA" });
+  }
+  if (
+    typeof signature !== "string" ||
+    signature.trim() === "" ||
+    signature.trim().length > MAX_SIGNATURE ||
+    !SIGNATURE_RE.test(signature.trim())
+  ) {
+    return res.status(400).json({ ok: false, error: "INVALID_DATA" });
+  }
+
+  const sid = sessionId.trim();
+  const sig = signature.trim();
+  try {
+    const existe = await query(
+      "SELECT id FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1",
+      [sid]
+    );
+    if (!existe.rows[0]) {
+      return res.status(404).json({ ok: false, error: "SESSION_NOT_FOUND" });
+    }
+
+    const r = await query(
+      "UPDATE attendance_runtime_sessions SET " + field + " = $1 WHERE id = $2" +
+        " RETURNING id, teacher_signature AS \"teacherSignature\"," +
+        " representative_signature AS \"representativeSignature\"",
+      [sig, sid]
+    );
+    const updated = r.rows[0];
+    if (!updated) {
+      return res.status(404).json({ ok: false, error: "SESSION_NOT_FOUND" });
+    }
+    return res.status(200).json({
+      ok: true,
+      session: {
+        id: updated.id,
+        teacherSignature: updated.teacherSignature || null,
+        representativeSignature: updated.representativeSignature || null,
+      },
+    });
+  } catch (err) {
+    console.error("admin sesion signature error:", err && err.message);
+    return res.status(500).json({ ok: false, error: "INTERNAL_ERROR" });
+  }
+}
 
 async function handleEliminarSesiones(req, res) {
   const body = readBody(req);

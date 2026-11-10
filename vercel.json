@@ -37,11 +37,5 @@
       "source": "/api/rep/session",
       "destination": "/api/rep/data?op=session"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron/purge",
-      "schedule": "0 3 * * *"
-    }
   ]
 }

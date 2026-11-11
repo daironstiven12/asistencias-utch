@@ -112,6 +112,27 @@ const DATA_STORE='utch.asistencia.v1', KEY_STORE='utch.asistencia.k',
 
 const _enc=new TextEncoder(), _dec=new TextDecoder();
 
+/* Acceso seguro a sessionStorage: en navegadores con el almacenamiento
+   bloqueado (modo privado estricto, política de cookies) cualquier lectura
+   lanza SecurityError y rompe la vista del estudiante a mitad del render.
+   Estas envolturas nunca lanzan; si el almacenamiento no está disponible
+   usan una caché en memoria para no perder el estado validado. */
+const _ssMem=Object.create(null);
+function ssLeer(k){
+  try{ const v=sessionStorage.getItem(k); if(v!==null) return v; return (k in _ssMem)?_ssMem[k]:null; }
+  catch(e){ return (k in _ssMem)?_ssMem[k]:null; }
+}
+function ssEscribir(k,v){
+  _ssMem[k]=v;
+  try{ sessionStorage.setItem(k,v); }catch(e){}
+  return true;
+}
+function ssQuitar(k){
+  delete _ssMem[k];
+  try{ sessionStorage.removeItem(k); }catch(e){}
+  return true;
+}
+
 async function cryptoKey(){
   if (!(globalThis.crypto && crypto.subtle)) return null;
   try{
@@ -194,7 +215,7 @@ const DEFAULTS = () => ({
      Evita mezclar borradores entre cuentas del mismo navegador. */
   repOwner:''
 });
-let S=DEFAULTS(), adminMode=false, tic=null, saveTimer=null, pads={};
+let S=DEFAULTS(), adminMode=false, tic=null, saveTimer=null, guardandoEnCurso=false, storageRetry=null, pads={};
 let tituloPDF=null;
 let repRegAbiertos=true;
 let pollApi=null, pollApiCtrl=null;
@@ -271,8 +292,13 @@ function normalizar(o){
 async function guardar(){
   clearTimeout(saveTimer); saveTimer=null;
   if(modoRemoto) return;
+  /* guardandoEnCurso evita que sincronizar() lea localStorage mientras esta
+     escritura sigue en curso (leería el valor anterior y perdería el estado
+     recién validado). */
+  guardandoEnCurso=true;
   try{ localStorage.setItem(DATA_STORE,await cifrar(S)); }
   catch(e){ console.warn('No se pudo guardar.'); }
+  finally{ guardandoEnCurso=false; }
 }
 function guardarDiferido(){ clearTimeout(saveTimer); saveTimer=setTimeout(guardar,300); }
 async function cargar(){
@@ -361,8 +387,8 @@ async function confirmarIdentidadRep(){
 }
 
 async function sincronizar(){
-  const claveRemota = (modoRemoto) ? String(sessionStorage.getItem(SESSION_EST)||(S&&S.sesion&&S.sesion.clave)||'').trim().toUpperCase() : '';
-  const apiRemota = (modoRemoto) ? String(sessionStorage.getItem(SESSION_API)||(S&&S.sesion&&S.sesion.sessionId)||'').trim() : '';
+  const claveRemota = (modoRemoto) ? String(ssLeer(SESSION_EST)||(S&&S.sesion&&S.sesion.clave)||'').trim().toUpperCase() : '';
+  const apiRemota = (modoRemoto) ? String(ssLeer(SESSION_API)||(S&&S.sesion&&S.sesion.sessionId)||'').trim() : '';
   /* Siempre se captura la abierta vigente antes de sobrescribir S con el
      almacenamiento local, para evitar que sincronizar() apague la abierta del
      estudiante cuando modoRemoto=false (validación local por coincidencia de
@@ -402,7 +428,12 @@ async function sincronizar(){
 }
 function alCambiarAlmacenamiento(e){
   if(e && e.key && e.key!==DATA_STORE) return;
-  if(saveTimer) return;
+  /* Si hay una escritura en curso, se difiere en vez de descartarse: leer
+     localStorage ahora devolvería el valor anterior. Un solo temporizador. */
+  if(saveTimer||guardandoEnCurso){
+    if(!storageRetry){ storageRetry=setTimeout(()=>{ storageRetry=null; if(!saveTimer&&!guardandoEnCurso) sincronizar(); },400); }
+    return;
+  }
   sincronizar();
 }
 
@@ -441,7 +472,7 @@ const espera=ms=>new Promise(r=>setTimeout(r,ms));
 
 /* -------------------- Estudiante: conexión ------------------- */
 function mostrarExitoEstudiante(nombre,ident){
-  sessionStorage.setItem('utch.registro.'+S.sesion.clave,'1');
+  ssEscribir('utch.registro.'+S.sesion.clave,'1');
   zonaFijada=true; zonaEstado='ya-registrado:'+S.sesion.clave;
   detenerPollingEstudiante();
   const zona=$('#zona');
@@ -697,7 +728,7 @@ function pintarTituloEstudiante(){
   if(!t||!s) return;
 
   const clave=S.sesion.clave||'';
-  const validada=!!clave && sessionStorage.getItem(SESSION_EST)===clave;
+  const validada=!!clave && ssLeer(SESSION_EST)===clave;
   const badge=$('#estadoEst');
   if(!validada){
     t.textContent='Registro de asistencia';
@@ -713,7 +744,7 @@ function pintarTituloEstudiante(){
   /* Sin clave validada no hay sesión que mostrar: esconder el estado evita
      que el estudiante lea "registro cerrado" antes de conectarse. */
   if(badge){
-    badge.parentNode.style.display=(clave&&sessionStorage.getItem(SESSION_EST)===clave)?'':'none';
+    badge.parentNode.style.display=(clave&&ssLeer(SESSION_EST)===clave)?'':'none';
   }
 }
 /* Consulta al servidor el estado real de la sesión para el código dado.
@@ -751,7 +782,7 @@ async function actualizarEstadoDesdeServidor(){
     S.sesion.abierta=res.abierto;
     S.sesion.sessionId=res.sessionId||S.sesion.sessionId;
     if(!res.abierto){
-      sessionStorage.removeItem(SESSION_EST);
+      ssQuitar(SESSION_EST);
       S.sesion.clave='';
     }
     try{ await guardar(); }catch(e){}
@@ -784,7 +815,7 @@ function vistaEstudiante(app){
       '<div id="zona"></div>' +
     '</div>' +
     avisoLocal;
-  $('#volver').onclick=()=>{ sessionStorage.removeItem(SESSION_EST); location.hash=''; detenerPollingEstudiante(); };
+  $('#volver').onclick=()=>{ ssQuitar(SESSION_EST); location.hash=''; detenerPollingEstudiante(); };
   pintarTituloEstudiante();
   zonaFijada=false;
   pintarZonaEstudiante();
@@ -800,8 +831,8 @@ let zonaEstado=null, zonaFijada=false, modoRemoto=false, reintentando=false;
 function estadoZona(){
   const clave=S.sesion.clave||'';
   if(!clave) return 'pedir-clave';
-  if(sessionStorage.getItem(SESSION_EST)!==clave) return 'pedir-clave';
-  if(sessionStorage.getItem('utch.registro.'+clave)==='1') return 'ya-registrado:'+clave;
+  if(ssLeer(SESSION_EST)!==clave) return 'pedir-clave';
+  if(ssLeer('utch.registro.'+clave)==='1') return 'ya-registrado:'+clave;
   if(!estadoSesion().abierto) return 'cerrado:'+clave;
   return 'formulario:'+clave;
 }
@@ -817,7 +848,7 @@ function pintarZonaEstudiante(){
   zonaEstado=estadoZona();
   const est=estadoSesion();
   const clave=S.sesion.clave||'';
-  const claveOk = !!clave && sessionStorage.getItem(SESSION_EST)===clave;
+  const claveOk = !!clave && ssLeer(SESSION_EST)===clave;
 
   /* Función auxiliar: crear botón reintentar de forma segura (máximo 1) */
   const crearRetryBtn=(contenedor,onclick)=>{
@@ -865,6 +896,10 @@ function pintarZonaEstudiante(){
         const r=await fetch('/api/sessions/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:v})});
         const data=await r.json().catch(()=>null);
         if(!r.ok||!data||!data.ok){
+          /* Sesión que existía y ya está cerrada: mensaje específico de cierre. */
+          if(data&&data.status&&data.status!=='OPEN'){
+            throw new Error('La asistencia está cerrada. No es posible registrarse en ella. Solicite un nuevo código al docente.');
+          }
           throw new Error('El código no es válido o la sesión ya no está disponible.');
         }
         if(data.role!=='STUDENT'){
@@ -878,9 +913,9 @@ function pintarZonaEstudiante(){
           S.sesion.sessionId=remoto.sessionId||String(data.sessionId||'');
           S.sesion.inicio=Date.now();
           S.sesion.minutos=0;
-          sessionStorage.setItem(SESSION_API,S.sesion.sessionId);
+          ssEscribir(SESSION_API,S.sesion.sessionId);
           if(!remoto.abierto){
-            sessionStorage.removeItem(SESSION_EST);
+            ssQuitar(SESSION_EST);
             S.sesion.clave='';
             throw new Error('La asistencia ya no está disponible o fue cerrada. Solicite un nuevo código al docente.');
           }
@@ -889,7 +924,7 @@ function pintarZonaEstudiante(){
              se marca como conexión pendiente. */
           estadoRemotoConfirmado=false;
           S.sesion.sessionId=String(data.sessionId||'');
-          sessionStorage.setItem(SESSION_API,S.sesion.sessionId);
+          ssEscribir(SESSION_API,S.sesion.sessionId);
         }
         if(data.cfg&&typeof data.cfg==='object'){
           /* Reemplazo limpio: no conservar datos de una sesión anterior. */
@@ -898,8 +933,12 @@ function pintarZonaEstudiante(){
             if(typeof data.cfg[k]==='string'&&data.cfg[k]) S.cfg[k]=clean(data.cfg[k],160);
           }
         }
-        sessionStorage.setItem(SESSION_EST,v);
+        ssEscribir(SESSION_EST,v);
         S.sesion.clave=v;
+        /* Persistir el estado validado (cfg + sesión) en el almacenamiento
+           local: sin este guardado, un foco posterior dispara sincronizar(),
+           que recarga S desde localStorage y borra la materia recién cargada. */
+        guardarDiferido();
         pintarTituloEstudiante();
         pintarZonaEstudiante();
       }catch(err){
@@ -916,7 +955,7 @@ function pintarZonaEstudiante(){
 
     /* Si este dispositivo ya se conectó antes en esta sesión, se
        reconecta solo al docente (por ejemplo, tras recargar). */
-    const guardada=sessionStorage.getItem(SESSION_EST);
+    const guardada=ssLeer(SESSION_EST);
     if(guardada&&!reintentando){
       reintentando=true;
       $('#claveEst').value=guardada;
@@ -926,7 +965,7 @@ function pintarZonaEstudiante(){
   }
 
   /* 2) Ya firmó en esta clase */
-  if(sessionStorage.getItem('utch.registro.'+clave)==='1'){
+  if(ssLeer('utch.registro.'+clave)==='1'){
     detenerPollingEstudiante();
     zona.innerHTML =
       '<div class="aviso ok">'+I.shieldCheck+
@@ -1070,7 +1109,7 @@ function vistaDocente(app){
           docenteInfo[k]=(k==='fecha')?fechaAperturaBogota(data.createdAt||''):(typeof data.cfg[k]==='string'?data.cfg[k]:'');
         }
       }
-      sessionStorage.setItem('utch.docente',v);
+      ssEscribir('utch.docente',v);
       mostrarVistaDocente();
     }catch(err){
       msg.textContent=(err&&err.message)||'No se pudo conectar.';
@@ -1100,6 +1139,7 @@ function mostrarVistaDocente(){
         '<div><label>Período</label><p><b>'+esc(c.periodo||'-')+'</b></p></div>' +
       '</div>' +
     '</div>' +
+    '<p class="mut" id="estadoDocente" role="status" style="margin:-4px 0 14px" hidden></p>' +
     '<div class="card">' +
       '<h2>'+I.users+'Estudiantes registrados (<span id="totalEst">0</span>)</h2>' +
       '<div id="hoja"></div>' +
@@ -1128,7 +1168,7 @@ function mostrarVistaDocente(){
       const ctrl=new AbortController();
       const timeoutId=setTimeout(()=>ctrl.abort(),30000);
       try{
-        const r=await fetch('/api/sessions/teacher-signature',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:docenteSessionId,teacherCode:sessionStorage.getItem('utch.docente')||'',teacherSignature:firma}),signal:ctrl.signal});
+        const r=await fetch('/api/sessions/teacher-signature',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:docenteSessionId,teacherCode:ssLeer('utch.docente')||'',teacherSignature:firma}),signal:ctrl.signal});
         clearTimeout(timeoutId);
         const data=await r.json().catch(()=>null);
         if(r.ok&&data&&data.ok){
@@ -1217,17 +1257,23 @@ async function actualizarListaDocenteDesdeAPI(){
   pollApiDocenteCtrl=new AbortController();
   const sid=docenteSessionId;
   try{
-    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid)+'&teacherCode='+encodeURIComponent(sessionStorage.getItem('utch.docente')||'')+'&light=1',{signal:pollApiDocenteCtrl.signal});
+    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid)+'&teacherCode='+encodeURIComponent(ssLeer('utch.docente')||'')+'&light=1',{signal:pollApiDocenteCtrl.signal});
     const data=await r.json().catch(()=>null);
     if(!r.ok||!data||!data.ok) return;
     if(docenteSessionId!==sid) return;
-    /* Si la sesión ya no está abierta (cerrada por el representante), se detiene. */
-    if(data.status && data.status!=='OPEN'){ detenerPollingApiDocente(); return; }
+    /* Si la sesión ya no está abierta (cerrada por el representante o desde
+       el Historial), se detiene el polling y se muestra el estado. */
+    if(data.status && data.status!=='OPEN'){
+      detenerPollingApiDocente();
+      const ed=$('#estadoDocente');
+      if(ed){ ed.hidden=false; ed.textContent='Asistencia cerrada.'; }
+      return;
+    }
     const cambio=(Number(data.count)||0)!==pollMetaDocente.count || (data.latestChangeAt||null)!==pollMetaDocente.latestChangeAt || (data.teacherSignedAt||null)!==pollMetaDocente.teacherSignedAt;
     pollMetaDocente={count:Number(data.count)||0, latestChangeAt:data.latestChangeAt||null, teacherSignedAt:data.teacherSignedAt||null};
 
     if(!cambio) return;
-    const full=await fetchRegistrosCompletos(sid, pollApiDocenteCtrl, sessionStorage.getItem('utch.docente')||'');
+    const full=await fetchRegistrosCompletos(sid, pollApiDocenteCtrl, ssLeer('utch.docente')||'');
     if(!full) return;
     if(docenteSessionId!==sid) return;
     const srvFirmaDoc2 = firmaSegura(full.teacherSignature||'');
@@ -1284,7 +1330,7 @@ function actualizarSelectorMaterias(){
 /* Materias asignadas al representante (GET /api/rep/offerings).
    Reemplaza el selector local; ante fallo conserva el catálogo actual. */
 async function cargarOfertasRep(){
-  if(sessionStorage.getItem(SESSION_REP)!=='1') return false;
+  if(ssLeer(SESSION_REP)!=='1') return false;
   try{
     const r=await fetch('/api/rep/offerings');
     const data=await r.json().catch(()=>null);
@@ -1434,7 +1480,7 @@ async function confirmarCambioAsistencia(){
 
 /* ---------------------------- ADMIN -------------------------- */
 function vistaAdmin(app){
-  if(sessionStorage.getItem(SESSION_REP)!=='1') return loginAdmin(app);
+  if(ssLeer(SESSION_REP)!=='1') return loginAdmin(app);
   adminMode=true;
   const c=S.cfg;
   const campo=(k,t,ty='text')=>
@@ -1567,8 +1613,8 @@ function vistaAdmin(app){
     try{
       await fetch('/api/rep/logout',{method:'POST'});
     }catch(e){}
-    sessionStorage.removeItem(SESSION_REP);
-    try{ sessionStorage.removeItem(SESSION_REP_ID); }catch(e){}
+    ssQuitar(SESSION_REP);
+    ssQuitar(SESSION_REP_ID);
     repIdActual=''; repNombre='';
     adminMode=false; location.hash='';
   };
@@ -1989,18 +2035,21 @@ function vistaAdmin(app){
       detenerPollingApi();
       const claveAnterior=(S.sesion&&S.sesion.clave)||'';
  
-      try{ sessionStorage.removeItem(SESSION_EST); }catch(e){}
-      try{ sessionStorage.removeItem(SESSION_API); }catch(e){}
-      try{ sessionStorage.removeItem('utch.docente'); }catch(e){}
+      try{ ssQuitar(SESSION_EST); }catch(e){}
+      try{ ssQuitar(SESSION_API); }catch(e){}
+      try{ ssQuitar('utch.docente'); }catch(e){}
       try{
-        if(claveAnterior) sessionStorage.removeItem('utch.registro.'+claveAnterior);
+        if(claveAnterior) ssQuitar('utch.registro.'+claveAnterior);
         const borrar=[];
         for(let i=0;i<sessionStorage.length;i++){
           const k=sessionStorage.key(i);
           if(k&&k.indexOf('utch.registro.')===0) borrar.push(k);
         }
+        /* También la caché en memoria de ssLeer/ssEscribir, por si el
+           almacenamiento del navegador estaba bloqueado. */
+        Object.keys(_ssMem).forEach(k=>{ if(k.indexOf('utch.registro.')===0) borrar.push(k); });
 
-        borrar.forEach(k=>{ try{ sessionStorage.removeItem(k); }catch(e){} });
+        borrar.forEach(k=>{ try{ ssQuitar(k); }catch(e){} });
       }catch(e){}
       repSessionSelectionRequestId++;
       S.sesion={abierta:false,inicio:0,minutos:0,clave:'',sessionId:''};
@@ -2040,6 +2089,16 @@ async function actualizarListaDesdeAPI(){
     const data=await r.json().catch(()=>null);
     if(!r.ok||!data||!data.ok) return;
     if(ctrl.signal.aborted||!adminMode||S.sesion.sessionId!==sid) return;
+    /* Cerrada desde el Historial (admin) o por el representante en otro
+       dispositivo: se detecta en la misma consulta, se detiene el polling y
+       se muestra el estado. No se tocan los registros ya cargados. */
+    if(data.status && data.status!=='OPEN'){
+      S.sesion.abierta=false;
+      repRegAbiertos=false;
+      refrescarPanel();
+      detenerPollingApi();
+      return;
+    }
     if(typeof data.registrationOpen === 'boolean') repRegAbiertos=data.registrationOpen;
     const teacherSignedAt=data.teacherSignedAt||null;
     const cambioRegistros=(Number(data.count)||0)!==pollMeta.count || (data.latestChangeAt||null)!==pollMeta.latestChangeAt;
@@ -2431,11 +2490,11 @@ function loginAdmin(app){
         throw new Error('No se pudo confirmar la sesión.');
       }
       limpiarFallos();
-      try{ sessionStorage.setItem(SESSION_REP_ID,me.representative.id); }catch(e){}
+      try{ ssEscribir(SESSION_REP_ID,me.representative.id); }catch(e){}
       repIdActual=clean(me.representative.id,80);
       repNombre=clean(me.representative.name,120);
       await adoptarBorrador(me.representative.id);
-      sessionStorage.setItem(SESSION_REP,'1'); render();
+      ssEscribir(SESSION_REP,'1'); render();
     } catch(err) {
       const o=registrarFallo();
       if(o.until && o.until>Date.now()){
@@ -2778,7 +2837,7 @@ function uiPrompt(o){
     b.innerHTML=abierta?'Ver menos información &lt;':'Ver más información &gt;';
   });
   window.addEventListener('storage',alCambiarAlmacenamiento);
-  window.addEventListener('focus',()=>{ if(!saveTimer) sincronizar(); });
+  window.addEventListener('focus',()=>{ if(!saveTimer&&!guardandoEnCurso) sincronizar(); });
   window.addEventListener('beforeprint',()=>{ if(adminMode){ const h=$('#hoja'); if(h) h.innerHTML=hojaHTMLImpresion(); ajustarHojaUnaPagina(); } });
   window.addEventListener('afterprint',()=>{ const h=$('#hoja'); if(h){ h.style.removeProperty('zoom'); h.style.removeProperty('--fila'); } if(tituloPDF){ document.title=tituloPDF; tituloPDF=null; } });
   render();

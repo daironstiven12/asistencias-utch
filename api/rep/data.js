@@ -23,18 +23,18 @@ async function handleOfferings(req, res) {
         " p.email AS correo, f.name AS facultad, ap2.name AS programa, al.name AS nivel, ap.name AS periodo" +
         " FROM attendance_representative_offerings ro" +
         " JOIN course_offerings co ON co.id = ro.course_offering_id" +
-        " JOIN curriculum_subjects cs ON cs.id = co.curriculum_subject_id" +
-        " JOIN subjects s ON s.id = cs.subject_id" +
-        " JOIN academic_groups g ON g.id = co.group_id" +
-        " JOIN academic_programs ap2 ON ap2.id = g.program_id" +
-        " JOIN faculties f ON f.id = ap2.faculty_id" +
-        " JOIN academic_periods ap ON ap.id = co.academic_period_id" +
+        " LEFT JOIN curriculum_subjects cs ON cs.id = co.curriculum_subject_id" +
+        " LEFT JOIN subjects s ON s.id = cs.subject_id" +
+        " LEFT JOIN academic_groups g ON g.id = co.group_id" +
+        " LEFT JOIN academic_programs ap2 ON ap2.id = g.program_id" +
+        " LEFT JOIN faculties f ON f.id = ap2.faculty_id" +
+        " LEFT JOIN academic_periods ap ON ap.id = co.academic_period_id" +
         " LEFT JOIN academic_levels al ON al.id = cs.academic_level_id" +
         " LEFT JOIN teaching_assignments ta ON ta.course_offering_id = co.id AND ta.status = 'ACTIVE'" +
         " LEFT JOIN \"users\" u ON u.id = ta.user_id" +
         " LEFT JOIN persons p ON p.id = u.person_id" +
         " WHERE ro.representative_id = $1" +
-        " ORDER BY s.code",
+        " ORDER BY s.code NULLS LAST",
       [rep.id]
     );
     return res.status(200).json({

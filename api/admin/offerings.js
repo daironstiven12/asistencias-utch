@@ -104,7 +104,7 @@ async function handleGet(req, res) {
       grupoId: row.grupoId != null ? Number(row.grupoId) : null,
       grupo: row.grupo || null,
       programa: row.programa || null,
-      programaId: row.program_id != null ? Number(row.program_id) : null,
+      programaId: row.programaId != null ? Number(row.programaId) : null,
       facultad: row.facultad || null,
     })),
     catalogs: {

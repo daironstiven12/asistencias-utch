@@ -155,8 +155,8 @@ async function handleGet(req, res) {
   try {
     const s = await query(
       (light
-        ? "SELECT id, teacher_code, teacher_signed_at, registration_open, representative_id FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1"
-        : "SELECT id, teacher_code, teacher_signature, teacher_signed_at, registration_open, representative_id FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1"),
+        ? "SELECT id, status, teacher_code, teacher_signed_at, registration_open, representative_id FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1"
+        : "SELECT id, status, teacher_code, teacher_signature, teacher_signed_at, registration_open, representative_id FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1"),
       [sessionId.trim()]
     );
     if (!s.rows[0]) {
@@ -202,6 +202,7 @@ async function handleGet(req, res) {
     const ultimo = r.rows.length ? r.rows[r.rows.length - 1] : null;
     return res.status(200).json({
       ok: true,
+      status: s.rows[0].status,
       teacherSignature: s.rows[0].teacher_signature || null,
       teacherSignedAt: s.rows[0].teacher_signed_at || null,
       registrationOpen: s.rows[0].registration_open,

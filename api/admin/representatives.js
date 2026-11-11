@@ -106,11 +106,13 @@ async function handlePost(req, res) {
     }
     throw err;
   }
-  for (const offeringId of offeringIds) {
+  if (offeringIds.length) {
+    /* Inserción en una sola sentencia: atómica (todo o nada) y sin N viajes
+       a la base, igual que en el PATCH. */
     await query(
       "INSERT INTO attendance_representative_offerings (representative_id, course_offering_id)" +
-        " VALUES ($1, $2) ON CONFLICT DO NOTHING",
-      [id, offeringId]
+        " SELECT $1, unnest($2::bigint[]) ON CONFLICT DO NOTHING",
+      [id, offeringIds]
     );
   }
   return res.status(201).json({
@@ -150,14 +152,26 @@ async function handlePatch(req, res) {
     if (offeringIds === null || !(await assertOfferings(offeringIds))) {
       return res.status(400).json({ ok: false, error: "INVALID_DATA" });
     }
-    await query("DELETE FROM attendance_representative_offerings WHERE representative_id = $1", [
-      id.trim(),
-    ]);
-    for (const offeringId of offeringIds) {
-      await query(
-        "INSERT INTO attendance_representative_offerings (representative_id, course_offering_id) VALUES ($1, $2)",
-        [id.trim(), offeringId]
-      );
+    /* Transacción: el DELETE + los INSERT van juntos. Sin ella, un fallo a
+       mitad del bucle dejaba al representante SIN ninguna oferta asignada. */
+    const client = await getPool().connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("DELETE FROM attendance_representative_offerings WHERE representative_id = $1", [
+        id.trim(),
+      ]);
+      for (const offeringId of offeringIds) {
+        await client.query(
+          "INSERT INTO attendance_representative_offerings (representative_id, course_offering_id) VALUES ($1, $2)",
+          [id.trim(), offeringId]
+        );
+      }
+      await client.query("COMMIT");
+    } catch (err) {
+      try { await client.query("ROLLBACK"); } catch (e) {}
+      throw err;
+    } finally {
+      client.release();
     }
   }
   const o = await query(

@@ -594,6 +594,27 @@ html:has(.adm-layout),body:has(.adm-layout){height:100%;margin:0;overflow:hidden
   border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:2px;
 }
 button.s .spin{border-color:rgba(29,111,224,.25);border-top-color:var(--blue-600)}
+/* Botón "Cerrar" del Historial: secundario con acento ámbar, misma altura que
+   Ver/Eliminar y ancho fijo (el spinner ocupa el sitio del icono de candado). */
+button.s.btn-cerrar-hist{min-width:92px;background:#fffbeb;color:#b45309;border-color:#b45309}
+button.s.btn-cerrar-hist:hover:not(:disabled){
+  background:#fef3c7;border-color:#b45309;color:#b45309;
+  box-shadow:0 4px 12px rgba(180,83,9,.14);
+}
+button.s.btn-cerrar-hist .spin{
+  width:17px;height:17px;margin-right:0;vertical-align:-3px;
+  border-color:rgba(180,83,9,.28);border-top-color:#b45309;
+}
+/* Aviso breve del Historial ("Asistencia cerrada"). */
+.adm-toast{
+  position:fixed;right:22px;bottom:22px;z-index:50;margin:0;
+  background:#0b7a53;color:#fff;padding:11px 16px;border-radius:12px;
+  font-size:13.5px;font-weight:600;letter-spacing:-.005em;
+  box-shadow:0 12px 28px rgba(11,122,83,.32);
+  animation:admToastIn .18s ease;
+}
+@keyframes admToastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.adm-toast{animation:none}}
 button:disabled{opacity:.5;cursor:wait}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes admPop{

@@ -1,10 +1,14 @@
 "use strict";
 
-/* POST /api/sessions/close — cierre definitivo del representante propietario.
-   Atómico. Idempotente: no recalcula closed_at/purge_at. purge_at = +24h. */
+/* POST /api/sessions/close — cierre definitivo de la asistencia.
+   Atómico. Idempotente: no recalcula closed_at/purge_at. purge_at = +24h.
+   Lo puede hacer el representante propietario (cookie JWT + comprobación de
+   dueño) o el administrador (mismo ADMIN_SECRET del resto de api/admin/*),
+   en cuyo caso se omite la comprobación de dueño. Un solo SQL de cierre. */
 
 const { query } = require("../../lib/db");
 const { requireRep } = require("../../lib/repSession");
+const { isAdminRequest } = require("../../lib/adminAuth");
 
 function readBody(req) {
   let body = req.body;
@@ -23,21 +27,31 @@ module.exports = async function handler(req, res) {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ ok: false, error: "METHOD_NOT_ALLOWED" });
   }
-  const rep = await requireRep(req, res);
-  if (!rep) return;
+  /* Credenciales de administrador válidas → se omite la comprobación de dueño.
+     En cualquier otra caso sigue el flujo del representante, sin cambios. */
+  const esAdmin = isAdminRequest(req);
+  let rep = null;
+  if (!esAdmin) {
+    rep = await requireRep(req, res);
+    if (!rep) return;
+  }
   const body = readBody(req);
   const sessionId = body && body.sessionId;
   if (typeof sessionId !== "string" || sessionId.trim() === "") {
     return res.status(400).json({ ok: false, error: "INVALID_DATA" });
   }
+  const sid = sessionId.trim();
+  /* El filtro de dueño solo aplica al representante (el admin cierra cualquiera). */
+  const dueno = esAdmin ? "" : " AND representative_id = $2";
+  const args = esAdmin ? [sid] : [sid, rep.id];
   try {
     const r = await query(
       "UPDATE attendance_runtime_sessions SET status = 'CLOSED'," +
         " registration_open = FALSE," +
         " closed_at = NOW(), purge_at = NOW() + INTERVAL '24 hours'" +
-        " WHERE id = $1 AND representative_id = $2 AND status = 'OPEN'" +
+        " WHERE id = $1" + dueno + " AND status = 'OPEN'" +
         " RETURNING id, status, closed_at, purge_at",
-      [sessionId.trim(), rep.id]
+      args
     );
     const row = r.rows[0];
     if (row) {
@@ -53,8 +67,8 @@ module.exports = async function handler(req, res) {
     }
     const s = await query(
       "SELECT id, status, closed_at, purge_at FROM attendance_runtime_sessions" +
-        " WHERE id = $1 AND representative_id = $2 LIMIT 1",
-      [sessionId.trim(), rep.id]
+        " WHERE id = $1" + dueno + " LIMIT 1",
+      args
     );
     const own = s.rows[0];
     if (own && own.status !== "OPEN") {

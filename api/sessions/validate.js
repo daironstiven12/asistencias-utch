@@ -37,10 +37,10 @@ async function loadSessionCfg(sessionId) {
         " JOIN course_offerings co ON co.id = rs.course_offering_id" +
         " JOIN curriculum_subjects cs ON cs.id = co.curriculum_subject_id" +
         " JOIN subjects s ON s.id = cs.subject_id" +
-        " JOIN academic_groups g ON g.id = co.group_id" +
-        " JOIN academic_programs ap2 ON ap2.id = g.program_id" +
-        " JOIN faculties f ON f.id = ap2.faculty_id" +
-        " JOIN academic_periods ap ON ap.id = co.academic_period_id" +
+        " LEFT JOIN academic_groups g ON g.id = co.group_id" +
+        " LEFT JOIN academic_programs ap2 ON ap2.id = g.program_id" +
+        " LEFT JOIN faculties f ON f.id = ap2.faculty_id" +
+        " LEFT JOIN academic_periods ap ON ap.id = co.academic_period_id" +
         " LEFT JOIN academic_levels al ON al.id = cs.academic_level_id" +
         " LEFT JOIN teaching_assignments ta ON ta.course_offering_id = co.id AND ta.status = 'ACTIVE'" +
         " LEFT JOIN users u ON u.id = ta.user_id" +
@@ -89,6 +89,12 @@ module.exports = async function handler(req, res) {
     );
     const row = r.rows[0];
     if (!row || row.status !== "OPEN" || !row.role) {
+      /* Aditivo: si el código existía y la sesión ya está cerrada, se informa
+         status (el error sigue siendo INVALID_OR_EXPIRED_CODE) para que el
+         cliente pueda mostrar "asistencia cerrada" en vez de "código inválido". */
+      if (row && row.status && row.status !== "OPEN") {
+        return res.status(200).json({ ok: false, error: "INVALID_OR_EXPIRED_CODE", status: row.status });
+      }
       return res.status(200).json({ ok: false, error: "INVALID_OR_EXPIRED_CODE" });
     }
     const cfg = await loadSessionCfg(row.id);

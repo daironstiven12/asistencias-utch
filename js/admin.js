@@ -173,7 +173,9 @@ const uiAlertA=o=>{ o=o||{}; return uiEncolarA({tipo:'alert',kind:o.kind||'info'
 
 /* ---------------- Estado y API ---------------- */
 const ADM_KEY='utch.sesion.adminSecret';
-let adminSecret=sessionStorage.getItem(ADM_KEY)||'';
+/* Lectura protegida: si el navegador bloquea sessionStorage, un throw aquí
+   detendría la carga de todo admin.js (página en blanco). */
+let adminSecret=(()=>{ try{ return sessionStorage.getItem(ADM_KEY)||''; }catch(e){ return ''; } })();
 let ofs=[], listaReps=[], listaDoc=[], cats={periodos:[],niveles:[],grupos:[],asignaturas:[],docentes:[]};
 let vista='resumen', busRep='', busOf='', filtPer='', filtNiv='', filtGrupo='', filtProg='', filtProgRep='';
 let repPage=1, repPageSize=9;
@@ -557,6 +559,12 @@ function abrirModalRep(rep){
       ? String(a.nombre).localeCompare(String(b.nombre))
       : (a.numero-b.numero));
   const idNivelGr=o=>(o&&o.nivelId!=null)?o.nivelId:'';
+  /* Ids de las ofertas que realmente se pintan en el modal. Al guardar se
+     suman a los marcados las asignaciones ya existentes que quedaron fuera
+     del render (filtro de programa activo u oferta fuera del catálogo), para
+     que un guardado no las elimine en silencio. */
+  const visibles=new Set();
+  grupos.forEach(g=>g.items.forEach(o=>visibles.add(Number(o.courseOfferingId))));
   $a('#admModal').innerHTML=
     '<div class="adm-modal"><div class="box"><button type="button" class="adm-modal-x" data-close aria-label="Cerrar">'+I.x+'</button><h2>'+(rep?'Editar representante':'Nuevo representante')+'</h2>'+
       '<div class="grid">'+
@@ -598,6 +606,10 @@ function abrirModalRep(rep){
   $a('#admMOk').onclick=async()=>{
     const msg=$a('#admMMsg');
     const ids=Array.from($a('#admModal').querySelectorAll('input[data-of]:checked')).map(i=>Number(i.value));
+    /* Conservar las asignaciones existentes que no están pintadas en el modal
+       (filtro de programa/semestre activo o sin catálogo): no son una
+       deselección del usuario, así que no deben borrarse al guardar. */
+    sel.forEach(id=>{ const n=Number(id); if(n>0&&!visibles.has(n)&&!ids.includes(n)) ids.push(n); });
     try{
       if(!rep){
         await api('/api/admin/representatives',{method:'POST',headers:headers(),body:JSON.stringify({name:$a('#mRepName').value,username:$a('#mRepUser').value,password:$a('#mRepPass').value,courseOfferingIds:ids,active:true})});
@@ -849,14 +861,10 @@ function abrirModalDoc(){
 }
 
 /* ---------------- Ofertas ---------------- */
-function ofsFiltradas(){
-  const q=busOf.trim().toLowerCase();
-  return ofs.filter(o=>
-    (!filtPer||String(o.periodoId)===String(filtPer)) &&
-    (!filtNiv||String(o.nivelId)===String(filtNiv)) &&
-    (!q||(o.asignatura||'').toLowerCase().includes(q)||(o.codigo||'').toLowerCase().includes(q))
-  );
-}
+/* Nota: existía una segunda definición duplicada de ofsFiltradas() (sin los
+   filtros de grupo y programa). En JavaScript gana la última declaración,
+   así que la copia anterior era código muerto: se elimina para evitar
+   futuras confusiones. No cambia ningún comportamiento visible. */
 function ofsFiltradas(){
   const q=busOf.trim().toLowerCase();
   return ofs.filter(o=>
@@ -1058,13 +1066,26 @@ async function cargarHistorial(){
   if(hist.progId) q.set('progId',hist.progId);
   if(hist.repId) q.set('repId',hist.repId);
   if(hist.status) q.set('status',hist.status);
-  const data=await api('/api/admin/sesiones?'+q.toString());
-  if(seq!==hist._seq) return;
-  hist.total=data.total||0;
-  hist.pages=data.pages||1;
-  hist.page=data.page||1;
-  hist.data=data.sesiones||[];
-  pintarHistorial();
+  try{
+    const data=await api('/api/admin/sesiones?'+q.toString());
+    if(seq!==hist._seq) return;
+    hist.total=data.total||0;
+    hist.pages=data.pages||1;
+    hist.page=data.page||1;
+    hist.data=data.sesiones||[];
+    pintarHistorial();
+  }catch(err){
+    /* Siempre se restaura el estado de la paginación: si la petición falla
+       (o se descarta por una más reciente), el indicador "Consultando…" y los
+       botones deshabilitados no deben quedarse bloqueados en pantalla. */
+    if(seq===hist._seq){
+      const pga=$a('#histPag');
+      if(pga) pga.textContent='No se pudo cargar el historial.';
+      if(bP) bP.disabled=hist.page<=1;
+      if(bN) bN.disabled=hist.page>=hist.pages;
+    }
+    throw err;
+  }
 }
 /* Indicador de carga en un botón: deshabilita y muestra spinner + texto.
    Devuelve función para restaurar. Si ya está ocupado, devuelve null. */
@@ -1090,16 +1111,34 @@ function filaHist(s){
     '<td data-label="Estado">'+badgeEstado(s.status)+'</td>'+
     '<td data-label="Est.">'+s.recordCount+'</td>'+
     '<td data-label="Acciones" class="nowrap"><button class="s" data-ver="'+escA(s.sessionId)+'">'+I.eye+'Ver</button> '+
+    (enVivo?'<button class="s btn-cerrar-hist" data-cerrar="'+escA(s.sessionId)+'" aria-label="Cerrar asistencia '+escA(s.asignatura||'')+'">'+I.lock+'Cerrar</button> ':'')+
     '<button class="d" data-borrar="'+escA(s.sessionId)+'">'+I.trash+'Eliminar</button></td>'+
   '</tr>';
+}
+/* Enlaza las acciones de una fila (o de todo el cuerpo de la tabla). */
+function enlazarFilaHist(root){
+  root.querySelectorAll('[data-ver]').forEach(b=>{ b.onclick=()=>verDetalleHist(b.dataset.ver,b); });
+  root.querySelectorAll('[data-borrar]').forEach(b=>{ b.onclick=()=>eliminarSesionHist(b.dataset.borrar,b); });
+  root.querySelectorAll('[data-cerrar]').forEach(b=>{ b.onclick=()=>cerrarSesionHist(b.dataset.cerrar,b); });
+}
+/* Reemplaza solo la fila cerrada: no toca página, filtros ni búsqueda. */
+function refrescarFilaHist(item){
+  const trViejo=$a('#histBody tr[data-sid="'+String(item.sessionId).replace(/"/g,'\\"')+'"]');
+  if(!trViejo) return pintarHistorial();
+  const tmp=document.createElement('tbody');
+  tmp.innerHTML=filaHist(item);
+  const trNuevo=tmp.firstElementChild;
+  if(!trNuevo) return;
+  trViejo.replaceWith(trNuevo);
+  enlazarFilaHist(trNuevo);
 }
 function pintarHistorial(){
   const ini=(hist.page-1)*hist.pageSize+1;
   const fin=Math.min(hist.total,ini+hist.data.length-1);
   const tb=$a('#histBody');
-  if(tb) tb.innerHTML=hist.data.length?hist.data.map(filaHist).join(''):'<tr><td colspan="8">'+vacioA('Sin resultados para estos filtros.')+'</td></tr>';
-  tb.querySelectorAll('[data-ver]').forEach(b=>{ b.onclick=()=>verDetalleHist(b.dataset.ver,b); });
-  tb.querySelectorAll('[data-borrar]').forEach(b=>{ b.onclick=()=>eliminarSesionHist(b.dataset.borrar,b); });
+  if(!tb) return;
+  tb.innerHTML=hist.data.length?hist.data.map(filaHist).join(''):'<tr><td colspan="8">'+vacioA('Sin resultados para estos filtros.')+'</td></tr>';
+  enlazarFilaHist(tb);
   const pg=$a('#histPag');
   if(pg) pg.innerHTML=hist.total
     ? 'Página <b>'+hist.page+'</b> de <b>'+hist.pages+'</b> · '+hist.total+' resultado(s)'+(hist.data.length?' (viendo '+(hist.data.length?ini:0)+'–'+fin+')':'')
@@ -1109,6 +1148,10 @@ function pintarHistorial(){
   if(bN) bN.disabled=hist.page>=hist.pages;
 }
 function vistaHistorial(){
+  /* Cancela cualquier búsqueda diferida pendiente de la vista anterior:
+     sin esto, el temporizador podía disparar una consulta sobre un DOM ya
+       reemplazado. */
+  clearTimeout(hist._t); hist._t=null;
   $a('#admBody').innerHTML=
     '<p class="adm-sec-sub">Sesiones de asistencia registradas en el servidor, de la más reciente a la más antigua.</p>'+
     '<div class="adm-filters adm-filters-hist"><div class="adm-filter-row">'+
@@ -1445,7 +1488,10 @@ async function verDetalleHist(id, btn){
       const finBtn=botonCarga(btn,'Guardando…');
       try{
         const actualizada=await guardarFirmaAdmin(id, field, dataUrl);
-        if(miRequestId!==admFirmaRequestId) return; /* respuesta antigua: ignorar */
+        /* Comparar contra el contador VIGENTE: miRequestId y admFirmaRequestId
+           son la misma captura, así que la comparación anterior nunca fallaba
+           y una respuesta antigua podía sobrescribir el detalle abierto. */
+        if(miRequestId!==verDetalleHist.requestId) return; /* respuesta antigua: ignorar */
         mostrarMsg('Firma de '+campoTexto+' guardada correctamente.','success');
         fileIn.value='';
         /* Recargar detalle para reflejar la firma en la hoja y estados. */
@@ -1497,6 +1543,56 @@ async function eliminarSesionHist(id, btn){
   }finally{
     eliminandoSesion=false;
     if(finBtn) finBtn();
+  }
+}
+
+/* ------------- Cierre de asistencia desde el Historial ------------- */
+let cerrandoSesion=false;
+/* Aviso breve que se va solo (role=status para lectores de pantalla). */
+function avisoHistorial(texto){
+  const m=$a('#admModal'); if(!m) return;
+  let t=$a('#histAviso');
+  if(!t){
+    t=document.createElement('p');
+    t.id='histAviso'; t.className='adm-toast'; t.setAttribute('role','status');
+    m.appendChild(t);
+  }
+  t.textContent=texto; t.hidden=false;
+  clearTimeout(t._h);
+  t._h=setTimeout(()=>{ t.hidden=true; t.textContent=''; },4000);
+}
+async function cerrarSesionHist(id, btn){
+  if(cerrandoSesion) return;                       /* sin doble envío */
+  const it=hist.data.find(x=>String(x.sessionId)===String(id));
+  if(!it||it.status!=='OPEN') return;
+  cerrandoSesion=true;
+  try{
+    const ok=await uiConfirmA({kind:'warn',title:'Cerrar asistencia',okText:'Cerrar asistencia',cancelText:'Cancelar',
+      message:'Se cerrará la asistencia de «'+(it.asignatura||'Asistencia')+'» ('+(it.representante||'—')+').\n'+
+              'Los estudiantes ya no podrán registrarse. El representante podrá reabrirla desde su panel.'});
+    if(!ok) return;
+    /* Spinner dentro y mismo texto: el ancho del botón no cambia al cargar. */
+    const finBtn=btn?botonCarga(btn,'Cerrar'):null;
+    try{
+      const data=await api('/api/sessions/close',{method:'POST',headers:headers(),body:JSON.stringify({sessionId:String(id)})});
+      if(data&&data.session){
+        if(data.session.status) it.status=data.session.status;
+        if(data.session.closedAt) it.closedAt=data.session.closedAt;
+        if(data.session.purgeAt) it.purgeAt=data.session.purgeAt;
+      }
+      if(it.status!=='OPEN') refrescarFilaHist(it);
+      avisoHistorial('Asistencia cerrada');
+    }catch(e){
+      /* La fila queda como estaba. */
+      if(e&&e.code==='UNAUTHORIZED') irLogin('Sesión administrativa vencida. Ingrese de nuevo.');
+      else await uiAlertA({kind:'error',title:'No se pudo cerrar',
+        message:'No se pudo cerrar la asistencia ('+((e&&e.code)||'error')+(e&&e.status?' · HTTP '+e.status:'')+
+                '). La asistencia sigue como estaba.'});
+    }finally{
+      if(finBtn) finBtn();
+    }
+  }finally{
+    cerrandoSesion=false;
   }
 }
 

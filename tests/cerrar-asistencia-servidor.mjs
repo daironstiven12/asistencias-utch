@@ -66,7 +66,7 @@ require.cache[rutaRep] = {
   },
 };
 
-const cerrar = require("../api/sessions/close.js");
+const cerrar = require("../api/sessions/_close.js");
 
 /* ----------------------------- utilidades --------------------------- */
 function fakeRes() {

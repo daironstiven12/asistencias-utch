@@ -36,6 +36,26 @@
     {
       "source": "/api/rep/session",
       "destination": "/api/rep/data?op=session"
+    },
+    {
+      "source": "/api/sessions/validate",
+      "destination": "/api/sessions/ops?__op=validate"
+    },
+    {
+      "source": "/api/sessions/close",
+      "destination": "/api/sessions/ops?__op=close"
+    },
+    {
+      "source": "/api/sessions/teacher-signature",
+      "destination": "/api/sessions/ops?__op=teacher-signature"
+    },
+    {
+      "source": "/api/sessions/topics",
+      "destination": "/api/sessions/ops?__op=topics"
+    },
+    {
+      "source": "/api/sessions/teacher-saved-signature",
+      "destination": "/api/sessions/ops?__op=teacher-saved-signature"
     }
   ]
 }

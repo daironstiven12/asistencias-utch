@@ -92,8 +92,8 @@ require.cache[schemaPath] = {
   },
 };
 
-const topicsHandler = require(path.join(ROOT, "api/sessions/topics.js"));
-const savedSigHandler = require(path.join(ROOT, "api/sessions/teacher-saved-signature.js"));
+const topicsHandler = require(path.join(ROOT, "api/sessions/_topics.js"));
+const savedSigHandler = require(path.join(ROOT, "api/sessions/_teacher-saved-signature.js"));
 
 const results = [];
 const check = (name, ok, detail="") => { results.push({name,ok,detail}); console.log(`${ok?"PASS":"FAIL"}  ${name}${detail?"  → "+detail:""}`); };

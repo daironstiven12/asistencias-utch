@@ -110,8 +110,8 @@ require.cache[schemaPath] = {
 };
 
 const sessionsCreate = require(path.join(ROOT, "api/sessions.js"));
-const teacherSig = require(path.join(ROOT, "api/sessions/teacher-signature.js"));
-const repTeacherSig = require(path.join(ROOT, "api/rep/sessions/[id]/teacher-signature.js"));
+const teacherSig = require(path.join(ROOT, "api/sessions/_teacher-signature.js"));
+const repTeacherSig = require(path.join(ROOT, "api/rep/sessions/[id]/_teacher-signature.js"));
 
 const results = [];
 const check = (name, ok, detail="") => { results.push({name,ok,detail}); console.log(`${ok?"PASS":"FAIL"}  ${name}${detail?"  → "+(typeof detail==="string"?detail:JSON.stringify(detail)):""}`); };

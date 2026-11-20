@@ -348,8 +348,10 @@ function normalizar(o){
     cfg,
     materias,
     materiaActiva:materias.some(materia=>materia.id===materiaActiva)?materiaActiva:'',
-    firmaDoc:firmaSegura(src.firmaDoc),
-    firmaRep:firmaSegura(src.firmaRep),
+    /* Firmas: SIEMPRE se hidratan desde el servidor para la sesión activa.
+       Nunca se restauran del borrador local (evita heredar firmas antiguas). */
+    firmaDoc:'',
+    firmaRep:'',
     logo:'',
     sesion:{
       abierta:!!ses.abierta,
@@ -380,7 +382,13 @@ async function guardar(){
      escritura sigue en curso (leería el valor anterior y perdería el estado
      recién validado). */
   guardandoEnCurso=true;
-  try{ localStorage.setItem(DATA_STORE,await cifrar(S)); }
+  try{
+    /* Las firmas (docente/representante) son estado confirmado de la sesión en
+       el servidor: no se persisten en el borrador local para evitar que una
+       firma anterior reaparezca en una asistencia nueva o en otra sesión. */
+    const paraGuardar = { ...S, firmaDoc:'', firmaRep:'' };
+    localStorage.setItem(DATA_STORE,await cifrar(paraGuardar));
+  }
   catch(e){ console.warn('No se pudo guardar.'); }
   finally{ guardandoEnCurso=false; }
 }
@@ -1185,6 +1193,14 @@ function vistaDocente(app){
       }
       docenteSessionId=String(data.sessionId||'');
       docenteInfo={};
+      /* Estado limpio: la firma y los registros de ESTA sesión se cargan solo
+         desde el servidor (fuente única). Nunca se hereda del borrador local ni
+         de una asistencia anterior en el mismo dispositivo/navegador. */
+      S.firmaDoc='';
+      S.firmaRep='';
+      S.estudiantes=[];
+      S.sesion.sessionId=docenteSessionId;
+      S.sesion.abierta=(data.status==='OPEN');
       if(data.cfg&&typeof data.cfg==='object'){
         for(const k of ['facultad','programa','nivel','periodo','asignatura','codigo','docente','correo']){
           if(typeof data.cfg[k]==='string'&&data.cfg[k]) S.cfg[k]=clean(data.cfg[k],160);
@@ -1527,8 +1543,11 @@ async function actualizarRegistrosDesdeAPI(sid, ctrl, teacherSignedAt){
     return false;
   }
 
+  /* Fuente única de verdad: la firma del docente solo cuenta si el servidor la
+     tiene (teacher_signature / teacher_signed_at escritos por acción explícita).
+     Nunca se conserva una firma local al hidratar/actualizar la sesión. */
   const srvFirmaDoc=firmaSegura(data.teacherSignature||'');
-  if(srvFirmaDoc){ S.firmaDoc=srvFirmaDoc; }
+  S.firmaDoc = srvFirmaDoc;
   /* Temas desde servidor (fuente única) si disponibles */
   if(Object.prototype.hasOwnProperty.call(data,'topics')){
     p15TopicsCap='ok';
@@ -1614,7 +1633,7 @@ async function actualizarListaDocenteDesdeAPI(){
     if(!full) return;
     if(docenteSessionId!==sid) return;
     const srvFirmaDoc2 = firmaSegura(full.teacherSignature||'');
-    if(srvFirmaDoc2){ S.firmaDoc = srvFirmaDoc2; }
+    S.firmaDoc = srvFirmaDoc2;
     if(Object.prototype.hasOwnProperty.call(full,'topics') && p15TopicsCap!=='unavailable' && !docenteOfertaSinAsignar()){
       p15TopicsCap='ok';
       if(!p15TemasBusy){
@@ -1829,7 +1848,9 @@ async function confirmarCambioAsistencia(){
   S.firmaDoc='';
   S.firmaRep='';
   if(pads.rep) pads.rep.clear();
+  if(pads.doc) pads.doc.clear();
   const msgFirmaRep=$('#msgFirmaRep'); if(msgFirmaRep) msgFirmaRep.textContent='';
+  const msgFirmaDocRep=$('#msgFirmaDocRep'); if(msgFirmaDocRep) msgFirmaDocRep.textContent='';
   S.sesion.clave='';
   S.sesion.sessionId='';
   S.sesion.inicio=0;
@@ -1941,7 +1962,8 @@ function vistaAdmin(app){
       '<div class="row" style="align-items:start">' +
         '<div><label>Firma del docente</label><div id="padDoc"></div>' +
           '<p style="margin-top:12px"><button id="saveDoc">'+I.check+'Guardar firma</button> ' +
-          '<button class="d" id="delDoc">'+I.trash+'Quitar</button></p></div>' +
+          '<button class="d" id="delDoc">'+I.trash+'Quitar</button> ' +
+          '<span id="msgFirmaDocRep" class="mut" role="status"></span></p></div>' +
         '<div><label>Firma del representante de clase</label><div id="padRep"></div>' +
           '<p style="margin-top:12px"><button id="saveRep">'+I.check+'Guardar firma</button> ' +
           '<button class="d" id="delRep">'+I.trash+'Quitar</button> ' +
@@ -2145,7 +2167,9 @@ function vistaAdmin(app){
       S.firmaDoc='';
       S.firmaRep='';
       if(pads.rep) pads.rep.clear();
+      if(pads.doc) pads.doc.clear();
       const msgFirmaRep=$('#msgFirmaRep'); if(msgFirmaRep) msgFirmaRep.textContent='';
+      const msgFirmaDocRep=$('#msgFirmaDocRep'); if(msgFirmaDocRep) msgFirmaDocRep.textContent='';
       repRegAbiertos=true;
       redMensaje='';
       await guardar(); refrescarPanel();
@@ -2255,7 +2279,9 @@ function vistaAdmin(app){
       S.firmaDoc='';
       S.firmaRep='';
       if(pads.rep) pads.rep.clear();
+      if(pads.doc) pads.doc.clear();
       const msgFirmaRep=$('#msgFirmaRep'); if(msgFirmaRep) msgFirmaRep.textContent='';
+      const msgFirmaDocRep=$('#msgFirmaDocRep'); if(msgFirmaDocRep) msgFirmaDocRep.textContent='';
       repRegAbiertos=true;
       redMensaje='';
       await guardar(); refrescarPanel();
@@ -2291,8 +2317,59 @@ function vistaAdmin(app){
   pads.rep=sigPad($('#padRep'));
   if(S.firmaDoc) pads.doc.set(S.firmaDoc);
   if(S.firmaRep) pads.rep.set(S.firmaRep);
-  $('#saveDoc').onclick=async()=>{ const g=pads.doc.get(); if(g){ S.firmaDoc=firmaSegura(g)||g; await guardar(); pintarHoja(); } };
-  $('#delDoc').onclick=async()=>{ S.firmaDoc=''; pads.doc.clear(); await guardar(); pintarHoja(); };
+  $('#saveDoc').onclick=async()=>{
+    const g=pads.doc && pads.doc.get();
+    const msg=$('#msgFirmaDocRep');
+    if(!g){ if(msg) msg.textContent='Realice la firma del docente primero.'; return; }
+    const sid=S.sesion.sessionId||'';
+    if(!sid){ if(msg) msg.textContent='Abra o seleccione una asistencia antes de guardar la firma.'; return; }
+    const btn=$('#saveDoc'); if(btn) btn.disabled=true;
+    if(msg) msg.textContent='Guardando...';
+    try{
+      const r=await fetch('/api/rep/sessions/'+encodeURIComponent(sid)+'/teacher-signature',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({teacherSignature:g})
+      });
+      const data=await r.json().catch(()=>null);
+      if(!r.ok||!data||!data.ok){
+        if(msg) msg.textContent=(data&&data.error==='SESSION_NOT_AVAILABLE')
+          ?'La asistencia ya no está disponible para firmar.'
+          :(data&&data.error==='SESSION_NOT_FOUND')
+            ?'No se pudo guardar: la asistencia no está disponible.'
+            :'No se pudo guardar la firma. Inténtelo nuevamente.';
+        return;
+      }
+      const guardada=firmaSegura((data.session&&data.session.teacherSignature)||g)||g;
+      S.firmaDoc=guardada;
+      if(data.session&&data.session.teacherSignedAt){
+        pollMeta.teacherSignedAt=data.session.teacherSignedAt;
+        pollMeta.teacherSignatureAttemptedAt=null;
+        pollMeta.teacherSignatureRetryAt=0;
+      }
+      pintarHoja();
+      if(msg) msg.textContent='Firma del docente guardada correctamente.';
+    }catch(e){
+      if(msg) msg.textContent='No se pudo conectar con el servidor. Verifique su conexión e inténtelo nuevamente.';
+    }finally{
+      if(btn) btn.disabled=false;
+    }
+  };
+  $('#delDoc').onclick=async()=>{
+    if(pads.doc) pads.doc.clear();
+    const sid=S.sesion.sessionId||'';
+    if(sid){
+      /* La firma confirmada en servidor es la fuente de verdad y no se borra
+         desde aquí; se recarga para no mostrar un estado local incorrecto. */
+      try{ await actualizarRegistrosDesdeAPI(sid, {signal:{aborted:false}}, pollMeta.teacherSignedAt); }catch(e){}
+      const msg=$('#msgFirmaDocRep');
+      if(msg) msg.textContent=S.firmaDoc?'La firma confirmada en el servidor se conserva.':'Firma borrada del cuadro.';
+    }else{
+      S.firmaDoc='';
+      pintarHoja();
+      const msg=$('#msgFirmaDocRep'); if(msg) msg.textContent='Firma borrada.';
+    }
+  };
   $('#saveRep').onclick=async()=>{
     const g=pads.rep.get();
     const msg=$('#msgFirmaRep');

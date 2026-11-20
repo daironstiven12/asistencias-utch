@@ -817,12 +817,9 @@ const MAX_SIGNATURE = 1000000;
 
 /* PATCH ?op=sesiones&signature=1 {sessionId, field, signature}.
    Permite al administrador cargar o reemplazar únicamente teacher_signature
-   o representative_signature de una sesión existente. No toca otros campos
-   ni firmas de estudiantes. No crea almacenamiento paralelo.
-   Criterio de *_signed_at: no se actualiza al cargar una firma de forma
-   retroactiva desde administración, ya que la marca de tiempo reflejaría
-   la subida del administrador y no el momento real de la firma del titular.
-   El flag teacherSigned / repSigned se deriva de la presencia del campo. */
+   o representative_signature de una sesión existente (acción explícita). No toca
+   otros campos ni firmas de estudiantes. No crea almacenamiento paralelo.
+   Se registra *_signed_at = NOW() como marca de la acción explícita de carga. */
 async function handleSesionSignature(req, res) {
   const body = readBody(req);
   const sessionId = body && body.sessionId;
@@ -855,8 +852,9 @@ async function handleSesionSignature(req, res) {
       return res.status(404).json({ ok: false, error: "SESSION_NOT_FOUND" });
     }
 
+    const signedAtCol = field === "teacher_signature" ? "teacher_signed_at" : "representative_signed_at";
     const r = await query(
-      "UPDATE attendance_runtime_sessions SET " + field + " = $1 WHERE id = $2" +
+      "UPDATE attendance_runtime_sessions SET " + field + " = $1, " + signedAtCol + " = NOW() WHERE id = $2" +
         " RETURNING id, teacher_signature AS \"teacherSignature\"," +
         " representative_signature AS \"representativeSignature\"",
       [sig, sid]

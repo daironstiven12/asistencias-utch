@@ -32,9 +32,31 @@ const fmtFecha = iso => {
   return m ? `${m[3]}-${m[2]}-${m[1]}` : String(iso||'');
 };
 
+/* Nombre de archivo al descargar/imprimir (PROMPT 14, punto 2):
+   Asist_NNN_materia_periodo.
+   - NNN: orden de apertura de las asistencias de la misma oferta (attendanceNumber);
+     sin número, se usa 1. "Si pasa de 999 se amplía".
+   - materia: minúsculas, sin tildes (ñ→n), espacios y signos a "_", ≤40 car,
+     sin "_" al inicio/final ni repetidos.
+   - periodo: tal cual ("2026-2"); si falta se omite ese segmento. */
+function nombreArchivoAsist(attendanceNumber, asignatura, periodo){
+  const deja = s => String(s||'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').replace(/_+/g,'_')
+    .slice(0,40);
+  const num = Number(attendanceNumber);
+  const n = String(num>0?num:1).padStart(3,'0');
+  const partes = ['Asist_'+n, deja(asignatura), periodo===undefined||periodo===null?'':String(periodo)];
+  return partes.filter(s=>s).join('_');
+}
+
 const fechaAperturaBogota = iso => {
   try{
     if(iso===null||iso===undefined||iso==='') return '';
+    /* Cadena que ya es una fecha civil (ej. "2026-11-19"): se devuelve tal
+       cual — él mismo es el día en Bogotá de la apertura. */
+    if(typeof iso==='string' && /^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
     const d=new Date(iso);
     if(isNaN(d)) return '';
     const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
@@ -188,12 +210,14 @@ function estaBloqueado() {
 
 /* -------------------------- Estado --------------------------- */
 const MATERIA_CAMPOS=['facultad','programa','nivel','asignatura','codigo','periodo','cds','docente','temas'];
-/* Datos comunes a todas las asignaturas (configuración del período académico) */
+/* Datos comunes a todas las asignaturas (configuración del período académico).
+   Periodo sin default fijo: se toma de la oferta, o del periodo activo en BD
+   cuando aplique, o queda vacío si falta. */
 const DATOS_COMUNES={
   facultad:'INGENIERÍA',
   programa:'INGENIERÍA DE TELECOMUNICACIONES E INFORMÁTICA',
   nivel:'VIII',
-  periodo:'2026-1'
+  periodo:''
 };
 const MATERIAS_SEMESTRE=[
   {id:'sem-2720208-comunicacion-analoga',datos:{asignatura:'COMUNICACIÓN ANÁLOGA',codigo:'2720208',docente:'JOHAN FERNEY PINO CUESTA'},correo:'',horas:4,courseOfferingId:1},
@@ -220,13 +244,73 @@ let tituloPDF=null;
 let repRegAbiertos=true;
 let pollApi=null, pollApiCtrl=null;
 
-let pollMeta={count:0, latestChangeAt:null, teacherSignedAt:null, teacherSignatureAttemptedAt:null, teacherSignatureRetryAt:0};
-let pollMetaDocente={count:0, latestChangeAt:null, teacherSignedAt:null};
+let pollMeta={count:0, latestChangeAt:null, teacherSignedAt:null, teacherSignatureAttemptedAt:null, teacherSignatureRetryAt:0, topicsUpdatedAt:null, topicsVersion:null};
+let pollMetaDocente={count:0, latestChangeAt:null, teacherSignedAt:null, topicsUpdatedAt:null, topicsVersion:null};
 
 let pollPrecarga=false;
 let repSessionSelectionRequestId=0;
 let docenteSessionId=null, pollApiDocente=null, pollApiDocenteCtrl=null, docenteInfo=null;
 let cierreEnCurso=false;
+
+/* PROMPT 15: capacidades detectadas en servidor (null=desconocido).
+   'ok' disponible, 'unavailable' columna/tabla ausente (script 106 no aplicado),
+   'not_assigned' oferta sin docente (solo firma guardada). */
+let p15TopicsCap=null, p15SavedSigCap=null;
+let p15SavedSigInfo=null; /* {has, updatedAt} cuando se consultó */
+let p15TemasBusy=false, p15FirmaBusy=false;
+
+function p15TemasDisponible(){ return p15TopicsCap==='ok'; }
+function p15FirmaGuardadaDisponible(){ return p15SavedSigCap==='ok'; }
+function p15SinDocenteAsignado(){ return p15SavedSigCap==='not_assigned'; }
+
+async function p15GuardarTemasServidor(sessionId, teacherCode, texto){
+  const body={sessionId, topics:String(texto||'')};
+  if(teacherCode) body.teacherCode=teacherCode;
+  const r=await fetch('/api/sessions/topics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const data=await r.json().catch(()=>null);
+  if(r.status===501||(data&&data.error==='TOPICS_UNAVAILABLE')){ p15TopicsCap='unavailable'; return {ok:false, unavailable:true, data}; }
+  if(r.ok&&data&&data.ok){ p15TopicsCap='ok'; return {ok:true, data}; }
+  return {ok:false, data};
+}
+async function p15BorrarTemasServidor(sessionId, teacherCode){
+  const body={sessionId, borrar:true};
+  if(teacherCode) body.teacherCode=teacherCode;
+  const r=await fetch('/api/sessions/topics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const data=await r.json().catch(()=>null);
+  if(r.status===501||(data&&data.error==='TOPICS_UNAVAILABLE')){ p15TopicsCap='unavailable'; return {ok:false, unavailable:true, data}; }
+  if(r.ok&&data&&data.ok){ p15TopicsCap='ok'; return {ok:true, data}; }
+  return {ok:false, data};
+}
+async function p15FirmaGuardadaOp(op, sessionId, teacherCode, extra){
+  const body=Object.assign({sessionId, op}, extra||{});
+  if(teacherCode) body.teacherCode=teacherCode;
+  const method=(op==='get')?'GET':(op==='delete'?'DELETE':'POST');
+  let url='/api/sessions/teacher-saved-signature';
+  const opts={method, headers:{}};
+  if(method==='GET'){
+    const qs=new URLSearchParams({op:'get',sessionId:String(sessionId||''),teacherCode:String(teacherCode||'')});
+    url+='?'+qs.toString();
+  } else {
+    opts.headers['Content-Type']='application/json';
+    opts.body=JSON.stringify(body);
+  }
+  const r=await fetch(url,opts);
+  const data=await r.json().catch(()=>null);
+  if(r.status===501||(data&&data.error==='SAVED_SIGNATURE_UNAVAILABLE')){ p15SavedSigCap='unavailable'; return {ok:false, unavailable:true, data}; }
+  if(r.status===409||(data&&data.error==='TEACHER_NOT_ASSIGNED')){ p15SavedSigCap='not_assigned'; return {ok:false, notAssigned:true, data}; }
+  if(r.ok&&data&&data.ok){ p15SavedSigCap='ok'; return {ok:true, data}; }
+  return {ok:false, data};
+}
+function p15AplicarTemasDeSesion(topics, updatedAt){
+  if(typeof topics==='string') S.cfg.temas=topics;
+  else if(topics===null) S.cfg.temas='';
+  /* Si undefined, no tocar (esquema ausente / no informado). */
+  if(updatedAt!==undefined) {
+    /* nada más aquí; los callers actualizan sus metas de polling */
+  }
+  const ta=$('#f_temas'); if(ta && typeof topics!=='undefined') ta.value=S.cfg.temas||'';
+  pintarHoja();
+}
 
 /* Estado del estudiante sincronizado con el servidor (fuente de verdad). */
 let estadoRemotoConfirmado=false;
@@ -1109,6 +1193,9 @@ function vistaDocente(app){
           docenteInfo[k]=(k==='fecha')?fechaAperturaBogota(data.createdAt||''):(typeof data.cfg[k]==='string'?data.cfg[k]:'');
         }
       }
+      /* PROMPT 14: a la entrar, la Fecha de la planilla del docente = día de la
+         apertura según created_at del servidor (en Bogotá), nunca hereda. */
+      S.cfg.fecha = fechaAperturaBogota(data.createdAt) || hoy();
       ssEscribir('utch.docente',v);
       mostrarVistaDocente();
     }catch(err){
@@ -1120,9 +1207,15 @@ function vistaDocente(app){
   $('#ingresarDocente').onclick=ingresar;
   $('#codigoDocente').onkeydown=e=>{ if(e.key==='Enter') ingresar(); };
 }
+function docenteOfertaSinAsignar(){
+  const c=docenteInfo||{};
+  return !c.docente || !String(c.docente).trim();
+}
+
 function mostrarVistaDocente(){
   const app=$('#app');
   const c=docenteInfo||{};
+  const sinAsignar=docenteOfertaSinAsignar();
   app.innerHTML =
     cabecera('Asistencia') +
     '<p class="np" style="margin-bottom:16px"><button class="s back-button" id="volverDoc2">'+I.arrowLeft+'Inicio</button></p>' +
@@ -1140,13 +1233,39 @@ function mostrarVistaDocente(){
       '</div>' +
     '</div>' +
     '<p class="mut" id="estadoDocente" role="status" style="margin:-4px 0 14px" hidden></p>' +
+
+    '<div class="card" id="p15TemasCardDoc" hidden>' +
+      '<h2>'+I.file+'Temas tratados</h2>' +
+      '<p class="mut">Tema de la clase (fuente única en el servidor). El representante puede verlo y editarlo.</p>' +
+      '<label for="p15TemasDoc">Temas tratados</label>' +
+      '<textarea id="p15TemasDoc" maxlength="600" rows="3" placeholder="Describa brevemente los temas tratados en la clase"></textarea>' +
+      '<p class="mut" style="margin:4px 0 10px;font-size:.85rem"><span id="p15TemasDocN">0</span>/600</p>' +
+      '<div class="row" style="gap:8px;flex-wrap:wrap">' +
+        '<button type="button" id="p15GuardarTemasDoc">'+I.check+'Guardar temas</button>' +
+        '<button type="button" class="s" id="p15BorrarTemasDoc">'+I.trash+'Borrar temas</button>' +
+        '<span id="p15TemasDocMsg" class="mut" role="status"></span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="card" id="p15TemasNoDoc" '+(sinAsignar?'':'hidden')+'>' +
+      '<h2>'+I.file+'Temas tratados y firma guardada</h2>' +
+      '<p class="mut">Estas funciones no están disponibles para esta asistencia porque la oferta no tiene un docente asignado.</p>' +
+    '</div>' +
+
     '<div class="card">' +
       '<h2>'+I.users+'Estudiantes registrados (<span id="totalEst">0</span>)</h2>' +
       '<div id="hoja"></div>' +
     '</div>' +
-    '<div class="card">' +
+
+    '<div class="card" id="p15FirmaCardDoc">' +
       '<h2>'+I.pencil+'Firma del docente</h2>' +
+      '<div id="p15FirmaGuardadaBloque" hidden style="margin-bottom:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--firma-bg,#fbfdff)"></div>' +
       '<div id="padDocente"></div>' +
+      '<div id="p15GuardarFirmaChkWrap" hidden style="margin-top:10px">' +
+        '<label style="display:flex;gap:8px;align-items:flex-start;font-weight:400">' +
+          '<input type="checkbox" id="p15GuardarFirmaChk" style="margin-top:4px">' +
+          '<span>Guardar como mi firma para próximas clases. <span class="mut">Se guardará en el sistema y podrá quitarla cuando quiera.</span></span>' +
+        '</label>' +
+      '</div>' +
       '<p style="margin-top:12px">' +
         '<button class="s" id="limpiarFirmaDoc">'+I.eraser+'Limpiar</button> ' +
         '<button id="confirmarFirmaDoc">'+I.check+'Confirmar firma</button>' +
@@ -1160,6 +1279,10 @@ function mostrarVistaDocente(){
   // Firma
   pads.docente=sigPad($('#padDocente'));
   $('#limpiarFirmaDoc').onclick=()=>{ pads.docente.clear(); };
+
+  const tcDoc=()=>ssLeer('utch.docente')||'';
+  const setMsgTemas=(t,ok)=>{ const el=$('#p15TemasDocMsg'); if(el){ el.textContent=t||''; el.style.color=ok===true?'var(--green)':(ok===false?'var(--bad)':''); } };
+
   $('#confirmarFirmaDoc').onclick=async()=>{
     const firma=pads.docente.get();
     if(!firma){ $('#msgFirmaDoc').textContent='Realice su firma primero.'; return; }
@@ -1168,13 +1291,30 @@ function mostrarVistaDocente(){
       const ctrl=new AbortController();
       const timeoutId=setTimeout(()=>ctrl.abort(),30000);
       try{
-        const r=await fetch('/api/sessions/teacher-signature',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:docenteSessionId,teacherCode:ssLeer('utch.docente')||'',teacherSignature:firma}),signal:ctrl.signal});
+        const r=await fetch('/api/sessions/teacher-signature',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:docenteSessionId,teacherCode:tcDoc(),teacherSignature:firma}),signal:ctrl.signal});
         clearTimeout(timeoutId);
         const data=await r.json().catch(()=>null);
         if(r.ok&&data&&data.ok){
           S.firmaDoc=firmaSegura(firma)||firma;
           $('#msgFirmaDoc').textContent='Firma enviada correctamente.';
           actualizarListaDocente();
+          /* Si pidió guardar la firma para próximas clases, guardar después de aplicar a esta sesión. */
+          const chk=$('#p15GuardarFirmaChk');
+          if(chk && chk.checked && p15FirmaGuardadaDisponible() && !sinAsignar){
+            $('#msgFirmaDoc').textContent='Firma enviada. Guardando su firma para próximas clases...';
+            const g=await p15FirmaGuardadaOp('save',docenteSessionId,tcDoc(),{teacherSignature:firma});
+            if(g.ok){
+              p15SavedSigInfo={has:true, updatedAt:(g.data&&g.data.updatedAt)||null};
+              $('#msgFirmaDoc').textContent='Firma enviada y guardada para próximas clases.';
+              p15RenderFirmaGuardadaDocente();
+            }else if(g.unavailable){
+              p15SavedSigCap='unavailable'; $('#msgFirmaDoc').textContent='Firma enviada. La firma guardada no está disponible en este momento.';
+            }else if(g.notAssigned){
+              p15SavedSigCap='not_assigned'; $('#msgFirmaDoc').textContent='Firma enviada. No se pudo guardar la firma: oferta sin docente asignado.';
+            }else{
+              $('#msgFirmaDoc').textContent='Firma enviada, pero no se pudo guardar su firma para próximas clases.';
+            }
+          }
           return;
         }
         if(data&&data.error==='SESSION_NOT_AVAILABLE'){ $('#msgFirmaDoc').textContent='La asistencia ya no está disponible.'; return; }
@@ -1189,6 +1329,170 @@ function mostrarVistaDocente(){
     await guardar();
     $('#msgFirmaDoc').textContent='Firma guardada.';
   };
+
+  /* Temas */
+  const taDoc=$('#p15TemasDoc');
+  if(taDoc){
+    taDoc.addEventListener('input',()=>{ const n=$('#p15TemasDocN'); if(n) n.textContent=String((taDoc.value||'').length); });
+  }
+  const btnGuardarTemas=$('#p15GuardarTemasDoc');
+  if(btnGuardarTemas) btnGuardarTemas.onclick=async()=>{
+    if(p15TemasBusy) return;
+    if(!docenteSessionId){ setMsgTemas('No hay sesión activa.',false); return; }
+    const texto=(taDoc?taDoc.value:'')||'';
+    if(!texto.trim()){ setMsgTemas('Escriba un tema o use "Borrar temas" para eliminarlo.',false); return; }
+    p15TemasBusy=true; btnGuardarTemas.disabled=true; setMsgTemas('Guardando…');
+    try{
+      const r=await p15GuardarTemasServidor(docenteSessionId, tcDoc(), texto.slice(0,600));
+      if(r.ok){
+        const t=(r.data&&typeof r.data.topics==='string')?r.data.topics:texto.trim().slice(0,600);
+        const ua=r.data&&r.data.topicsUpdatedAt||null;
+        S.cfg.temas=t; if(taDoc){ taDoc.value=t; const n=$('#p15TemasDocN'); if(n) n.textContent=String(t.length); }
+        pollMetaDocente.topicsUpdatedAt=ua; pintarHoja();
+        setMsgTemas(r.data&&r.data.sinCambios?'Sin cambios.':'Temas guardados.',true);
+      }else if(r.unavailable){ p15TopicsCap='unavailable'; p15RenderTemasDocente(); }
+      else{ setMsgTemas('No se pudo guardar. Inténtelo nuevamente.',false); }
+    }catch(e){ setMsgTemas('No se pudo conectar con el servidor.',false); }
+    finally{ p15TemasBusy=false; btnGuardarTemas.disabled=false; }
+  };
+  const btnBorrarTemas=$('#p15BorrarTemasDoc');
+  if(btnBorrarTemas) btnBorrarTemas.onclick=async()=>{
+    if(p15TemasBusy) return;
+    if(!(await uiConfirm({kind:'warn',title:'Borrar temas',okText:'Sí, borrar',message:'¿Desea borrar los temas tratados de esta asistencia?'}))) return;
+    p15TemasBusy=true; btnBorrarTemas.disabled=true; setMsgTemas('Guardando…');
+    try{
+      const r=await p15BorrarTemasServidor(docenteSessionId, tcDoc());
+      if(r.ok){
+        S.cfg.temas=''; if(taDoc){ taDoc.value=''; const n=$('#p15TemasDocN'); if(n) n.textContent='0'; }
+        pollMetaDocente.topicsUpdatedAt=(r.data&&r.data.topicsUpdatedAt)||null; pintarHoja();
+        setMsgTemas('Temas borrados.',true);
+      }else if(r.unavailable){ p15TopicsCap='unavailable'; p15RenderTemasDocente(); }
+      else{ setMsgTemas('No se pudo borrar. Inténtelo nuevamente.',false); }
+    }catch(e){ setMsgTemas('No se pudo conectar con el servidor.',false); }
+    finally{ p15TemasBusy=false; btnBorrarTemas.disabled=false; }
+  };
+
+  /* Capacidades y estado inicial */
+  p15InitDocenteCapacidades(sinAsignar);
+}
+
+function p15RenderTemasDocente(){
+  const card=$('#p15TemasCardDoc'), no=$('#p15TemasNoDoc');
+  if(!card) return;
+  const sinAsignar=docenteOfertaSinAsignar();
+  if(sinAsignar || p15TopicsCap==='unavailable'){
+    card.hidden=true;
+    if(no){
+      no.hidden=!sinAsignar; /* si unavailable pero hay docente, simplemente ocultar sin mensaje extra */
+      if(!sinAsignar) no.hidden=true;
+    }
+    return;
+  }
+  if(p15TopicsCap==='ok'){
+    if(no) no.hidden=sinAsignar?false:true;
+    card.hidden=false;
+    const ta=$('#p15TemasDoc'); if(ta){ ta.value=S.cfg.temas||''; const n=$('#p15TemasDocN'); if(n) n.textContent=String((S.cfg.temas||'').length); }
+  }
+}
+function p15RenderFirmaGuardadaDocente(){
+  const wrap=$('#p15FirmaGuardadaBloque'), chk=$('#p15GuardarFirmaChkWrap'), msg=$('#msgFirmaDoc');
+  if(!wrap||!chk) return;
+  const sinAsignar=docenteOfertaSinAsignar();
+  if(sinAsignar || p15SavedSigCap==='unavailable'){
+    wrap.hidden=true; chk.hidden=true; return;
+  }
+  if(p15SavedSigCap==='not_assigned'){ wrap.hidden=true; chk.hidden=true; return; }
+  if(p15SavedSigCap!=='ok'){ wrap.hidden=true; chk.hidden=true; return; }
+  if(p15SavedSigInfo && p15SavedSigInfo.has){
+    chk.hidden=true;
+    wrap.hidden=false;
+    const cuando=p15SavedSigInfo.updatedAt?(' <span class="mut">(actualizada '+esc(fmtFecha(String(p15SavedSigInfo.updatedAt).slice(0,10)))+')</span>'):'';
+    wrap.innerHTML=
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
+        '<div><b>Firma guardada</b>'+cuando+'<p class="mut" style="margin:4px 0 0">Puede usarla en esta asistencia con un solo toque, cambiarla o quitarla.</p></div>'+
+      '</div>'+
+      '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px">'+
+        '<button type="button" id="p15UsarFirmaGuardada">'+I.check+'Usar mi firma guardada</button>'+
+        '<button type="button" class="s" id="p15CambiarFirmaGuardada">Cambiar mi firma guardada</button>'+
+        '<button type="button" class="d" id="p15QuitarFirmaGuardada">'+I.trash+'Quitar mi firma guardada</button>'+
+      '</div>';
+    const usar=$('#p15UsarFirmaGuardada');
+    if(usar) usar.onclick=async()=>{
+      if(p15FirmaBusy) return; p15FirmaBusy=true; usar.disabled=true; if(msg) msg.textContent='Aplicando firma guardada…';
+      try{
+        const r=await p15FirmaGuardadaOp('apply',docenteSessionId,tcDocActual(),{});
+        if(r.ok){
+          if(msg) msg.textContent='Firma aplicada ✓';
+          /* Refrescar detalle para traer la firma aplicada a la planilla. */
+          try{
+            const full=await fetchRegistrosCompletos(docenteSessionId, null, tcDocActual());
+            if(full){
+              const srvFirmaDoc2 = firmaSegura(full.teacherSignature||'');
+              if(srvFirmaDoc2){ S.firmaDoc = srvFirmaDoc2; }
+              if(Array.isArray(full.records)){
+                S.estudiantes=full.records.map(f=>{
+                  let ts=Date.parse(f.createdAt); if(isNaN(ts)) ts=Date.now();
+                  return {id:String(f.id||''),nombre:clean(f.fullName,80),ident:clean(f.identification,20),firma:firmaSegura(f.studentSignature),ts};
+                }).filter(f=>f.nombre&&f.ident);
+              }
+            }
+          }catch(e){}
+          actualizarListaDocente();
+        }else if(r.notAssigned){ p15SavedSigCap='not_assigned'; p15RenderFirmaGuardadaDocente(); if(msg) msg.textContent='Oferta sin docente asignado.'; }
+        else if(r.unavailable){ p15SavedSigCap='unavailable'; p15RenderFirmaGuardadaDocente(); }
+        else if(r.data&&r.data.error==='NO_SAVED_SIGNATURE'){ p15SavedSigInfo={has:false}; p15RenderFirmaGuardadaDocente(); if(msg) msg.textContent='No hay firma guardada.'; }
+        else{ if(msg) msg.textContent='No se pudo aplicar la firma guardada.'; }
+      }catch(e){ if(msg) msg.textContent='No se pudo conectar con el servidor.'; }
+      finally{ p15FirmaBusy=false; usar.disabled=false; }
+    };
+    const cambiar=$('#p15CambiarFirmaGuardada');
+    if(cambiar) cambiar.onclick=async()=>{
+      const firma=pads.docente&&pads.docente.get();
+      if(!firma){ if(msg) msg.textContent='Dibuje o cargue una nueva firma y pulse "Cambiar mi firma guardada".'; return; }
+      if(p15FirmaBusy) return; p15FirmaBusy=true; cambiar.disabled=true; if(msg) msg.textContent='Guardando…';
+      try{
+        const r=await p15FirmaGuardadaOp('save',docenteSessionId,tcDocActual(),{teacherSignature:firma});
+        if(r.ok){ p15SavedSigInfo={has:true,updatedAt:(r.data&&r.data.updatedAt)||null}; if(msg) msg.textContent='Firma guardada actualizada.'; p15RenderFirmaGuardadaDocente(); }
+        else if(r.notAssigned){ p15SavedSigCap='not_assigned'; p15RenderFirmaGuardadaDocente(); }
+        else if(r.unavailable){ p15SavedSigCap='unavailable'; p15RenderFirmaGuardadaDocente(); }
+        else{ if(msg) msg.textContent='No se pudo guardar la firma.'; }
+      }catch(e){ if(msg) msg.textContent='No se pudo conectar con el servidor.'; }
+      finally{ p15FirmaBusy=false; if(cambiar) cambiar.disabled=false; }
+    };
+    const quitar=$('#p15QuitarFirmaGuardada');
+    if(quitar) quitar.onclick=async()=>{
+      if(!(await uiConfirm({kind:'warn',title:'Quitar firma guardada',okText:'Sí, quitar',message:'¿Desea quitar su firma guardada? Podrá volver a guardarla cuando quiera.'}))) return;
+      if(p15FirmaBusy) return; p15FirmaBusy=true; quitar.disabled=true; if(msg) msg.textContent='Guardando…';
+      try{
+        const r=await p15FirmaGuardadaOp('delete',docenteSessionId,tcDocActual(),{});
+        if(r.ok){ p15SavedSigInfo={has:false,updatedAt:null}; if(msg) msg.textContent='Firma guardada eliminada.'; p15RenderFirmaGuardadaDocente(); }
+        else if(r.notAssigned){ p15SavedSigCap='not_assigned'; p15RenderFirmaGuardadaDocente(); }
+        else if(r.unavailable){ p15SavedSigCap='unavailable'; p15RenderFirmaGuardadaDocente(); }
+        else{ if(msg) msg.textContent='No se pudo quitar la firma guardada.'; }
+      }catch(e){ if(msg) msg.textContent='No se pudo conectar con el servidor.'; }
+      finally{ p15FirmaBusy=false; if(quitar) quitar.disabled=false; }
+    };
+  } else {
+    /* Sin firma guardada: ofrecer casilla para guardar al confirmar */
+    wrap.hidden=true;
+    chk.hidden=false;
+  }
+}
+function tcDocActual(){ return ssLeer('utch.docente')||''; }
+async function p15InitDocenteCapacidades(sinAsignar){
+  if(sinAsignar){ p15TopicsCap='unavailable'; p15SavedSigCap='not_assigned'; p15RenderTemasDocente(); p15RenderFirmaGuardadaDocente(); return; }
+  /* Probar firma guardada (también detecta TEACHER_NOT_ASSIGNED) */
+  try{
+    const r=await p15FirmaGuardadaOp('get',docenteSessionId,tcDocActual(),{});
+    if(r.ok){ p15SavedSigCap='ok'; p15SavedSigInfo={has:!!(r.data&&r.data.has), updatedAt:r.data&&r.data.updatedAt||null}; }
+    else if(r.notAssigned){ p15SavedSigCap='not_assigned'; p15SavedSigInfo=null; }
+    else if(r.unavailable){ p15SavedSigCap='unavailable'; p15SavedSigInfo=null; }
+  }catch(e){ /* desconocido */ }
+  p15RenderFirmaGuardadaDocente();
+  /* Temas: se habilitan cuando el primer light/full response traiga campos de topics (capacidad ok)
+     o cuando un intento de guardado responda TOPICS_UNAVAILABLE. Mientras tanto, oculto si ya se sabe no disponible. */
+  if(p15SavedSigCap==='not_assigned'){ p15TopicsCap='unavailable'; }
+  p15RenderTemasDocente();
 }
 function actualizarListaDocente(){
   const total=$('#totalEst');
@@ -1225,6 +1529,18 @@ async function actualizarRegistrosDesdeAPI(sid, ctrl, teacherSignedAt){
 
   const srvFirmaDoc=firmaSegura(data.teacherSignature||'');
   if(srvFirmaDoc){ S.firmaDoc=srvFirmaDoc; }
+  /* Temas desde servidor (fuente única) si disponibles */
+  if(Object.prototype.hasOwnProperty.call(data,'topics')){
+    p15TopicsCap='ok';
+    const nuevo=(typeof data.topics==='string')?data.topics:(data.topics===null?'':(S.cfg.temas||''));
+    if(!p15TemasBusy && nuevo!==(S.cfg.temas||'')){
+      S.cfg.temas=nuevo;
+      const ta=$('#f_temas'); if(ta) ta.value=S.cfg.temas||'';
+      const tn=$('#f_temas_n'); if(tn) tn.textContent=String((S.cfg.temas||'').length);
+    }
+    pollMeta.topicsUpdatedAt=data.topicsUpdatedAt||pollMeta.topicsUpdatedAt||null;
+    p15RenderTemasRep();
+  }
   S.estudiantes=data.records.map(f=>{
     let ts=Date.parse(f.createdAt);
     if(isNaN(ts)) ts=Date.now();
@@ -1256,8 +1572,9 @@ async function actualizarListaDocenteDesdeAPI(){
   if(pollApiDocenteCtrl){ try{ pollApiDocenteCtrl.abort(); }catch(e){} }
   pollApiDocenteCtrl=new AbortController();
   const sid=docenteSessionId;
+  const tc=ssLeer('utch.docente')||'';
   try{
-    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid)+'&teacherCode='+encodeURIComponent(ssLeer('utch.docente')||'')+'&light=1',{signal:pollApiDocenteCtrl.signal});
+    const r=await fetch('/api/records?sessionId='+encodeURIComponent(sid)+'&teacherCode='+encodeURIComponent(tc)+'&light=1',{signal:pollApiDocenteCtrl.signal});
     const data=await r.json().catch(()=>null);
     if(!r.ok||!data||!data.ok) return;
     if(docenteSessionId!==sid) return;
@@ -1269,15 +1586,44 @@ async function actualizarListaDocenteDesdeAPI(){
       if(ed){ ed.hidden=false; ed.textContent='Asistencia cerrada.'; }
       return;
     }
-    const cambio=(Number(data.count)||0)!==pollMetaDocente.count || (data.latestChangeAt||null)!==pollMetaDocente.latestChangeAt || (data.teacherSignedAt||null)!==pollMetaDocente.teacherSignedAt;
-    pollMetaDocente={count:Number(data.count)||0, latestChangeAt:data.latestChangeAt||null, teacherSignedAt:data.teacherSignedAt||null};
+    /* Temas (fuente única servidor): detectar disponibilidad y cambios. */
+    const topicsPresente = Object.prototype.hasOwnProperty.call(data,'topics');
+    if(topicsPresente && p15TopicsCap!=='unavailable'){
+      if(p15TopicsCap!=='ok' && !docenteOfertaSinAsignar()) { p15TopicsCap='ok'; p15RenderTemasDocente(); }
+      const tu=data.topicsUpdatedAt||null;
+      if(tu!==pollMetaDocente.topicsUpdatedAt || (data.topics||null)!==(S.cfg.temas||null)){
+        if(!p15TemasBusy){
+          S.cfg.temas = (typeof data.topics==='string') ? data.topics : (data.topics===null?'':(S.cfg.temas||''));
+          const ta=$('#p15TemasDoc'); if(ta){ ta.value=S.cfg.temas||''; const n=$('#p15TemasDocN'); if(n) n.textContent=String((S.cfg.temas||'').length); }
+          pintarHoja();
+        }
+        pollMetaDocente.topicsUpdatedAt=tu;
+      } else {
+        pollMetaDocente.topicsUpdatedAt=tu;
+      }
+    }
+    const cambioReg=(Number(data.count)||0)!==pollMetaDocente.count || (data.latestChangeAt||null)!==pollMetaDocente.latestChangeAt || (data.teacherSignedAt||null)!==pollMetaDocente.teacherSignedAt;
+    /* Si la respuesta light ya trae todo lo que necesitamos para la lista, podemos evitar full fetch cuando no hay cambio de registros/firma;
+       pero la firma/estudiantes requieren detalle completo. */
+    pollMetaDocente.count=Number(data.count)||0;
+    pollMetaDocente.latestChangeAt=data.latestChangeAt||null;
+    pollMetaDocente.teacherSignedAt=data.teacherSignedAt||null;
 
-    if(!cambio) return;
-    const full=await fetchRegistrosCompletos(sid, pollApiDocenteCtrl, ssLeer('utch.docente')||'');
+    if(!cambioReg) return;
+    const full=await fetchRegistrosCompletos(sid, pollApiDocenteCtrl, tc);
     if(!full) return;
     if(docenteSessionId!==sid) return;
     const srvFirmaDoc2 = firmaSegura(full.teacherSignature||'');
     if(srvFirmaDoc2){ S.firmaDoc = srvFirmaDoc2; }
+    if(Object.prototype.hasOwnProperty.call(full,'topics') && p15TopicsCap!=='unavailable' && !docenteOfertaSinAsignar()){
+      p15TopicsCap='ok';
+      if(!p15TemasBusy){
+        S.cfg.temas = (typeof full.topics==='string') ? full.topics : (full.topics===null?'':(S.cfg.temas||''));
+        const ta=$('#p15TemasDoc'); if(ta){ ta.value=S.cfg.temas||''; const n=$('#p15TemasDocN'); if(n) n.textContent=String((S.cfg.temas||'').length); }
+      }
+      pollMetaDocente.topicsUpdatedAt=full.topicsUpdatedAt||pollMetaDocente.topicsUpdatedAt||null;
+      p15RenderTemasDocente();
+    }
     S.estudiantes=full.records.map(f=>{
       let ts=Date.parse(f.createdAt);
       if(isNaN(ts)) ts=Date.now();
@@ -1302,7 +1648,7 @@ function detenerPollingApiDocente(){
 function iniciarPollingApiDocente(){
   detenerPollingApiDocente();
   if(!docenteSessionId) return;
-  pollMetaDocente={count:0, latestChangeAt:null, teacherSignedAt:null};
+  pollMetaDocente={count:0, latestChangeAt:null, teacherSignedAt:null, topicsUpdatedAt:null, topicsVersion:null};
   actualizarListaDocenteDesdeAPI();
   pollApiDocente=setInterval(()=>{
     if(document.hidden) return;
@@ -1410,8 +1756,13 @@ async function seleccionarAsistenciaRep(sessionId){
     }
 
     const fAp=fechaAperturaBogota(s.createdAt), hAp=horaAperturaBogota(s.createdAt);
+    /* PROMPT 14: una asistencia reabierta conserva su fecha original (fAp);
+       si no hay (fallo de datos), nunca se hereda la anterior (hoy()). */
+    S.cfg.fecha = fAp || hoy();
+    if(typeof s.attendanceNumber!=='undefined'&&s.attendanceNumber!==null){
+      S.sesion.attendanceNumber=Number(s.attendanceNumber)||null;
+    }
     if(fAp){
-      S.cfg.fecha=fAp;
       const ff=$('#f_fecha'); if(ff) ff.value=fAp;
     }
     if(hAp){
@@ -1426,6 +1777,13 @@ async function seleccionarAsistenciaRep(sessionId){
     S.firmaRep = srvFirmaRep3 || '';
     if(pads.rep) pads.rep.set(S.firmaRep);
     const msgFirmaRep3=$('#msgFirmaRep'); if(msgFirmaRep3) msgFirmaRep3.textContent='';
+    /* Temas desde servidor (fuente única) si la columna existe. */
+    if(Object.prototype.hasOwnProperty.call(s,'topics')){
+      p15TopicsCap='ok';
+      S.cfg.temas = (typeof s.topics==='string') ? s.topics : (s.topics===null?'':(S.cfg.temas||''));
+      const ta=$('#f_temas'); if(ta) ta.value=S.cfg.temas||'';
+      const tn=$('#f_temas_n'); if(tn) tn.textContent=String((S.cfg.temas||'').length);
+    }
     S.estudiantes=(Array.isArray(data.records)?data.records:[]).map(f=>{
       let ts=Date.parse(f.createdAt);
       if(isNaN(ts)) ts=Date.now();
@@ -1434,15 +1792,18 @@ async function seleccionarAsistenciaRep(sessionId){
     await guardar();
     if(requestId!==repSessionSelectionRequestId) return;
     refrescarPanel();
+    p15RenderTemasRep();
 
     let latestMs=0;
     S.estudiantes.forEach(f=>{ const t=new Date(f.ts||0).getTime(); if(!isNaN(t)&&t>latestMs) latestMs=t; });
     pollMeta={
       count:S.estudiantes.length,
       latestChangeAt:latestMs?new Date(latestMs).toISOString():null,
-      teacherSignedAt:null,
+      teacherSignedAt:data.session.teacherSignedAt||null,
       teacherSignatureAttemptedAt:null,
-      teacherSignatureRetryAt:0
+      teacherSignatureRetryAt:0,
+      topicsUpdatedAt:Object.prototype.hasOwnProperty.call(s,'topicsUpdatedAt')? (s.topicsUpdatedAt||null) : null,
+      topicsVersion:null
     };
     pollPrecarga=S.sesion.abierta;
     if(S.sesion.abierta) iniciarPollingApi();
@@ -1517,7 +1878,14 @@ function vistaAdmin(app){
         '<div><label for="f_horas">Horas semanales</label>' +
           '<input id="f_horas" data-k="horas" type="number" min="0" max="20" value="'+esc(c.horas||'')+'"></div>' +
         '<div class="w"><label for="f_temas">Temas tratados</label>' +
-          '<textarea id="f_temas" data-k="temas" maxlength="800" rows="2">'+esc(c.temas||'')+'</textarea></div>' +
+          '<textarea id="f_temas" data-k="temas" maxlength="600" rows="2" placeholder="Describa brevemente los temas tratados en la clase">'+esc(c.temas||'')+'</textarea>' +
+          '<p class="mut" id="f_temas_count" style="margin:4px 0 0;font-size:.85rem"><span id="f_temas_n">'+String((c.temas||'').length)+'</span>/600</p>' +
+          '<div id="p15TemasRepAcciones" class="row" style="margin-top:6px;gap:8px;flex-wrap:wrap" hidden>' +
+            '<button type="button" class="s" id="p15GuardarTemasRep">Guardar temas</button>' +
+            '<button type="button" class="s" id="p15BorrarTemasRep">Borrar temas</button>' +
+            '<span id="p15TemasRepMsg" class="mut" role="status"></span>' +
+          '</div>' +
+        '</div>' +
       '</div>' +
       '<p class="mut" style="margin-top:14px">El logo institucional es fijo: <b>logo.png</b></p>' +
     '</div>' +
@@ -1552,13 +1920,15 @@ function vistaAdmin(app){
       '<div class="row">' +
         '<div><label for="clave">Clave de acceso para estudiantes</label>' +
           '<input id="clave" readonly aria-label="Clave de acceso"></div>' +
-        '<button class="s" id="copiar">'+I.copy+'Copiar clave</button>' +
+        '<button class="s" id="copiar">'+I.copy+'Copiar mensaje</button>' +
+        '<button class="s" id="copiarSoloCodigo">'+I.copy+'Solo el código</button>' +
         '<button class="s" id="nuevaClave">'+I.key+'Generar nueva</button>' +
       '</div>' +
       '<div class="row" style="margin-top:10px;">' +
         '<div><label for="claveDocente">Clave de acceso para docente (firma)</label>' +
           '<input id="claveDocente" readonly aria-label="Clave de acceso docente"></div>' +
-        '<button class="s" id="copiarDocente">'+I.copy+'Copiar clave</button>' +
+        '<button class="s" id="copiarDocente">'+I.copy+'Copiar mensaje</button>' +
+        '<button class="s" id="copiarSoloCodigoDocente">'+I.copy+'Solo el código</button>' +
       '</div>' +
       '<div class="row" style="margin-top:10px;">' +
         '<span id="estadoReg" class="mut" role="status"></span> ' +
@@ -1628,11 +1998,13 @@ function vistaAdmin(app){
     if(!materia || id===S.materiaActiva){ e.target.value=S.materiaActiva; return; }
     if(!(await confirmarCambioAsistencia())){ e.target.value=S.materiaActiva; return; }
     S.materiaActiva=id;
-    /* Cargar datos comunes (se aplican a todas las asignaturas) */
-    S.cfg.facultad=DATOS_COMUNES.facultad;
-    S.cfg.programa=DATOS_COMUNES.programa;
-    S.cfg.nivel=DATOS_COMUNES.nivel;
-    S.cfg.periodo=DATOS_COMUNES.periodo;
+    /* Punto 4a: facultad/programa/nivel/periodo salen SIEMPRE de la oferta
+       elegida; si la oferta no los tiene, el campo queda vacío. Nunca un valor
+       por defecto de otra carrera. */
+    S.cfg.facultad=materia.facultad||'';
+    S.cfg.programa=materia.programa||'';
+    S.cfg.nivel=materia.nivel||'';
+    S.cfg.periodo=materia.periodo||'';
     /* Cargar datos específicos de la materia */
     for(const k of MATERIA_CAMPOS){
       if(k==='facultad'||k==='programa'||k==='nivel'||k==='periodo') continue; /* Ya cargados */
@@ -1645,10 +2017,10 @@ function vistaAdmin(app){
     const programaInput=$('#f_programa');
     const nivelInput=$('#f_nivel');
     const periodoInput=$('#f_periodo');
-    if(facultadInput) facultadInput.value=DATOS_COMUNES.facultad;
-    if(programaInput) programaInput.value=DATOS_COMUNES.programa;
-    if(nivelInput) nivelInput.value=DATOS_COMUNES.nivel;
-    if(periodoInput) periodoInput.value=DATOS_COMUNES.periodo;
+    if(facultadInput) facultadInput.value=S.cfg.facultad;
+    if(programaInput) programaInput.value=S.cfg.programa;
+    if(nivelInput) nivelInput.value=S.cfg.nivel;
+    if(periodoInput) periodoInput.value=S.cfg.periodo;
     /* Cargar correo y horas (campos adicionales) */
     S.cfg.correo=materia.correo||'';
     S.cfg.horas=materia.horas||'';
@@ -1719,7 +2091,10 @@ function vistaAdmin(app){
     inp.addEventListener('input',()=>{
       const k=inp.dataset.k;
       if(k==='fecha') return;
-      if(k==='temas') S.cfg[k]=cleanMulti(inp.value,800);
+      if(k==='temas'){
+        S.cfg[k]=cleanMulti(inp.value,600);
+        const n=$('#f_temas_n'); if(n) n.textContent=String((S.cfg[k]||'').length);
+      }
       else if(k==='horas') S.cfg[k]=parseInt(inp.value)||0;
       else S.cfg[k]=clean(inp.value,160);
       pintarHoja(); guardarDiferido();
@@ -1756,6 +2131,10 @@ function vistaAdmin(app){
         throw new Error('api');
       }
       S.sesion.abierta=true; S.sesion.inicio=Date.now();
+      /* PROMPT 14: la Fecha de la planilla = día de la apertura según
+         created_at del servidor (en hora de Bogotá). Si el servidor no
+         envía fecha, queda hoy() en Bogotá. Nunca hereda una anterior. */
+      S.cfg.fecha = fechaAperturaBogota(data.session.createdAt) || hoy();
       repSessionSelectionRequestId++;
       S.sesion.sessionId=String(data.session.id);
       S.sesion.clave=String(data.session.studentCode).toUpperCase();
@@ -1887,18 +2266,10 @@ function vistaAdmin(app){
       iniciarPollingApi();
     }
   };
-  $('#copiar').onclick=async()=>{
-    const b=$('#copiar');
-    try{ await navigator.clipboard.writeText(S.sesion.clave||''); b.innerHTML=I.check+'Copiada'; }
-    catch(e){ b.innerHTML=I.copy+'Seleccione y copie'; }
-    setTimeout(()=>{ b.innerHTML=I.copy+'Copiar clave'; },1800);
-  };
-  $('#copiarDocente').onclick=async()=>{
-    const b=$('#copiarDocente');
-    try{ await navigator.clipboard.writeText(S.sesion.claveDocente||''); b.innerHTML=I.check+'Copiada'; }
-    catch(e){ b.innerHTML=I.copy+'Seleccione y copie'; }
-    setTimeout(()=>{ b.innerHTML=I.copy+'Copiar clave'; },1800);
-  };
+  $('#copiar').onclick=()=>copiarMsgEst();
+  $('#copiarSoloCodigo').onclick=()=>copiarTextoAlPortapapeles(S.sesion.clave||'');
+  $('#copiarDocente').onclick=()=>copiarMsgDoc();
+  $('#copiarSoloCodigoDocente').onclick=()=>copiarTextoAlPortapapeles(S.sesion.claveDocente||'');
   $('#bloquearReg').onclick=async()=>{
     const sid=S.sesion.sessionId||'';
     if(!sid||!S.sesion.abierta) return;
@@ -1964,8 +2335,9 @@ function vistaAdmin(app){
   };
 
   $('#pdf').onclick=()=>{
+    /* PROMPT 14, punto 2: el nombre del PDF/impresión = Asist_NNN_materia_periodo. */
     tituloPDF=document.title;
-    document.title='Asistencia_'+fmtFecha(S.cfg.fecha||hoy());
+    document.title=nombreArchivoAsist(S.sesion.attendanceNumber, S.cfg.asignatura, S.cfg.periodo);
     prepararImpresion().then(()=>setTimeout(()=>{ ajustarHojaUnaPagina(); window.print(); },60));
   };
   $('#json').onclick=()=>{
@@ -1973,7 +2345,7 @@ function vistaAdmin(app){
       app:'UTCH Registro de Asistencia', version:2,
       exportado:new Date().toISOString(), ...S
     },null,2);
-    descargar('respaldo_asistencia_'+(S.cfg.codigo||'clase')+'_'+(S.cfg.fecha||hoy())+'.json',
+    descargar(nombreArchivoAsist(S.sesion.attendanceNumber, S.cfg.asignatura, S.cfg.periodo)+'.json',
       new Blob([data],{type:'application/json'}));
   };
   $('#csv').onclick=()=>{
@@ -1982,7 +2354,7 @@ function vistaAdmin(app){
     S.estudiantes.forEach((f,i)=>lineas.push(
       [i+1,q(f.nombre),q(f.ident),q(new Date(f.ts).toLocaleTimeString('es-CO',{timeZone:'America/Bogota',hour12:false}))].join(',')
     ));
-    descargar('asistencia_'+(S.cfg.codigo||'clase')+'_'+(S.cfg.fecha||hoy())+'.csv',
+    descargar(nombreArchivoAsist(S.sesion.attendanceNumber, S.cfg.asignatura, S.cfg.periodo)+'.csv',
       new Blob(['\ufeff'+lineas.join('\n')],{type:'text/csv;charset=utf-8'}));
   };
   $('#importFile').onchange=e=>{
@@ -2001,6 +2373,48 @@ function vistaAdmin(app){
       }catch(err){ await uiAlert({kind:'error',title:'Respaldo no válido',message:'El archivo no es un respaldo válido.'}); }
     };
     r.readAsText(f); e.target.value='';
+  };
+
+  /* PROMPT 15: Temas de la sesión (representante). Fuente única en servidor cuando disponible. */
+  const p15MsgTemasRep=(t,ok)=>{ const el=$('#p15TemasRepMsg'); if(el){ el.textContent=t||''; el.style.color=ok===true?'var(--green)':(ok===false?'var(--bad)':''); } };
+  const btnGuardarTemasRep=$('#p15GuardarTemasRep');
+  if(btnGuardarTemasRep) btnGuardarTemasRep.onclick=async()=>{
+    if(p15TemasBusy) return;
+    if(!S.sesion.sessionId){ p15MsgTemasRep('Seleccione o abra una asistencia primero.',false); return; }
+    if(p15TopicsCap!=='ok'){ p15MsgTemasRep('Los temas en servidor no están disponibles.',false); return; }
+    const ta=$('#f_temas'); const texto=(ta?ta.value:'')||'';
+    if(!texto.trim()){ p15MsgTemasRep('Escriba un tema o use "Borrar temas" para eliminarlo.',false); return; }
+    p15TemasBusy=true; btnGuardarTemasRep.disabled=true; p15MsgTemasRep('Guardando…');
+    try{
+      const r=await p15GuardarTemasServidor(S.sesion.sessionId, '', texto.slice(0,600));
+      if(r.ok){
+        const t=(r.data&&typeof r.data.topics==='string')?r.data.topics:texto.trim().slice(0,600);
+        S.cfg.temas=t; if(ta){ ta.value=t; const n=$('#f_temas_n'); if(n) n.textContent=String(t.length); }
+        pollMeta.topicsUpdatedAt=r.data&&r.data.topicsUpdatedAt||pollMeta.topicsUpdatedAt||null;
+        pintarHoja(); guardarDiferido();
+        p15MsgTemasRep(r.data&&r.data.sinCambios?'Sin cambios.':'Temas guardados.',true);
+      }else if(r.unavailable){ p15TopicsCap='unavailable'; p15RenderTemasRep(); p15MsgTemasRep('Los temas en servidor no están disponibles.',false); }
+      else{ p15MsgTemasRep('No se pudo guardar. Inténtelo nuevamente.',false); }
+    }catch(e){ p15MsgTemasRep('No se pudo conectar con el servidor.',false); }
+    finally{ p15TemasBusy=false; btnGuardarTemasRep.disabled=false; }
+  };
+  const btnBorrarTemasRep=$('#p15BorrarTemasRep');
+  if(btnBorrarTemasRep) btnBorrarTemasRep.onclick=async()=>{
+    if(p15TemasBusy) return;
+    if(!S.sesion.sessionId){ p15MsgTemasRep('Seleccione o abra una asistencia primero.',false); return; }
+    if(!(await uiConfirm({kind:'warn',title:'Borrar temas',okText:'Sí, borrar',message:'¿Desea borrar los temas tratados de esta asistencia?'}))) return;
+    p15TemasBusy=true; btnBorrarTemasRep.disabled=true; p15MsgTemasRep('Guardando…');
+    try{
+      const r=await p15BorrarTemasServidor(S.sesion.sessionId, '');
+      if(r.ok){
+        S.cfg.temas=''; const ta=$('#f_temas'); if(ta){ ta.value=''; const n=$('#f_temas_n'); if(n) n.textContent='0'; }
+        pollMeta.topicsUpdatedAt=(r.data&&r.data.topicsUpdatedAt)||null;
+        pintarHoja(); guardarDiferido();
+        p15MsgTemasRep('Temas borrados.',true);
+      }else if(r.unavailable){ p15TopicsCap='unavailable'; p15RenderTemasRep(); p15MsgTemasRep('Los temas en servidor no están disponibles.',false); }
+      else{ p15MsgTemasRep('No se pudo borrar. Inténtelo nuevamente.',false); }
+    }catch(e){ p15MsgTemasRep('No se pudo conectar con el servidor.',false); }
+    finally{ p15TemasBusy=false; btnBorrarTemasRep.disabled=false; }
   };
 
   /* Eliminar datos locales: limpia SOLO los datos temporales de la
@@ -2101,12 +2515,29 @@ async function actualizarListaDesdeAPI(){
     }
     if(typeof data.registrationOpen === 'boolean') repRegAbiertos=data.registrationOpen;
     const teacherSignedAt=data.teacherSignedAt||null;
+    /* Temas: light puede traer topics/topicsUpdatedAt; aplicar sin descargar firmas si solo cambió el tema. */
+    let cambioTemas=false;
+    if(Object.prototype.hasOwnProperty.call(data,'topics')){
+      p15TopicsCap='ok';
+      const tu=data.topicsUpdatedAt||null;
+      const tv=Object.prototype.hasOwnProperty.call(data,'topics')?(data.topics===null?'':(typeof data.topics==='string'?data.topics:(S.cfg.temas||''))):(S.cfg.temas||'');
+      if(tu!==pollMeta.topicsUpdatedAt || tv!==(S.cfg.temas||'')){
+        cambioTemas=true;
+      }
+      if(cambioTemas && !p15TemasBusy){
+        S.cfg.temas = (typeof data.topics==='string') ? data.topics : (data.topics===null?'':(S.cfg.temas||''));
+        const ta=$('#f_temas'); if(ta) ta.value=S.cfg.temas||'';
+        const tn=$('#f_temas_n'); if(tn) tn.textContent=String((S.cfg.temas||'').length);
+        pintarHoja(); guardarDiferido();
+      }
+      pollMeta.topicsUpdatedAt=tu;
+      p15RenderTemasRep();
+    }
     const cambioRegistros=(Number(data.count)||0)!==pollMeta.count || (data.latestChangeAt||null)!==pollMeta.latestChangeAt;
     const firmaNueva=!!teacherSignedAt&&teacherSignedAt!==pollMeta.teacherSignedAt&&teacherSignedAt!==pollMeta.teacherSignatureAttemptedAt;
     const reintentarFirma=!!teacherSignedAt&&teacherSignedAt===pollMeta.teacherSignatureAttemptedAt&&Date.now()>=pollMeta.teacherSignatureRetryAt;
     const cambio=cambioRegistros||firmaNueva||reintentarFirma;
-    /* Solo cuando los metadatos ligeros indican cambio se descarga el detalle
-       con firmas completas (evita descargar firmas en cada ciclo de polling). */
+    /* Si solo cambió el tema, el light ya lo trajo; no hace falta detalle completo. */
     if(!cambio) return;
     await actualizarRegistrosDesdeAPI(sid,ctrl,teacherSignedAt);
   }catch(e){ /* abort o red: se reintenta en el siguiente ciclo */ }
@@ -2140,6 +2571,12 @@ function pintarEstadoReg(){
     btn.textContent=repRegAbiertos?'No permitir más registros':'Registros cerrados';
   }
 }
+function p15RenderTemasRep(){
+  const acc=$('#p15TemasRepAcciones');
+  if(!acc) return;
+  const mostrar = !!(S.sesion && S.sesion.sessionId) && p15TopicsCap==='ok';
+  acc.hidden=!mostrar;
+}
 function refrescarPanel(){
   const el=$('#clave');
   if(el) el.value=S.sesion.clave||'Sin generar';
@@ -2163,6 +2600,77 @@ function refrescarPanel(){
   pintarRed();
   pintarHoja();
   pintarEstadoReg();
+  p15RenderTemasRep();
+}
+
+/* MENSAJES para copiar por WhatsApp (PROMPT 15 punto 3). Marcadores: {codigo} {materia} {periodo} {nivel} {docente} {enlace}. */
+const MENSAJES = {
+  docente:
+    'Profesor, buenos días. Espero se encuentre muy bien.\n\n' +
+    'Por favor, ingrese al siguiente enlace:\n\n' +
+    'https://asistencias-utch.vercel.app/\n\n' +
+    'Una vez ingrese a la plataforma, seleccione el apartado “Docente” e ingrese el siguiente código:\n\n' +
+    'Código de asistencia: {codigo}\n\n' +
+    'Después de ingresar el código, en la parte inferior encontrará un campo donde podrá realizar la firma correspondiente a la asistencia del día de hoy.\n\n' +
+    'Muchas gracias por su colaboración.',
+  estudiante:
+    'Buenos días. Espero que se encuentren muy bien.\n\n' +
+    'Por favor, ingresen al siguiente enlace para realizar el registro de asistencia:\n\n' +
+    'https://asistencias-utch.vercel.app/\n\n' +
+    'Una vez ingresen a la plataforma, seleccionen la opción Estudiante e introduzcan el siguiente código de asistencia:\n\n' +
+    'Código de asistencia: {codigo}\n\n' +
+    'Luego, completen el registro de asistencia con sus datos y su firma, siguiendo las indicaciones de la plataforma.\n\n' +
+    'Muchas gracias por su colaboración.',
+};
+
+/* Reemplazo seguro: split/join (no interpreta $&, $1…). */
+function construirMensaje(tipo, campos){
+  const m = MENSAJES[tipo];
+  if (typeof m !== 'string') return '';
+  let out = m;
+  for (const k of Object.keys(campos)) out = out.split('{'+k+'}').join(String(campos[k] ?? ''));
+  return out;
+}
+
+/* Portapapeles: clipboard API con respaldo execCommand; en casos de pantalla
+   pequeña o backend, se manda a un cuadro seleccionable (sin mostrar el mensaje). */
+function copiarTextoAlPortapapeles(texto){
+  const avisar = (ok) => {
+    const m=$('#msgAsistencias');
+    if (m) m.textContent = ok ? 'Mensaje copiado con el código ✓' : 'No se pudo copiar. Copie a mano.';
+  };
+  const fallback = () => {
+    try{
+      const ta = document.createElement('textarea');
+      ta.value = texto; ta.setAttribute('readonly','');
+      ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0';
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand('copy'); ta.remove(); return ok;
+    }catch(e){ return false; }
+  };
+  try{
+    const cp = navigator.clipboard;
+    if (cp && typeof cp.writeText==='function') {
+      cp.writeText(texto).then(()=>avisar(true)).catch(()=>avisar(fallback()));
+      return;
+    }
+    avisar(fallback());
+  }catch(e){ avisar(false); }
+}
+
+function camposMsgComunes(){
+  return {
+    codigo: S.sesion.clave||'',
+    materia: S.cfg.asignatura, periodo: S.cfg.periodo, nivel: S.cfg.nivel,
+    docente: S.cfg.docente,
+  };
+}
+
+function copiarMsgEst(){
+  copiarTextoAlPortapapeles(construirMensaje('estudiante', {...camposMsgComunes(), enlace: location.origin+'/#estudiante'}));
+}
+function copiarMsgDoc(){
+  copiarTextoAlPortapapeles(construirMensaje('docente', {...camposMsgComunes(), codigo: S.sesion.claveDocente||'', enlace: location.origin+'/#docente'}));
 }
 
 /* ============================================================

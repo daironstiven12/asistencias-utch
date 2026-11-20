@@ -4,6 +4,7 @@
 const crypto = require("crypto");
 const { query, getPool } = require("../lib/db");
 const { currentRep } = require("../lib/repSession");
+const { columnaExiste } = require("../lib/sessionSchema");
 
 const LIMITS = {
   fullName: 120,
@@ -152,11 +153,20 @@ async function handleGet(req, res) {
      Permite al frontend detectar cambios sin transferir firmas Base64 en cada
      ciclo de polling; las firmas se descargan con el detalle completo. */
   const light = String(readParam(req, "light") || "").trim() === "1";
+  /* topics es una columna OPCIONAL (script 106): si aún no existe, la función
+     sigue respondiendo sin ella (el cliente lo oculta). */
+  let topicsDisponible = false;
+  try {
+    topicsDisponible = await columnaExiste(query, "attendance_runtime_sessions", "topics");
+  } catch (e) {
+    topicsDisponible = false;
+  }
+  const camposTemas = topicsDisponible ? ", topics, topics_updated_at" : "";
   try {
     const s = await query(
       (light
-        ? "SELECT id, status, teacher_code, teacher_signed_at, registration_open, representative_id FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1"
-        : "SELECT id, status, teacher_code, teacher_signature, teacher_signed_at, registration_open, representative_id FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1"),
+        ? "SELECT id, status, teacher_code, teacher_signed_at, registration_open, representative_id" + camposTemas + " FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1"
+        : "SELECT id, status, teacher_code, teacher_signature, teacher_signed_at, registration_open, representative_id" + camposTemas + " FROM attendance_runtime_sessions WHERE id = $1 LIMIT 1"),
       [sessionId.trim()]
     );
     if (!s.rows[0]) {
@@ -184,15 +194,35 @@ async function handleGet(req, res) {
         "SELECT COUNT(*)::int AS \"count\", MAX(created_at) AS \"latestChangeAt\" FROM attendance_runtime_records WHERE session_id = $1",
         [sessionId.trim()]
       );
-      return res.status(200).json({
-        ok: true,
-        light: true,
+      const latestChangeAt = cnt.rows[0].latestChangeAt || null;
+      const teacherSignedAt = s.rows[0].teacher_signed_at || null;
+      const topics = topicsDisponible ? (s.rows[0].topics || null) : undefined;
+      const topicsUpdatedAt = topicsDisponible ? (s.rows[0].topics_updated_at || null) : undefined;
+      /* Versión para sync vivo (light/since): máximo instante conocido entre
+         registros, firma docente y temas. registration_open/status se incluyen
+         en la respuesta; el cliente compara también estos campos si usa since. */
+      const versiones = [latestChangeAt, teacherSignedAt, topicsUpdatedAt]
+        .filter(Boolean)
+        .map((v) => new Date(v).getTime())
+        .filter((t) => !Number.isNaN(t));
+      const version = versiones.length ? new Date(Math.max(...versiones)).toISOString() : null;
+      const payloadBase = {
         status: s.rows[0].status,
         registrationOpen: s.rows[0].registration_open,
         count: cnt.rows[0].count,
-        latestChangeAt: cnt.rows[0].latestChangeAt || null,
-        teacherSignedAt: s.rows[0].teacher_signed_at || null,
-      });
+        latestChangeAt,
+        teacherSignedAt,
+        ...(topicsDisponible ? { topics, topicsUpdatedAt } : {}),
+      };
+      const sinceParam = readParam(req, "since");
+      if (sinceParam && version) {
+        const sinceMs = new Date(String(sinceParam)).getTime();
+        const verMs = new Date(version).getTime();
+        if (!Number.isNaN(sinceMs) && !Number.isNaN(verMs) && sinceMs >= verMs) {
+          return res.status(200).json({ ok: true, light: true, unchanged: true, version, ...payloadBase });
+        }
+      }
+      return res.status(200).json({ ok: true, light: true, version, ...payloadBase });
     }
     const r = await query(
       "SELECT id, session_id, full_name, identification, student_signature, created_at" +
@@ -206,6 +236,7 @@ async function handleGet(req, res) {
       teacherSignature: s.rows[0].teacher_signature || null,
       teacherSignedAt: s.rows[0].teacher_signed_at || null,
       registrationOpen: s.rows[0].registration_open,
+      ...(topicsDisponible ? { topics: s.rows[0].topics || null, topicsUpdatedAt: s.rows[0].topics_updated_at || null } : {}),
       count: r.rows.length,
       latestChangeAt: ultimo ? ultimo.created_at : null,
       records: r.rows.map((row) => ({

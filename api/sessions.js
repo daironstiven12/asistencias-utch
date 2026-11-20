@@ -65,6 +65,8 @@ module.exports = async function handler(req, res) {
     let studentCode = null;
     let teacherCode = null;
     let id = null;
+    let createdAt = null;
+    let attendanceNumber = null;
     let attempts = 0;
     // Reintenta ante colisión de códigos (constraint UNIQUE).
     for (;;) {
@@ -74,20 +76,29 @@ module.exports = async function handler(req, res) {
       studentCode = codes.studentCode;
       teacherCode = codes.teacherCode;
       try {
-        await query(
+        const r = await query(
           "INSERT INTO attendance_runtime_sessions (id, student_code, teacher_code, status, course_offering_id, representative_id)" +
-            " VALUES ($1, $2, $3, 'OPEN', $4, $5)",
+            " VALUES ($1, $2, $3, 'OPEN', $4, $5) RETURNING id, created_at",
           [id, studentCode, teacherCode, courseOfferingId, representativeId]
         );
+        createdAt = r.rows[0] ? (r.rows[0].created_at || null) : null;
         break;
       } catch (err) {
         if (err && err.code === "23505" && attempts < 4) continue;
         throw err;
       }
     }
+    /* Número de asistencia dentro de esa oferta: orden de apertura por
+       (created_at, id); el 1 suele quedar para la primera sesión. */
+    const cnt = await query(
+      "SELECT COUNT(*)::int AS n FROM attendance_runtime_sessions" +
+        " WHERE course_offering_id = $1 AND (created_at < $2 OR (created_at = $2 AND id < $3))",
+      [courseOfferingId, createdAt, id]
+    );
+    attendanceNumber = (cnt.rows[0] ? cnt.rows[0].n : 0) + 1;
     return res.status(201).json({
       ok: true,
-      session: { id, studentCode, teacherCode, status: "OPEN" },
+      session: { id, studentCode, teacherCode, status: "OPEN", createdAt, attendanceNumber },
     });
   } catch (err) {
     console.error("sessions create error:", err && err.message);

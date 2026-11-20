@@ -1047,6 +1047,19 @@ function fmtSoloFechaBogota(iso){
     return String(p||'clase').slice(0,10);
   }catch(e){ return 'clase'; }
 }
+/* PROMPT 14, punto 2: nombre de archivo al descargar (Asist_NNN_materia_periodo).
+   (Copy del helper de app.js: admin.js no carga app.js.) */
+function nombreArchivoAsist(attendanceNumber, asignatura, periodo){
+  const deja = s => String(s||'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').replace(/_+/g,'_')
+    .slice(0,40);
+  const num = Number(attendanceNumber);
+  const n = String(num>0?num:1).padStart(3,'0');
+  const partes = ['Asist_'+n, deja(asignatura), periodo===undefined||periodo===null?'':String(periodo)];
+  return partes.filter(s=>s).join('_');
+}
 function badgeEstado(st){
   return '<span class="adm-badge'+(st==='OPEN'?' on':'')+'"><span class="dot"></span>'+(st==='OPEN'?'ABIERTA':'CERRADA')+'</span>';
 }
@@ -1088,14 +1101,20 @@ async function cargarHistorial(){
   }
 }
 /* Indicador de carga en un botón: deshabilita y muestra spinner + texto.
-   Devuelve función para restaurar. Si ya está ocupado, devuelve null. */
+   Devuelve función para restaurar. Si ya está ocupado, devuelve null.
+   Fija el ancho durante la carga para que no varíe visualmente. */
 function botonCarga(btn, texto){
   if(!btn||btn.disabled) return null;
   const orig=btn.innerHTML;
+  const ancho=btn.getBoundingClientRect().width;
+  if(ancho>0){
+    btn.style.width=ancho+'px';
+    btn.style.minWidth=ancho+'px';
+  }
   btn.disabled=true;
   btn.innerHTML='<span class="spin" aria-hidden="true"></span>'+escA(texto);
   let listo=false;
-  return ()=>{ if(listo) return; listo=true; btn.disabled=false; btn.innerHTML=orig; };
+  return ()=>{ if(listo) return; listo=true; btn.disabled=false; btn.innerHTML=orig; btn.style.width=''; btn.style.minWidth=''; };
 }
 function filaHist(s){
   const enVivo=s.status==='OPEN';
@@ -1385,7 +1404,7 @@ async function verDetalleHist(id, btn){
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),3000);
   };
-  const nombreBase='asistencia_'+(s.codigo||'clase')+'_'+fmtSoloFechaBogota(s.createdAt);
+  const nombreBase=nombreArchivoAsist(s.attendanceNumber, s.asignatura, s.periodo);
   $a('#admDCerrar').onclick=()=>{ $a('#admModal').innerHTML=''; };
   $a('#admModal').querySelector('.adm-modal').onclick=e=>{ if(e.target.classList.contains('adm-modal')) $a('#admModal').innerHTML=''; };
   $a('#admDPdf').onclick=e=>{

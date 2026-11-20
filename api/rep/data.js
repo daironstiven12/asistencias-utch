@@ -3,6 +3,7 @@
 
 const { query } = require("../../lib/db");
 const { requireRep } = require("../../lib/repSession");
+const { columnaExiste } = require("../../lib/sessionSchema");
 
 function cleanDocente(v) {
   const t = String(v || "").replace(/\s+/g, " ").trim();
@@ -82,6 +83,14 @@ const SESS_FIELDS =
   " (s.representative_signature IS NOT NULL) AS \"hasRepresentativeSignature\"," +
   " COUNT(r.id)::int AS \"recordCount\"";
 
+/* topics es una columna OPCIONAL (script 106): si aún no existe, la lista y el
+   detalle siguen respondiendo sin ella. */
+function sessFields(topicsDisponible, attendanceDisponible) {
+  return SESS_FIELDS
+    + (attendanceDisponible ? ', s.attendance_number AS "attendanceNumber"' : "")
+    + (topicsDisponible ? ", s.topics" : "");
+}
+
 const SESS_GROUP =
   " GROUP BY s.id, f.name, ap2.name, al.name, ap.name, sub.name, sub.code," +
   " p.first_name, p.middle_name, p.last_name, p.second_last_name";
@@ -94,8 +103,20 @@ async function handleSessions(req, res) {
   const rep = await requireRep(req, res);
   if (!rep) return;
   try {
+    let topicsDisponible = false;
+    try {
+      topicsDisponible = await columnaExiste(query, "attendance_runtime_sessions", "topics");
+    } catch (e) {
+      topicsDisponible = false;
+    }
+    let attendanceDisponible = false;
+    try {
+      attendanceDisponible = await columnaExiste(query, "attendance_runtime_sessions", "attendance_number");
+    } catch (e) {
+      attendanceDisponible = false;
+    }
     const r = await query(
-      "SELECT " + SESS_FIELDS + SESS_JOINS +
+      "SELECT " + sessFields(topicsDisponible, attendanceDisponible) + SESS_JOINS +
         " LEFT JOIN attendance_runtime_records r ON r.session_id = s.id" +
         " WHERE s.representative_id = $1" +
         SESS_GROUP +
@@ -104,26 +125,31 @@ async function handleSessions(req, res) {
     );
     return res.status(200).json({
       ok: true,
-      sessions: r.rows.map((row) => ({
-        sessionId: row.sessionId,
-        status: row.status,
-        registrationOpen: row.registrationOpen,
-        studentCode: row.studentCode,
-        teacherCode: row.teacherCode,
-        createdAt: row.createdAt,
-        closedAt: row.closedAt,
-        purgeAt: row.purgeAt,
-        facultad: row.facultad || null,
-        programa: row.programa || null,
-        nivel: row.nivel || null,
-        periodo: row.periodo || null,
-        asignatura: row.asignatura || null,
-        codigo: row.codigo || null,
-        docente: cleanDocente(row.docente),
-        hasTeacherSignature: !!row.hasTeacherSignature,
-        hasRepresentativeSignature: !!row.hasRepresentativeSignature,
-        recordCount: row.recordCount,
-      })),
+      sessions: r.rows.map((row) => {
+        const obj = {
+          sessionId: row.sessionId,
+          status: row.status,
+          registrationOpen: row.registrationOpen,
+          studentCode: row.studentCode,
+          teacherCode: row.teacherCode,
+          createdAt: row.createdAt,
+          closedAt: row.closedAt,
+          purgeAt: row.purgeAt,
+          facultad: row.facultad || null,
+          programa: row.programa || null,
+          nivel: row.nivel || null,
+          periodo: row.periodo || null,
+          asignatura: row.asignatura || null,
+          codigo: row.codigo || null,
+          docente: cleanDocente(row.docente),
+          hasTeacherSignature: !!row.hasTeacherSignature,
+          hasRepresentativeSignature: !!row.hasRepresentativeSignature,
+          recordCount: row.recordCount,
+          attendanceNumber: row.attendanceNumber || null,
+        };
+        if (topicsDisponible) obj.topics = row.topics || null;
+        return obj;
+      }),
     });
   } catch (err) {
     console.error("rep sessions error:", err && err.message);
@@ -144,15 +170,31 @@ async function handleSession(req, res) {
     return res.status(400).json({ ok: false, error: "INVALID_DATA" });
   }
   try {
+    let topicsDisponible = false;
+    try {
+      topicsDisponible = await columnaExiste(query, "attendance_runtime_sessions", "topics");
+    } catch (e) {
+      topicsDisponible = false;
+    }
+    let attendanceDisponible = false;
+    try {
+      attendanceDisponible = await columnaExiste(query, "attendance_runtime_sessions", "attendance_number");
+    } catch (e) {
+      attendanceDisponible = false;
+    }
+    const campoTemas = topicsDisponible ? ", s.topics" : "";
+    const campoAttendance = attendanceDisponible ? ', s.attendance_number AS "attendanceNumber"' : "";
     const s = await query(
       "SELECT s.id AS \"sessionId\", s.status, s.registration_open AS \"registrationOpen\"," +
         " s.student_code AS \"studentCode\", s.teacher_code AS \"teacherCode\"," +
         " s.created_at AS \"createdAt\", s.closed_at AS \"closedAt\", s.purge_at AS \"purgeAt\"," +
         " s.teacher_signature AS \"teacherSignature\"," +
         " s.representative_signature AS \"representativeSignature\"," +
+        " s.attendance_number AS \"attendanceNumber\"," +
         " f.name AS facultad, ap2.name AS programa, al.name AS nivel, ap.name AS periodo," +
         " sub.name AS asignatura, sub.code AS codigo," +
         " TRIM(COALESCE(p.first_name,'')||' '||COALESCE(p.middle_name||' ','')||COALESCE(p.last_name,'')||COALESCE(' '||p.second_last_name,'')) AS docente" +
+        campoTemas +
         " FROM attendance_runtime_sessions s" +
         " LEFT JOIN course_offerings co ON co.id = s.course_offering_id" +
         " LEFT JOIN curriculum_subjects cs ON cs.id = co.curriculum_subject_id" +
@@ -177,27 +219,33 @@ async function handleSession(req, res) {
         " FROM attendance_runtime_records WHERE session_id = $1 ORDER BY created_at ASC",
       [sessionId]
     );
+    const sessionOut = {
+      sessionId: row.sessionId,
+      status: row.status,
+      registrationOpen: row.registrationOpen,
+      studentCode: row.studentCode,
+      teacherCode: row.teacherCode,
+      createdAt: row.createdAt,
+      closedAt: row.closedAt,
+      purgeAt: row.purgeAt,
+      facultad: row.facultad || null,
+      programa: row.programa || null,
+      nivel: row.nivel || null,
+      periodo: row.periodo || null,
+      asignatura: row.asignatura || null,
+      codigo: row.codigo || null,
+      docente: cleanDocente(row.docente),
+      teacherSignature: row.teacherSignature || null,
+      representativeSignature: row.representativeSignature || null,
+      attendanceNumber: row.attendanceNumber || null,
+    };
+    if (topicsDisponible) {
+      sessionOut.topics = row.topics || null;
+      sessionOut.topicsUpdatedAt = row.topics_updated_at || null;
+    }
     return res.status(200).json({
       ok: true,
-      session: {
-        sessionId: row.sessionId,
-        status: row.status,
-        registrationOpen: row.registrationOpen,
-        studentCode: row.studentCode,
-        teacherCode: row.teacherCode,
-        createdAt: row.createdAt,
-        closedAt: row.closedAt,
-        purgeAt: row.purgeAt,
-        facultad: row.facultad || null,
-        programa: row.programa || null,
-        nivel: row.nivel || null,
-        periodo: row.periodo || null,
-        asignatura: row.asignatura || null,
-        codigo: row.codigo || null,
-        docente: cleanDocente(row.docente),
-        teacherSignature: row.teacherSignature || null,
-        representativeSignature: row.representativeSignature || null,
-      },
+      session: sessionOut,
       records: r.rows.map((rec) => ({
         id: rec.id,
         sessionId: rec.session_id,

@@ -170,9 +170,36 @@ async function handlePost(req, res) {
       await client.query("ROLLBACK");
       return res.status(400).json({ ok: false, error: "INVALID_DATA" });
     }
-    const cur = await client.query(
-      "SELECT id, program_id FROM curricula WHERE status = 'ACTIVE' ORDER BY id LIMIT 1"
-    );
+    // Punto 4b: el programa de la oferta sale del body si se indica
+    // (programaId). Si no, fallback al primer plan activo (compatibilidad).
+    // Si el programa indicado no tiene plan activo: error claro — nunca se
+    // debe calzar una oferta de otro programa por omisión.
+    const programIdBody = toInt(body && (body.programaId ?? body.programId));
+    let cur;
+    if (programIdBody) {
+      const pr = await client.query(
+        "SELECT id, name FROM academic_programs WHERE id = $1 AND status = 'ACTIVE' LIMIT 1",
+        [programIdBody]
+      );
+      if (!pr.rows[0]) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ ok: false, error: "PROGRAM_NOT_AVAILABLE" });
+      }
+      cur = await client.query(
+        "SELECT id, program_id FROM curricula WHERE program_id = $1 AND status = 'ACTIVE' ORDER BY id LIMIT 1",
+        [programIdBody]
+      );
+      if (!cur.rows[0]) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          ok: false, error: "NO_ACTIVE_CURRICULUM_FOR_PROGRAM", programa: pr.rows[0].name,
+        });
+      }
+    } else {
+      cur = await client.query(
+        "SELECT id, program_id FROM curricula WHERE status = 'ACTIVE' ORDER BY id LIMIT 1"
+      );
+    }
     if (!cur.rows[0]) {
       await client.query("ROLLBACK");
       return res.status(400).json({ ok: false, error: "NO_ACTIVE_CURRICULUM" });
